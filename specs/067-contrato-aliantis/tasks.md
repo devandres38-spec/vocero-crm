@@ -18,6 +18,7 @@ La spec se escribe entera ahora (paso 0.2), pero se implementa por partes, en el
 - [ ] T6 Historial: `GET /api/bot/history`. Sabotaje 15.
 - [ ] T7 Marcas en el despacho: `privacyFlags` en `armarEvento`, solo si existen. Gemelo intacto. Sabotaje 11. (Quien llena `privacy_flags` es la spec del filtro, paso 3.2.)
 - [ ] T8 Botones: `buttons` en `messages`, `kind: "buttons"` en `sendStructured`, `button_id` en la ingesta, `buttonId` en el despacho, botones visibles en la bandeja. Sabotajes 12 y 16.
+- [ ] T8b Envío idempotente: `clientMessageId` en `messages`, columna e índice único parcial (en la misma migración `0027`), reserva antes de Meta, historia 8 en el guion E2E. Sabotajes 17, 18 y 19. (Del lado del cerebro, el turno genera la llave en el paso 2.4.)
 - [ ] T9 Consentimiento: `src/server/consent.ts`, `POST /api/bot/consent`, `consent` en el contexto, escaneo de solo agregar.
 - [ ] T10 Forget: `src/server/inbox/olvidar.ts` y `POST /api/bot/forget`. Sabotajes 6, 7 y 8.
 - [ ] T11 Salud con el Agente apagado: despacho con `agentEnabled: false` y regla de seguridad en `messages`. Sabotajes 9 y 10.
