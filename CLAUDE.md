@@ -1,5 +1,23 @@
 # Vocero CRM — Guía para Claude
 
+> ## ⛔ Este fork está subordinado a Aliantis Core
+>
+> Este es el fork de Aliantis (`devandres38-spec/vocero-crm`). Antes que este archivo, valen
+> [`../CLAUDE.md`](../CLAUDE.md) (los **6 pilares innegociables** de `aliantis-core` y el método
+> de trabajo con Andres) y [`../RELEVO_ARQUITECTURA.md`](../RELEVO_ARQUITECTURA.md) (el contrato con
+> `aliantis-brain` y las brechas). **Vocero se adapta a Aliantis Core, no al revés:** si una regla
+> de este archivo, de `AGENTS.md` o de la constitución (`.specify/memory/constitution.md`) choca
+> con un pilar, gana Aliantis y la divergencia se documenta en
+> `aliantis-core/docs/trabajo/decisiones.md`.
+>
+> **Suma de Potencias:** se conserva **toda** la riqueza funcional de Vocero (bandeja con notas,
+> respuestas rápidas, borradores, atajos y plantillas; Kanban; contactos con ficha y CSV; agenda
+> con conectores; Agente; Laboratorio; Resultados; anuncio de origen; guía de inicio; marca
+> blanca; PWA), adaptada a nuestro modelo: **multi-tenant de una sola instalación con RLS** (no
+> "una instancia = un negocio"), un panel de administrador para Andres sin conversaciones,
+> privacidad de la Ley 1581 antes de guardar, y un cerebro determinista (`aliantis-brain`).
+> Una función solo se apaga si no puede cumplir un pilar, y eso lo decide Andres.
+
 Lee primero [AGENTS.md](AGENTS.md): el mapa del código y las reglas de
 modificación viven ahí; este archivo solo añade lo específico de Claude Code.
 
@@ -150,14 +168,26 @@ automatizados: con la app viva y los mocks encendidos, `pnpm test:e2e`
 cero si algo falla. Al agregar una historia, extiende el arnés en vez de dejar
 solo el `.md`.
 
-## Modo Objetivo — Loop SDD
+## Método de trabajo con Andres (reemplaza al "Modo Objetivo")
 
-Cuando el dueño da una META (no prompts paso a paso): Discover → Plan →
-Execute → Verify → Iterate, de forma autónoma, volviendo solo con el objetivo
-verificado en vivo o con un bloqueo real (decisión de producto, credenciales,
-acción irreversible/costosa). Agrupa TODAS las preguntas bloqueantes al inicio.
-El estado durable son los artefactos SDD en `specs/` (spec/plan/tasks) —
-manténlos al día. Invocable como `/loop-sdd <objetivo>`.
+En este fork **no existe el modo autónomo**: está **prohibido usar `/loop-sdd`** o avanzar
+módulos enteros sin permiso, aunque Andres dé una meta grande.
+
+1. **Un paso pequeño a la vez.** Explica en español simple qué harás y por qué, y espera su
+   **"sigue"** antes de empezar y antes del paso siguiente.
+2. **Especifica antes de programar con Spec-Kit** (`specs/NNN-nombre/`): ciclo completo
+   (`spec.md` → `plan.md` → `tasks.md`, con `contracts/`) si toca el modelo de datos, RLS o un
+   contrato público (`/api/bot/*`, despacho, webhooks); `spec.md` ligero si es solo
+   comportamiento. El plan se revisa contra el código real y dice también lo que no se hará.
+3. **Cada paso de código** sigue `aliantis-core/docs/trabajo/procedimiento.md`: pruebas que fijen
+   lo que no debe cambiar antes de tocarlo; revisión completa
+   `pnpm typecheck && pnpm lint && pnpm build && pnpm test` en verde, dicha con números (más el
+   self-test E2E con mocks si cambia comportamiento observable); **sabotajes** de lo importante
+   (privacidad, aislamiento entre organizaciones, dinero), y uno no detectado se investiga
+   siempre; y `aliantis-core/docs/trabajo/estado.md` al día.
+4. **Ramas y PRs** (`feat/…`, `fix/…`, `docs/…`); nunca en `main`. Merge o force push solo si
+   Andres lo pide con esas palabras. El "loop de auto-corrección" de la Definición de Hecho vale
+   **dentro** del paso aprobado, nunca para seguir al siguiente.
 
 ## Memoria persistente
 
@@ -168,8 +198,8 @@ repo ya registra. Los subagentes con `memory: project` usan
 
 ## Arquitectura de agentes
 
-1. **Orquestador** = la sesión principal de Claude Code (este CLAUDE.md + skill
-   `loop-sdd`).
+1. **Orquestador** = la sesión principal de Claude Code (este CLAUDE.md, con el
+   método de trabajo con Andres; la skill `loop-sdd` no se usa en este fork).
 2. **Subagentes** (`.claude/agents/`): `deploy-ops` (deploy/logs/healthchecks,
    no escribe código de app) · `public-site-builder` (páginas públicas/legales
    y config de paneles externos).
@@ -184,3 +214,7 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
+
+**Reglas de Aliantis:**
+- **Prohibidas las búsquedas masivas a ciegas** (`grep`, `find` o `glob` indiscriminados, o leer archivos completos sin saber qué buscar). Primero `graphify query`, `path` o `explain`; después, leer solo las secciones de código que el grafo señaló.
+- **Prohibido lanzar subagentes para re-extraer documentos Markdown en graphify.** El grafo se actualiza solo con `graphify update .` (AST local, 0 tokens), salvo que Andres lo pida explícitamente.
