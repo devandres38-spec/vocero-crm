@@ -38,7 +38,8 @@ Es la misma credencial derivada de Vocero Cloud. La cadena de dominio es contrat
     { "id": "aviso_acepto", "title": "Acepto" },
     { "id": "aviso_no_acepto", "title": "No acepto" }
   ],
-  "motivo": "seguridad"
+  "motivo": "seguridad",
+  "clientMessageId": "trn_8f3k…:0"
 }
 ```
 
@@ -46,6 +47,18 @@ Es la misma credencial derivada de Vocero Cloud. La cadena de dominio es contrat
 | --- | --- | --- |
 | `buttons` | sí, opcional | 1 a 3. `id`: 1 a 256 caracteres; `title`: 1 a 20. Ids y títulos únicos. Con botones, `text` hasta 1024 caracteres. Fuera de eso: `422 invalid_body` |
 | `motivo` | sí, opcional | Solo `"seguridad"`. Ver «Agente apagado» |
+| `clientMessageId` | sí, opcional (agregado el 9-nov-2026, T2) | 1 a 128 caracteres. La llave de idempotencia del cerebro. Ver «Envío idempotente» |
+
+**Envío idempotente** (`clientMessageId`). El cerebro manda la misma llave cada vez que reintenta **el mismo** mensaje (por ejemplo, el turno se cayó entre enviar y anotar que salió). Vocero:
+
+- **reserva la llave antes de llamar a Meta**, con un índice único por (organización, `clientMessageId`): dos peticiones simultáneas con la misma llave no envían dos veces;
+- si la llave ya tiene un mensaje que no falló: `200 { "messageId": "<el original>", "repetido": true }`, y **no envía nada**;
+- si el intento anterior quedó `failed`: lo intenta de nuevo con la misma llave (el paciente no lo recibió);
+- si el intento anterior sigue en curso: `409 mensaje_en_curso`, y el cerebro reintenta después;
+- vale igual en el Laboratorio;
+- sin `clientMessageId`, el comportamiento es el de hoy.
+
+La llave es de un negocio: la misma en dos organizaciones son dos mensajes.
 
 - **Canal sin botones** (Instagram, Messenger, TikTok): `409 canal_sin_botones`, nada se envía.
 - **Laboratorio** (`is_test`): se guarda con sus botones y no se envía, como hoy. La regla del Agente apagado no aplica a las conversaciones de prueba.
@@ -173,3 +186,4 @@ En una conversación con `is_test = false`: `409 solo_laboratorio`, sin cambios.
 | `agente_apagado` | 409 | Agente apagado y el mensaje no es de seguridad válido |
 | `sin_rechazo` | 409 | `forget` sin un rechazo registrado |
 | `solo_laboratorio` | 409 | `reset` en una conversación real |
+| `mensaje_en_curso` | 409 | Un `clientMessageId` cuyo envío anterior todavía no termina |

@@ -29,6 +29,9 @@ Mismos campos que `consents` de `aliantis-core` (`src/db/schema.ts`), con los no
 | `privacy_flags` | `text[]` NULL | Las marcas del filtro. `NULL` o vacío: sin marcas. La llena la fase 3.2; antes queda `NULL` |
 | `button_id` | `text` NULL | Entrante: el id del botón tocado (`button.payload` o `interactive.*_reply.id`) |
 | `buttons` | `jsonb` NULL | Saliente: los botones enviados, `[{ id, title }]` |
+| `client_message_id` | `text` NULL | Saliente del cerebro: su llave de idempotencia (T2, 9-nov-2026) |
+
+- Índice **único parcial** `(organization_id, client_message_id) where client_message_id is not null`: es la reserva que impide enviar dos veces el mismo mensaje del cerebro. Se inserta la fila (estado `pending`) antes de llamar a Meta.
 
 - Índice parcial para la regla de seguridad: `(conversation_id, created_at) where direction = 'in' and 'salud' = any(privacy_flags)`. Se decide en la implementación si hace falta; las conversaciones son cortas.
 

@@ -51,6 +51,12 @@ Ninguna rompe a un cerebro que siga el contrato publicado con una sola organizac
 - La ingesta guarda `button_id` (de `button.payload` o `interactive.*_reply.id`).
 - `src/server/consent.ts`: `registrarConsentimiento` y `ultimoConsentimiento`. Ruta `src/app/api/bot/consent/route.ts`. El contexto suma `consent`.
 
+### Envío idempotente (T2, agregado el 9-nov-2026)
+
+- `bodySchema` de `messages` suma `clientMessageId`. Con llave, el envío inserta primero la fila del mensaje en `pending` con `client_message_id` (índice único parcial por organización) y solo después llama a Meta. Si la inserción choca: con la fila en `sent`, `delivered` o `read`, `200` con su `messageId` y `repetido: true`; en `failed`, la reutiliza y reintenta; en `pending`, `409 mensaje_en_curso`.
+- Hoy `sendText` (`src/server/inbox/send.ts`) persiste el mensaje después de llamar a Meta: con llave, el orden se invierte en ese camino. Sin llave, no cambia.
+- El Laboratorio (`guardarRespuestaDePrueba`) aplica la misma reserva.
+
 ### Forget
 
 - `src/server/inbox/olvidar.ts`: en una transacción, verifica el último `aviso_privacidad` de la conversación (`granted = false`), borra los mensajes, los `media_asset` y los `webhook_event` que los traían; fuera de la transacción, los archivos (como 026). Publica `conversation.updated`.
@@ -102,6 +108,9 @@ Cada uno debe hacer fallar al menos una prueba. Uno no detectado se investiga.
 14. `salud` cayendo en `modelo`.
 15. El historial devolviendo una nota interna o un mensaje de otra organización.
 16. Botones aceptados en Instagram.
+17. `clientMessageId` reservado después de llamar a Meta (un reintento simultáneo envía dos veces).
+18. Un `clientMessageId` repetido que vuelve a enviar.
+19. La llave compartida entre organizaciones.
 
 ## Del lado del cerebro
 

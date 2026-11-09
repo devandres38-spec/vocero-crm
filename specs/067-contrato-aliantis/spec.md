@@ -36,6 +36,7 @@ El cerebro de Aliantis (`aliantis-brain`) reemplaza a Nea. Sigue una arquitectur
 - **D9. Motivos de traspaso ampliados** con los de Aliantis: `salud`, `reclamo`, `no_entiende`, `agendar`, `tope_gasto`, `medios`. El catálogo sigue aplicándose con fallback (un motivo raro no puede costar el traspaso). No hace falta migración: `handoff_reason` no tiene restricción en la base.
 - **D10. Historial por el CRM.** `GET /api/bot/history` devuelve los últimos mensajes de una conversación, ya filtrados. El cerebro no guarda una copia: una sola retención y un solo borrado (D2 de Aliantis).
 - **D11. `reset` solo en el Laboratorio.** En una conversación real responde `409 solo_laboratorio`. Solo una persona devuelve una conversación al bot.
+- **D13. Envío idempotente** (T2, agregada el 9-nov-2026): `clientMessageId` opcional en `POST /api/bot/messages`. Vocero reserva la llave por organización antes de llamar a Meta; un repetido devuelve el mensaje original sin enviar. En `aliantis-core` una caída entre enviar y marcar podía reenviar; con la llave, no.
 - **D12. Sin endpoint de reconciliación para `conversation.deleted`** (brecha N6). Con D10 el cerebro ya no guarda texto de la conversación; lo que guarda (pendientes, punto de control, costo) está indexado por `conversation.id`, que no se reutiliza, y su retención lo borra. Se revisa si la fase 3 encuentra otra cosa.
 
 ## User Scenarios & Testing
@@ -89,6 +90,16 @@ El cerebro de Aliantis (`aliantis-brain`) reemplaza a Nea. Sigue una arquitectur
 1. **Dado** una conversación `is_test`, **cuando** el cerebro llama `reset`, **entonces** funciona como hoy.
 2. **Dado** una conversación real, **entonces** responde `409 solo_laboratorio` y no cambia nada.
 
+### Historia 8. Un reintento del cerebro no le llega dos veces al paciente (P1, agregada el 9-nov-2026, T2)
+
+**Por qué**: si el cerebro se cae entre enviar un mensaje y anotar que salió, al recuperarse lo reintenta. Sin una llave, Vocero lo enviaría otra vez.
+
+1. **Dado** un mensaje enviado con `clientMessageId: "k1"`, **cuando** el cerebro lo manda otra vez con `"k1"`, **entonces** responde `200` con el mismo `messageId` y `repetido: true`, y Meta no recibe nada.
+2. **Dado** dos peticiones simultáneas con `"k1"`, **entonces** solo una llega a Meta; la otra recibe `409 mensaje_en_curso` o el `200 repetido`.
+3. **Dado** que el envío con `"k1"` falló, **cuando** el cerebro lo reintenta con `"k1"`, **entonces** se intenta otra vez.
+4. **Dado** `"k1"` en la organización A, **cuando** la B manda `"k1"`, **entonces** son dos mensajes distintos.
+5. **Dado** un mensaje sin `clientMessageId`, **entonces** todo sigue como hoy.
+
 ### Casos borde
 
 - Un botón cuyo webhook trae id pero no rótulo: se guarda con el id como texto (como hoy) y `buttonId`.
@@ -113,6 +124,7 @@ El cerebro de Aliantis (`aliantis-brain`) reemplaza a Nea. Sigue una arquitectur
 - **FR-010**: el catálogo de motivos incluye los de D9, con sus rótulos en Resultados y en el hilo.
 - **FR-011**: `POST /api/bot/reset` responde `409 solo_laboratorio` en una conversación real.
 - **FR-012**: `docs/openapi.json`, `AGENTS.md` y el contrato del despacho quedan al día; el contrato de esta spec manda.
+- **FR-013** (T2, 9-nov-2026): `POST /api/bot/messages` acepta `clientMessageId` (1 a 128) y lo reserva con un índice único por organización **antes** de llamar a Meta, según la historia 8 y `contracts/bot-api-v2.md` («Envío idempotente»).
 
 ### Entidades
 
