@@ -104,6 +104,22 @@ Con el Agente encendido, `motivo` se acepta y no cambia nada. `ai_paused` (perso
 - Publica `conversation.updated`. No manda `conversation.deleted`: quien lo pidió es el cerebro.
 - **Orden esperado del cerebro:** `consent` (rechazo) → `forget` → `messages` con el texto fijo de «no acepta». Ese texto es lo único que queda.
 
+## 4b. `POST /api/bot/omit` (nuevo, agregado el 10-nov-2026, P2)
+
+La segunda red de salud: el LLM marcó salud en un mensaje que el filtro de Vocero no reconoció. El cerebro le pide a Vocero que omita ese texto **antes** de guardar su punto de control (pilar 4).
+
+```json
+{ "conversationId": "cv_…", "messageIds": ["msg_…"], "reason": "salud" }
+```
+
+- `messageIds`: 1 a 20. `reason`: solo `"salud"`.
+- **Solo mensajes entrantes** de esa conversación y esa organización. Un id que no cumple se ignora (no es error).
+- **Omite:** el texto pasa a `[mensaje con información de salud omitido]` (la misma frase del filtro), `privacy_flags` suma `salud`, el `caption` del adjunto se borra, y las filas de `webhook_event` de la organización que traían esos `wa_message_id` se borran.
+- **No toca:** el mensaje en sí (sigue en el hilo, con su hora), la conversación ni el contacto.
+- `200 { "omitted": <número> }`. Repetirlo da el mismo resultado sin cambiar nada más (idempotente).
+- Publica `message.updated` para que la bandeja muestre el texto omitido.
+- Si Vocero no responde, el cerebro **no** guarda su punto de control: el turno se reintenta, como en `aliantis-core`.
+
 ## 5. `GET /api/bot/history` (nuevo)
 
 ```
@@ -187,3 +203,5 @@ En una conversación con `is_test = false`: `409 solo_laboratorio`, sin cambios.
 | `sin_rechazo` | 409 | `forget` sin un rechazo registrado |
 | `solo_laboratorio` | 409 | `reset` en una conversación real |
 | `mensaje_en_curso` | 409 | Un `clientMessageId` cuyo envío anterior todavía no termina |
+
+`POST /api/bot/omit` no agrega códigos: un id ajeno se ignora y cuenta como no omitido.

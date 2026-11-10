@@ -51,6 +51,11 @@ Ninguna rompe a un cerebro que siga el contrato publicado con una sola organizac
 - La ingesta guarda `button_id` (de `button.payload` o `interactive.*_reply.id`).
 - `src/server/consent.ts`: `registrarConsentimiento` y `ultimoConsentimiento`. Ruta `src/app/api/bot/consent/route.ts`. El contexto suma `consent`.
 
+### Segunda red de salud (P2, agregado el 10-nov-2026)
+
+- `src/app/api/bot/omit/route.ts` y `src/server/inbox/omitir.ts`: en una transacción, actualiza `message.text`, `privacy_flags` y el `caption` del adjunto solo para entrantes de la conversación y la organización, y borra los `webhook_event` que los traían (la misma búsqueda que `forget`). Publica `message.updated`.
+- La frase sale del mismo módulo de privacidad que usa la ingesta (fase 3.1), para que sea idéntica byte a byte.
+
 ### Envío idempotente (T2, agregado el 9-nov-2026)
 
 - `bodySchema` de `messages` suma `clientMessageId`. Con llave, el envío inserta primero la fila del mensaje en `pending` con `client_message_id` (índice único parcial por organización) y solo después llama a Meta. Si la inserción choca: con la fila en `sent`, `delivered` o `read`, `200` con su `messageId` y `repetido: true`; en `failed`, la reutiliza y reintenta; en `pending`, `409 mensaje_en_curso`.
@@ -111,6 +116,8 @@ Cada uno debe hacer fallar al menos una prueba. Uno no detectado se investiga.
 17. `clientMessageId` reservado después de llamar a Meta (un reintento simultáneo envía dos veces).
 18. Un `clientMessageId` repetido que vuelve a enviar.
 19. La llave compartida entre organizaciones.
+20. `omit` que toca un mensaje saliente o de otra organización.
+21. `omit` que deja la copia en `webhook_event`.
 
 ## Del lado del cerebro
 
