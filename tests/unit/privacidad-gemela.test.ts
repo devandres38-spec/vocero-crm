@@ -27,7 +27,7 @@ import {
  * huella nueva aquí y allá.
  */
 const HUELLA_VECTORES =
-  "6243a5db34e0101b2930b15e6caad657da18ac5dcc5778ce099f56ecb09f4127";
+  "0657c14f767c1d15640d394e4fa2d61bcd9ef52527f9504d5e18e4f58554b05d";
 
 interface Caso {
   perfil: string | null;

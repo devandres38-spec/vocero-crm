@@ -1,4 +1,4 @@
-// 068 — Copia de aliantis-brain/src/privacy/privacy-filter.ts (commit ffb4402), con el mismo comportamiento:
+// 068 — Copia de aliantis-brain/src/privacy/privacy-filter.ts (commit bfa08e2), con el mismo comportamiento:
 // la prueba gemela (tests/unit/privacidad-gemela.test.ts) lo comprueba caso por caso.
 // Solo cambian las importaciones y no trae privacyPolicyFor (en Vocero la política sale
 // del perfil de privacidad registrado: perfil.ts y repositorio.ts). No se edita a mano: un cambio
@@ -97,9 +97,15 @@ function healthCategories(
 const LOOSE_NUMBER = /(?<![$\d.,])(?:\d{1,3}(?:\.\d{3}){2,3}|\d{8,10})(?![\d.,]*\d)/g;
 
 // Cada máscara reemplaza un tipo de dato por su marcador. El orden importa: primero lo
-// más específico (un correo puede tener números; una tarjeta parece un documento largo).
+// más específico (un correo puede tener números; una tarjeta parece un documento largo), y
+// un documento anunciado antes que un teléfono anunciado ("cédula número 1020345678" es un
+// documento aunque diga "número").
 const MASKERS: [PiiKind, (text: string, country: CountryCode) => string][] = [
   ['correo', (text) => text.replace(/[^\s@]+@[^\s@]+\.[a-z]{2,}/gi, '[correo]')],
+  // Un número internacional con "+" (8 a 15 dígitos, el largo de E.164): es un teléfono,
+  // aunque libphonenumber no lo reconozca (el formato mexicano viejo "+52 1 55 1234 5678") y
+  // aunque sea tan largo que parezca una tarjeta.
+  ['telefono', (text) => text.replace(/\+\d(?:[\p{Zs}\t./()-]{0,2}\d){7,14}\b/gu, '[telefono]')],
   [
     'tarjeta',
     // 13 dígitos o más seguidos (con separadores cortos en la misma línea: espacio, guion,
@@ -113,23 +119,60 @@ const MASKERS: [PiiKind, (text: string, country: CountryCode) => string][] = [
   ['telefono', maskPhones],
   [
     'documento',
+    // Después de una palabra que anuncia un documento: un número de 5 a 16 caracteres, o un
+    // código de 1 a 3 letras y 5 a 9 dígitos, con una letra al final o sin ella (pasaporte
+    // "AB123456", "G12345678"; PPT, PEP; DNI "12345678Z").
     (text) =>
-      text
-        // Después de una palabra que anuncia un documento: cualquier número de 5 a 12 dígitos.
-        .replace(
-          /\b(c[eé]dula|c\.?\s?c\.?|documento|doc|t\.?\s?i\.?|tarjeta de identidad|pasaporte|nit)(\s*(?:n[uú]mero|no\.?|#|:)?\s*)(\d[\d.\s-]{3,14}\d)/gi,
-          '$1$2[documento]',
-        )
-        // Sin aviso: un número suelto de 8 a 10 dígitos (con o sin puntos de miles), que es
-        // el largo típico de una cédula. Los precios no: llevan "$" o "pesos" y rara vez
-        // pasan de 7 dígitos.
-        .replace(LOOSE_NUMBER, (match, offset: number, whole: string) => {
-          const digits = match.replace(/\./g, '').length;
-          const isPrice = /^\s*(de\s+)?(pesos|mil|cop)\b/i.test(whole.slice(offset + match.length));
-          return digits >= 8 && digits <= 10 && !isPrice ? '[documento]' : match;
-        }),
+      text.replace(
+        /\b(c[eé]dula|c\.?\s?c\.?|documento|doc|t\.?\s?i\.?|tarjeta de identidad|pasaporte|nit|dni|ppt|pep)(\s*(?:(?:es|de|n[uú]mero|no\.?|#|:)\s*){0,3})((?:[a-z]{1,3}\d{5,9}[a-z]?|\d{5,9}[a-z])\b|\d[\d.\s-]{3,14}\d)/gi,
+        '$1$2[documento]',
+      ),
+  ],
+  // Después de una palabra que anuncia un teléfono: una cifra de 7 a 15 dígitos, de cualquier
+  // país. Sin la palabra, un teléfono de otro país escrito sin "+" pasa: probar varios países
+  // tapaba fechas, NIT y guías (limitación conocida, spec 011).
+  ['telefono', maskAnnouncedPhones],
+  [
+    'documento',
+    // Sin aviso: un número suelto de 8 a 10 dígitos (con o sin puntos de miles), que es
+    // el largo típico de una cédula. Los precios no: llevan "$" o "pesos" y rara vez
+    // pasan de 7 dígitos.
+    (text) =>
+      text.replace(LOOSE_NUMBER, (match, offset: number, whole: string) => {
+        const digits = match.replace(/\./g, '').length;
+        return digits >= 8 && digits <= 10 && !isPrice(whole, offset + match.length)
+          ? '[documento]'
+          : match;
+      }),
   ],
 ];
+
+// Lo que sigue a una cifra dice que es plata: "1.200.000 pesos", "350 mil", "50000 cop".
+function isPrice(whole: string, end: number): boolean {
+  return /^\s*(de\s+)?(pesos|mil|cop)\b/i.test(whole.slice(end));
+}
+
+const PHONE_WORD =
+  /\b(cel(?:ular)?|tel[eé]fono|tel|m[oó]vil|whats?app|wpp|n[uú]mero|fijo|ll[aá]ma(?:me|nos)?|escr[ií]be(?:me|nos)?|marca(?:me)?|call(?: me)?|phone|number)\b([^\d+$\n(]{0,15})(\(?\d[\d\p{Zs}\t().-]{5,18}\d)/giu;
+
+function maskAnnouncedPhones(text: string): string {
+  return text.replace(
+    PHONE_WORD,
+    (match, word: string, gap: string, number: string, offset: number, whole: string) => {
+      const digits = number.replace(/\D/g, '').length;
+      const end = offset + match.length;
+      // Un precio con puntos de miles (1.200.000), una fecha (15 11 2026, 15/11/2026) o una
+      // cifra seguida de "pesos" no son teléfonos. Una cifra suelta de 8 a 10 dígitos la tapa
+      // la regla del documento, como antes de esta regla.
+      const thousands = /^\d{1,3}(\.\d{3})+$/.test(number);
+      const date = /^\d{1,2}[\p{Zs}\t/.-]\d{1,2}[\p{Zs}\t/.-]\d{2,4}$/u.test(number);
+      const loose = /^\d{8,10}$/.test(number);
+      return digits >= 7 && digits <= 15 && !thousands && !date && !loose && !isPrice(whole, end)
+        ? `${word}${gap}[telefono]`
+        : match;
+    },
+  );
+}
 
 function maskPhones(text: string, country: CountryCode): string {
   const found = findPhoneNumbersInText(text, country);

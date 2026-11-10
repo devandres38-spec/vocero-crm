@@ -4020,10 +4020,14 @@
       "perfil": "dental-co",
       "texto": "pasaporte AB123456",
       "esperado": {
-        "text": "pasaporte AB123456",
+        "text": "pasaporte [documento]",
         "health": null,
-        "masked": [],
-        "flags": []
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
       }
     },
     {
@@ -4334,23 +4338,27 @@
       "perfil": "dental-co",
       "texto": "mi número es 55 1234 5678",
       "esperado": {
-        "text": "mi número es 55 1234 5678",
+        "text": "mi número es [telefono]",
         "health": null,
-        "masked": [],
-        "flags": []
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
       }
     },
     {
       "perfil": "dental-co",
       "texto": "marca al +52 1 55 1234 5678",
       "esperado": {
-        "text": "marca al +[tarjeta]",
+        "text": "marca al [telefono]",
         "health": null,
         "masked": [
-          "tarjeta"
+          "telefono"
         ],
         "flags": [
-          "tarjeta"
+          "telefono"
         ]
       }
     },
@@ -4372,10 +4380,14 @@
       "perfil": "dental-co",
       "texto": "call me at (212) 555-0199",
       "esperado": {
-        "text": "call me at (212) 555-0199",
+        "text": "call me at [telefono]",
         "health": null,
-        "masked": [],
-        "flags": []
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
       }
     },
     {
@@ -4466,13 +4478,13 @@
       "perfil": "dental-mx",
       "texto": "marca al +52 1 55 1234 5678",
       "esperado": {
-        "text": "marca al +[tarjeta]",
+        "text": "marca al [telefono]",
         "health": null,
         "masked": [
-          "tarjeta"
+          "telefono"
         ],
         "flags": [
-          "tarjeta"
+          "telefono"
         ]
       }
     },
@@ -4494,10 +4506,14 @@
       "perfil": "dental-mx",
       "texto": "call me at (212) 555-0199",
       "esperado": {
-        "text": "call me at (212) 555-0199",
+        "text": "call me at [telefono]",
         "health": null,
-        "masked": [],
-        "flags": []
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
       }
     },
     {
@@ -4518,20 +4534,28 @@
       "perfil": "dental-mx",
       "texto": "el fijo es 601 555 1234",
       "esperado": {
-        "text": "el fijo es 601 555 1234",
+        "text": "el fijo es [telefono]",
         "health": null,
-        "masked": [],
-        "flags": []
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
       }
     },
     {
       "perfil": "sin-salud-us",
       "texto": "mi cel es 300 123 4567 gracias",
       "esperado": {
-        "text": "mi cel es 300 123 4567 gracias",
+        "text": "mi cel es [telefono] gracias",
         "health": null,
-        "masked": [],
-        "flags": []
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
       }
     },
     {
@@ -4580,13 +4604,13 @@
       "perfil": "sin-salud-us",
       "texto": "marca al +52 1 55 1234 5678",
       "esperado": {
-        "text": "marca al +[tarjeta]",
+        "text": "marca al [telefono]",
         "health": null,
         "masked": [
-          "tarjeta"
+          "telefono"
         ],
         "flags": [
-          "tarjeta"
+          "telefono"
         ]
       }
     },
@@ -4644,6 +4668,1394 @@
         "flags": [
           "telefono"
         ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "pasaporte AB123456",
+      "esperado": {
+        "text": "pasaporte [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi pasaporte es G12345678",
+      "esperado": {
+        "text": "mi pasaporte es [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "pasaporte número AB1234567",
+      "esperado": {
+        "text": "pasaporte número [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo PPT 1234567 vigente",
+      "esperado": {
+        "text": "tengo PPT [documento] vigente",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "PEP 123456789",
+      "esperado": {
+        "text": "PEP [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "DNI 12345678Z",
+      "esperado": {
+        "text": "DNI [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "pasaporte vigente hasta 2027",
+      "esperado": {
+        "text": "pasaporte vigente hasta 2027",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cédula número 1020345678",
+      "esperado": {
+        "text": "cédula número [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi número de cédula es 1020345678",
+      "esperado": {
+        "text": "mi número de cédula es [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "documento número 52.123.456",
+      "esperado": {
+        "text": "documento número [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi número es 55 1234 5678",
+      "esperado": {
+        "text": "mi número es [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "call me at (212) 555-0199",
+      "esperado": {
+        "text": "call me at [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi celular 300 123 4567",
+      "esperado": {
+        "text": "mi celular [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "whatsapp 0414 123 4567",
+      "esperado": {
+        "text": "whatsapp [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "escríbeme al 612 34 56 78",
+      "esperado": {
+        "text": "escríbeme al [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el fijo es 601 555 1234",
+      "esperado": {
+        "text": "el fijo es [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tel: 33-1234-5678",
+      "esperado": {
+        "text": "tel: [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "marca al +52 1 55 1234 5678",
+      "esperado": {
+        "text": "marca al [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi número +34 612 34 56 78",
+      "esperado": {
+        "text": "mi número [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "llámame el 15 11 2026",
+      "esperado": {
+        "text": "llámame el 15 11 2026",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "número de pedido 123 456 7890",
+      "esperado": {
+        "text": "número de pedido [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "número total 1.200.000",
+      "esperado": {
+        "text": "número total 1.200.000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el número es 350000 pesos",
+      "esperado": {
+        "text": "el número es 350000 pesos",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "llámame a las 3 y media",
+      "esperado": {
+        "text": "llámame a las 3 y media",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi número de la suerte es 7",
+      "esperado": {
+        "text": "mi número de la suerte es 7",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "número de cuenta 0123 4567 8901",
+      "esperado": {
+        "text": "número de cuenta [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "te dejo 212 555 0199",
+      "esperado": {
+        "text": "te dejo 212 555 0199",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "te dejo 55 1234 5678",
+      "esperado": {
+        "text": "te dejo 55 1234 5678",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cuesta 1 200 000 pesos",
+      "esperado": {
+        "text": "cuesta 1 200 000 pesos",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "son 1.200.000",
+      "esperado": {
+        "text": "son 1.200.000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "vale 350 000",
+      "esperado": {
+        "text": "vale 350 000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el total es 2 350 000",
+      "esperado": {
+        "text": "el total es 2 350 000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "te consigno 450000",
+      "esperado": {
+        "text": "te consigno 450000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "la cita es el 15 11 2026",
+      "esperado": {
+        "text": "la cita es el 15 11 2026",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "nací el 12/05/1990",
+      "esperado": {
+        "text": "nací el 12/05/1990",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el 2026-11-15 a las 3",
+      "esperado": {
+        "text": "el 2026-11-15 a las 3",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "a las 15:30 del 20/11",
+      "esperado": {
+        "text": "a las 15:30 del 20/11",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cédula 1 020 345 678",
+      "esperado": {
+        "text": "cédula [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi cc es 52123456",
+      "esperado": {
+        "text": "mi cc es [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "NIT 900 123 456 7",
+      "esperado": {
+        "text": "NIT [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "nit 900.123.456-7",
+      "esperado": {
+        "text": "nit [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "pedido 123 456 7890",
+      "esperado": {
+        "text": "pedido 123 456 7890",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "guía 7701234567",
+      "esperado": {
+        "text": "guía [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "referencia 4455 6677 88",
+      "esperado": {
+        "text": "referencia 4455 6677 88",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "factura FE-2026-001234",
+      "esperado": {
+        "text": "factura FE-2026-001234",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "código 554 321",
+      "esperado": {
+        "text": "código 554 321",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "radicado 20261115001234",
+      "esperado": {
+        "text": "radicado [tarjeta]",
+        "health": null,
+        "masked": [
+          "tarjeta"
+        ],
+        "flags": [
+          "tarjeta"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cuenta de ahorros 0123 4567 8901",
+      "esperado": {
+        "text": "cuenta de ahorros 0123 4567 8901",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi hijo tiene 12 años y pesa 35 kilos",
+      "esperado": {
+        "text": "mi hijo tiene 12 años y pesa 35 kilos",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "somos 4 personas el 15",
+      "esperado": {
+        "text": "somos 4 personas el 15",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "calle 100 # 15-20 apto 302",
+      "esperado": {
+        "text": "calle 100 # 15-20 apto 302",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "carrera 7 # 72-41 oficina 501",
+      "esperado": {
+        "text": "carrera 7 # 72-41 oficina 501",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo 2 citas, la 1 y la 2",
+      "esperado": {
+        "text": "tengo 2 citas, la 1 y la 2",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el código postal es 110111",
+      "esperado": {
+        "text": "el código postal es 110111",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "placa ABC 123",
+      "esperado": {
+        "text": "placa ABC 123",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "apartado 555 1234",
+      "esperado": {
+        "text": "apartado 555 1234",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "serial 212 555 0199 del equipo",
+      "esperado": {
+        "text": "serial 212 555 0199 del equipo",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "modelo 2026 de 128 gb",
+      "esperado": {
+        "text": "modelo 2026 de 128 gb",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "pasaporte AB123456",
+      "esperado": {
+        "text": "pasaporte [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi pasaporte es G12345678",
+      "esperado": {
+        "text": "mi pasaporte es [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "pasaporte número AB1234567",
+      "esperado": {
+        "text": "pasaporte número [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "tengo PPT 1234567 vigente",
+      "esperado": {
+        "text": "tengo PPT [documento] vigente",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "PEP 123456789",
+      "esperado": {
+        "text": "PEP [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "DNI 12345678Z",
+      "esperado": {
+        "text": "DNI [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "pasaporte vigente hasta 2027",
+      "esperado": {
+        "text": "pasaporte vigente hasta 2027",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "cédula número 1020345678",
+      "esperado": {
+        "text": "cédula número [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi número de cédula es 1020345678",
+      "esperado": {
+        "text": "mi número de cédula es [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "documento número 52.123.456",
+      "esperado": {
+        "text": "documento número [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi número es 55 1234 5678",
+      "esperado": {
+        "text": "mi número es [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "call me at (212) 555-0199",
+      "esperado": {
+        "text": "call me at [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi celular 300 123 4567",
+      "esperado": {
+        "text": "mi celular [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "whatsapp 0414 123 4567",
+      "esperado": {
+        "text": "whatsapp [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "escríbeme al 612 34 56 78",
+      "esperado": {
+        "text": "escríbeme al [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "el fijo es 601 555 1234",
+      "esperado": {
+        "text": "el fijo es [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "tel: 33-1234-5678",
+      "esperado": {
+        "text": "tel: [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "marca al +52 1 55 1234 5678",
+      "esperado": {
+        "text": "marca al [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi número +34 612 34 56 78",
+      "esperado": {
+        "text": "mi número [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "llámame el 15 11 2026",
+      "esperado": {
+        "text": "llámame el 15 11 2026",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "número de pedido 123 456 7890",
+      "esperado": {
+        "text": "número de pedido [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "número total 1.200.000",
+      "esperado": {
+        "text": "número total 1.200.000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "el número es 350000 pesos",
+      "esperado": {
+        "text": "el número es 350000 pesos",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "llámame a las 3 y media",
+      "esperado": {
+        "text": "llámame a las 3 y media",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi número de la suerte es 7",
+      "esperado": {
+        "text": "mi número de la suerte es 7",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "número de cuenta 0123 4567 8901",
+      "esperado": {
+        "text": "número de cuenta [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "te dejo 212 555 0199",
+      "esperado": {
+        "text": "te dejo [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "te dejo 55 1234 5678",
+      "esperado": {
+        "text": "te dejo [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "cuesta 1 200 000 pesos",
+      "esperado": {
+        "text": "cuesta 1 200 000 pesos",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "son 1.200.000",
+      "esperado": {
+        "text": "son 1.200.000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "vale 350 000",
+      "esperado": {
+        "text": "vale 350 000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "el total es 2 350 000",
+      "esperado": {
+        "text": "el total es 2 350 000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "te consigno 450000",
+      "esperado": {
+        "text": "te consigno 450000",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "la cita es el 15 11 2026",
+      "esperado": {
+        "text": "la cita es el 15 11 2026",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "nací el 12/05/1990",
+      "esperado": {
+        "text": "nací el 12/05/1990",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "el 2026-11-15 a las 3",
+      "esperado": {
+        "text": "el 2026-11-15 a las 3",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "a las 15:30 del 20/11",
+      "esperado": {
+        "text": "a las 15:30 del 20/11",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "cédula 1 020 345 678",
+      "esperado": {
+        "text": "cédula [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi cc es 52123456",
+      "esperado": {
+        "text": "mi cc es [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "NIT 900 123 456 7",
+      "esperado": {
+        "text": "NIT [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "nit 900.123.456-7",
+      "esperado": {
+        "text": "nit [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "pedido 123 456 7890",
+      "esperado": {
+        "text": "pedido 123 456 7890",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "guía 7701234567",
+      "esperado": {
+        "text": "guía [documento]",
+        "health": null,
+        "masked": [
+          "documento"
+        ],
+        "flags": [
+          "documento"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "referencia 4455 6677 88",
+      "esperado": {
+        "text": "referencia [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "factura FE-2026-001234",
+      "esperado": {
+        "text": "factura FE-[telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "código 554 321",
+      "esperado": {
+        "text": "código 554 321",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "radicado 20261115001234",
+      "esperado": {
+        "text": "radicado [tarjeta]",
+        "health": null,
+        "masked": [
+          "tarjeta"
+        ],
+        "flags": [
+          "tarjeta"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "cuenta de ahorros 0123 4567 8901",
+      "esperado": {
+        "text": "cuenta de ahorros 0123 4567 8901",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "mi hijo tiene 12 años y pesa 35 kilos",
+      "esperado": {
+        "text": "mi hijo tiene 12 años y pesa 35 kilos",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "somos 4 personas el 15",
+      "esperado": {
+        "text": "somos 4 personas el 15",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "calle 100 # 15-20 apto 302",
+      "esperado": {
+        "text": "calle 100 # 15-20 apto 302",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "carrera 7 # 72-41 oficina 501",
+      "esperado": {
+        "text": "carrera 7 # 72-41 oficina 501",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "tengo 2 citas, la 1 y la 2",
+      "esperado": {
+        "text": "tengo 2 citas, la 1 y la 2",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "el código postal es 110111",
+      "esperado": {
+        "text": "el código postal es 110111",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "placa ABC 123",
+      "esperado": {
+        "text": "placa ABC 123",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "apartado 555 1234",
+      "esperado": {
+        "text": "apartado 555 1234",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "serial 212 555 0199 del equipo",
+      "esperado": {
+        "text": "serial [telefono] del equipo",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "modelo 2026 de 128 gb",
+      "esperado": {
+        "text": "modelo 2026 de 128 gb",
+        "health": null,
+        "masked": [],
+        "flags": []
       }
     },
     {
