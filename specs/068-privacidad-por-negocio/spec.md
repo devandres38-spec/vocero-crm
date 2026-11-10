@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-10
 
-**Status**: Especificada antes de escribir código. En revisión de Andres.
+**Status**: Especificada antes de escribir código. Aprobada por Andres el 2026-11-10, con P1 y P2 respondidas.
 
 **Input**: paso 3.1 del plan maestro (`../../../RELEVO_ARQUITECTURA.md`, sección 9). Decisión D1 de Aliantis («filtro de privacidad en los dos lados, mismo módulo, prueba gemela»), aprobada el 2026-11-09 (`aliantis-core/docs/trabajo/decisiones.md`, «Plan de la adopción»). Brecha 1 de la auditoría.
 
@@ -106,10 +106,10 @@ Como Andres, al dar de alta un negocio quiero registrar en Vocero el mismo perfi
 - **SC-004** La migración aplica sobre la base de desarrollo con datos (`pnpm db:migrate`) y la app arranca igual que antes.
 - **SC-005** El perfil exportado de `clientes/demo` se registra en Vocero con la misma huella que mostró el cerebro.
 
-## Preguntas para Andres (antes de programar)
+## Preguntas para Andres (respondidas el 2026-11-10)
 
-- **P1. ¿La huella del perfil viaja en el despacho?** Recomendado: **sí, en el paso 3.2**, como llave nueva y aditiva del despacho (`privacyProfileHash`), que solo viaja si el negocio tiene perfil, igual que `test`. El cerebro la compara con la huella de su propia configuración: si no cuadran, deja un log de advertencia (sin contenido) y sigue, porque él vuelve a filtrar como defensa. Así un perfil viejo en Vocero se nota el primer día y no cuando un dato se escape. La alternativa es comparar las huellas solo a ojo al registrar.
-- **P2. ¿Dónde guardar el JSON exportado de un cliente real?** Recomendado: **en ninguna parte**. Se exporta, se registra y se borra. No es secreto (son listas y nombres de servicios), pero tampoco hace falta guardarlo, porque se regenera del `cliente.yaml`. Solo el de la demo queda en el repo (FR-008).
+- **P1. ¿La huella del perfil viaja en el despacho?** **Respuesta de Andres: sí, en el paso 3.2.** Recomendado: **sí, en el paso 3.2**, como llave nueva y aditiva del despacho (`privacyProfileHash`), que solo viaja si el negocio tiene perfil, igual que `test`. El cerebro la compara con la huella de su propia configuración: si no cuadran, deja un log de advertencia (sin contenido) y sigue, porque él vuelve a filtrar como defensa. Así un perfil viejo en Vocero se nota el primer día y no cuando un dato se escape. La alternativa es comparar las huellas solo a ojo al registrar.
+- **P2. ¿Dónde guardar el JSON exportado de un cliente real?** **Respuesta de Andres: en ninguna parte;** solo el de la demo queda en el repo. Recomendado: **en ninguna parte**. Se exporta, se registra y se borra. No es secreto (son listas y nombres de servicios), pero tampoco hace falta guardarlo, porque se regenera del `cliente.yaml`. Solo el de la demo queda en el repo (FR-008).
 
 ## Lo que esta spec NO hace
 

@@ -5,7 +5,7 @@ Dos PRs, en orden, cada uno con su revisión completa, sus sabotajes y `aliantis
 ## Paso 3.1 — Especificación (este PR)
 
 - [x] T1 `spec.md`, `plan.md`, `data-model.md`, `contracts/perfil-privacidad.md`, `contracts/vectores-gemelos.md` y este archivo, antes del código. `067/data-model.md`: su migración pasa a la `0028`.
-- [ ] T2 Andres revisa, responde P1 y P2 y aprueba.
+- [x] T2 Andres revisa, responde P1 y P2 y aprueba (2026-11-10: P1 sí, en 3.2; P2 no se guardan).
 
 ## PR 1 — `aliantis-brain`
 
