@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { FB_PREFIX } from "@/server/inbox/identity";
+import { marcasDe } from "@/server/privacy/webhook";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
 import {
   getMessengerCredentialsByAccountRef,
@@ -39,6 +40,8 @@ export type MessengerInbound = {
   timestamp: string;
   /** Nombre del perfil si la fuente lo entrega (Zernio sí, Meta no). */
   profileName: string | null;
+  /** 069 — Las marcas que dejó guardarEvento en el mensaje (null si no pasó por él). */
+  marcas: string[] | null;
   /** Hilo en la plataforma de origen: hace falta para responder por Zernio. */
   threadRef: string | null;
 };
@@ -123,6 +126,7 @@ export function normalizeMetaPagePayload(payload: unknown): MessengerInbound[] {
         ),
         // Meta no manda nombre ni usuario en el webhook: se consulta aparte.
         profileName: null,
+        marcas: marcasDe(msg),
         threadRef: null,
       });
     }
@@ -168,6 +172,7 @@ export function normalizeZernioEvent(payload: unknown): MessengerInbound[] {
       profileName:
         sender?.name?.trim() ||
         (sender?.username ? `@${sender.username}` : null),
+      marcas: marcasDe(evt.message),
       // Opaco por contrato: se guarda tal cual y no se parsea. Es lo que hace
       // falta para responder por Zernio.
       threadRef: evt.message?.conversationId ?? null,
@@ -268,6 +273,7 @@ async function ingestAll(
       text: evt.text,
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
+      marcas: evt.marcas,
     });
   }
 }

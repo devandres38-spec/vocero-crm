@@ -177,9 +177,14 @@ Objetivo", aunque Andres dé una meta grande. Por bloques no significa autónomo
 es el único que vale;** no se repite aquí para que no haya copias que se contradigan. En corto:
 Andres aprueba una vez el plan de un bloque (2 o 3 pasos del plan maestro) y el asistente lo
 trabaja entero; se detiene al final o ante un bloqueo o una decisión no prevista. Spec-Kit
-completo (`specs/NNN-nombre/`) solo si el bloque toca un contrato público, el esquema, RLS o la
-agenda. La revisión completa es `pnpm typecheck && pnpm lint && pnpm build && pnpm test` (más el
-self-test E2E con mocks si cambia comportamiento observable). Ramas y PRs, nunca en `main`; merge
+(`specs/NNN-nombre/`, dos archivos: `spec.md` y `tasks.md`) solo si el bloque toca un contrato
+público, el esquema, RLS o la agenda. **La revisión completa es el CI de GitHub en verde** (los
+cuatro gates en dos configuraciones), más **`.github/workflows/e2e.yml`** (etiqueta `e2e` en el
+PR: E2E del despacho con mocks y migración sobre datos) si el bloque toca webhook, ingesta,
+despacho o base. **En el PC de Andres (3,9 GB de RAM) nunca** corren `next build`, `next dev` o
+`start`, E2E, Docker ni la suite completa: solo `vitest run`, prettier y eslint de los archivos
+tocados, sabotajes unitarios, un `tsc --noEmit` antes del push y `pnpm db:generate` si cambia
+`schema.ts`. Así se cumple la Definición de Hecho reforzada sin correrla en ese PC. Ramas y PRs, nunca en `main`; merge
 o force push solo si Andres lo pide con esas palabras. El "loop de auto-corrección" de la
 Definición de Hecho vale **dentro** del bloque aprobado, nunca para seguir al siguiente.
 

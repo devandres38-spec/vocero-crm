@@ -1,0 +1,1 @@
+ALTER TABLE "message" ADD COLUMN "privacy_flags" text[];

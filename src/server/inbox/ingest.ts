@@ -1,5 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { filtrarTexto, unirMarcas } from "@/server/privacy/filtrar";
+import { perfilDePrivacidad } from "@/server/privacy/repositorio";
+import { marcasDe } from "@/server/privacy/webhook";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { normalizeMx } from "@/lib/meta/client";
@@ -318,6 +321,13 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
       // 018: normalizado aquí, en el adaptador del canal; la ingesta no sabe
       // de qué forma lo mandó Meta.
       anuncio: anuncioDeWhatsapp(msg.referral),
+      // 069: las marcas que dejó guardarEvento (null si no pasó por él).
+      marcas: marcasDe(msg),
+      botonId:
+        msg.button?.payload ??
+        msg.interactive?.button_reply?.id ??
+        msg.interactive?.list_reply?.id ??
+        null,
     });
   }
 }
@@ -461,9 +471,19 @@ export async function ingestInboundMessage(input: {
   threadRef?: string | null;
   /** 016/018: el anuncio que abrió la conversación, ya normalizado por el canal. */
   anuncio?: AnuncioDeOrigen | null;
+  /**
+   * 069 — Las marcas de privacidad que dejó `guardarEvento` en el payload
+   * (`marcasDe`). Obligatorio a propósito: ningún canal puede olvidarlas.
+   * `null` = el mensaje no pasó por `guardarEvento` (organización no resuelta,
+   * o un camino nuevo): entonces el texto se filtra aquí (D5, segunda red).
+   */
+  marcas: string[] | null;
+  /** 069 — Id del botón tocado: sin perfil, su rótulo se conserva. */
+  botonId?: string | null;
 }): Promise<void> {
   const db = getDb();
   const { organizationId } = input;
+  const { text, media, marcas } = await textoFiltrado(input);
 
   const { contact } = await getOrCreateContactByIdentity(
     organizationId,
@@ -511,7 +531,8 @@ export async function ingestInboundMessage(input: {
       waMessageId: input.waMessageId,
       direction: "in",
       type: input.type,
-      text: input.text,
+      text,
+      privacyFlags: marcas.length > 0 ? marcas : null,
       status: "delivered",
       replyToWaMessageId: input.replyToWaMessageId ?? null,
       waTimestamp,
@@ -521,8 +542,8 @@ export async function ingestInboundMessage(input: {
   const message = inserted[0];
   if (!message) return; // duplicado
 
-  const asset = input.media
-    ? await attachMediaAsset(organizationId, message.id, input.media)
+  const asset = media
+    ? await attachMediaAsset(organizationId, message.id, media)
     : null;
 
   await db
@@ -556,6 +577,31 @@ export async function ingestInboundMessage(input: {
   // 036 — Quien contesta es el cerebro conectado; sin él, una persona. El
   // 025: `message.id` es lo que el despacho le debe al cerebro.
   if (despachoActivo()) await despacharAlCerebro(conversation.id, organizationId, message.id);
+}
+
+/**
+ * 069 — El texto y el pie de foto que se pueden guardar, con sus marcas. Si el
+ * canal trae las marcas, el payload ya pasó por `guardarEvento` y viene
+ * filtrado. Si no, se filtra aquí con el perfil del negocio.
+ */
+async function textoFiltrado(input: {
+  organizationId: string;
+  text: string | null;
+  media?: MediaInput | null;
+  marcas: string[] | null;
+  botonId?: string | null;
+}): Promise<{ text: string | null; media: MediaInput | null; marcas: string[] }> {
+  const media = input.media ?? null;
+  if (input.marcas !== null) return { text: input.text, media, marcas: input.marcas };
+
+  const politica = await perfilDePrivacidad(input.organizationId);
+  const texto = input.text === null ? null : filtrarTexto(input.text, politica, input.botonId);
+  const pie = media?.caption ? filtrarTexto(media.caption, politica) : null;
+  return {
+    text: texto?.text ?? null,
+    media: media && pie ? { ...media, caption: pie.text } : media,
+    marcas: unirMarcas(texto?.marcas ?? [], pie?.marcas ?? []),
+  };
 }
 
 function toDate(timestamp: string): Date {

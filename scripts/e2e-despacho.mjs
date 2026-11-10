@@ -31,6 +31,8 @@
  * Sale con código 1 si algún check falla. Guion: tests/e2e/us-despacho.md.
  */
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+import postgres from "postgres";
 import {
   ACUSE_TRASPASO,
   apagarAgente,
@@ -221,6 +223,95 @@ async function preparar() {
   await api("/api/dev/wa-mock/outbox", { method: "DELETE" });
   // Un traspaso por error de una corrida anterior no debe colarse aquí.
   await apagarAgente(api);
+  await perfilDePrivacidadDeLaDemo();
+}
+
+/**
+ * 069 — Sin perfil de privacidad, el texto de un paciente no se guarda (D3 de
+ * la 068). El guion registra el de la demo (el que exporta el cerebro para
+ * `clientes/demo`) en cada organización que no tenga, como lo haría
+ * `pnpm privacidad:sembrar`.
+ */
+const PERFIL_DEMO = JSON.parse(
+  readFileSync("src/server/privacy/perfil-privacidad-demo.json", "utf8")
+);
+async function perfilDePrivacidadDeLaDemo() {
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const p = PERFIL_DEMO;
+    await sql`
+      insert into privacy_profile
+        (id, organization_id, profile_name, profile_version, country, sensitive_terms, allowlist, fingerprint)
+      select 'prv_e2e_' || o.id, o.id, ${p.perfil}, ${p.versionPerfil}, ${p.pais},
+             ${sql.json(p.sensible)}, ${p.permitidos}, ${p.huella}
+      from organization o
+      where not exists (select 1 from privacy_profile x where x.organization_id = o.id)`;
+    const [{ n }] = await sql`select count(*)::int as n from privacy_profile`;
+    ok("perfil de privacidad registrado (el de la demo)", n > 0, String(n));
+  } finally {
+    await sql.end();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 069 — Nada se guarda crudo
+// ---------------------------------------------------------------------------
+
+async function privacidad(cerebro) {
+  console.log("\n== 069: un mensaje de salud no llega crudo a ninguna tabla, y el cerebro recibe marcas y huella ==");
+  const nombre = `Paciente Privacidad ${MARCA}`;
+  const crudo = `me duele la muela desde ayer, mi correo es ana.${RUN}@mail.com`;
+  const inb = await entranteWa(telefono(90), nombre, crudo);
+  ok("el entrante se entregó al webhook", inb.res.ok, JSON.stringify(inb.json));
+
+  const conv = await convDe(nombre);
+  ok("la conversación está en la bandeja", Boolean(conv));
+  if (!conv) return;
+  const [m] = await mensajesDe(conv.id);
+  ok(
+    "la bandeja muestra el mensaje omitido, no el texto",
+    m?.text === "[mensaje con información de salud omitido]",
+    JSON.stringify(m?.text)
+  );
+
+  const llego = await hasta(() => cerebro.de(conv.id)[0], COALESCE + 12000);
+  ok("el cerebro recibió el despacho", Boolean(llego));
+  if (llego) {
+    const e = llego.evento;
+    const [msg] = e.messages;
+    ok(
+      "el despacho lleva el texto omitido y las marcas al final del mensaje",
+      msg?.text === "[mensaje con información de salud omitido]" &&
+        JSON.stringify(msg?.privacyFlags) === JSON.stringify(["salud", "sintoma"]) &&
+        Object.keys(msg ?? {}).at(-1) === "privacyFlags",
+      JSON.stringify(msg)
+    );
+    ok(
+      "organization.privacyProfileHash es la huella del perfil registrado, al final",
+      e.organization.privacyProfileHash === PERFIL_DEMO.huella &&
+        Object.keys(e.organization).at(-1) === "privacyProfileHash",
+      JSON.stringify(e.organization)
+    );
+    ok("la firma valida con las llaves nuevas", llego.firmaOk);
+  }
+
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [ev] = await sql`
+      select count(*)::int as n from webhook_event
+      where payload::text like ${"%" + crudo.slice(0, 20) + "%"} or payload::text like ${"%ana." + RUN + "%"}`;
+    ok("webhook_event no guarda el texto crudo", ev.n === 0, String(ev.n));
+    const [fila] = await sql`
+      select text, privacy_flags from message where conversation_id = ${conv.id} and direction = 'in'`;
+    ok(
+      "message guarda el texto omitido y sus marcas",
+      fila?.text === "[mensaje con información de salud omitido]" &&
+        JSON.stringify(fila?.privacy_flags) === JSON.stringify(["salud", "sintoma"]),
+      JSON.stringify(fila)
+    );
+  } finally {
+    await sql.end();
+  }
 }
 
 async function guion(cerebro, url) {
@@ -243,6 +334,7 @@ async function guion(cerebro, url) {
   await interruptor(cerebro);
   await proxyLlm();
   await unMensaje(cerebro);
+  await privacidad(cerebro);
   await rafaga(cerebro);
   await enVuelo(cerebro);
   await mientrasPiensa(cerebro);

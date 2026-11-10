@@ -8,7 +8,7 @@
 
 **Input**: paso 0.2 del plan maestro de la adopción. Decisiones D1, D2, D7, D8, D9, D10 y D13 aprobadas por Andres el 2026-11-09 (`aliantis-core/docs/trabajo/decisiones.md`, «Plan de la adopción»), y las brechas N1, N3, N4 y N5 de la auditoría.
 
-**Carril**: ciclo completo (Principio VI). Toca el modelo de datos (migración `0028`, antes `0027`: tabla `consent` y tres columnas en `message`) y dos contratos publicados: `/api/bot/*` y el evento de despacho.
+**Carril**: ciclo completo (Principio VI). Toca el modelo de datos (migración `0029`, antes `0027`: tabla `consent` y columnas en `message`; `privacy_flags` la trajo la 069) y dos contratos publicados: `/api/bot/*` y el evento de despacho.
 
 **Subordinación**: este fork sigue los 6 pilares de Aliantis Core (`../../CLAUDE.md`). Donde esta spec diverge de la constitución de Vocero o del contrato original, la divergencia está escrita en `plan.md` («Divergencias»).
 

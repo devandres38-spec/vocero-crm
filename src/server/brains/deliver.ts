@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { perfilVigente } from "@/server/privacy/repositorio";
 import {
   armarEvento,
   clasificarRespuesta,
@@ -41,6 +42,7 @@ function columnasDelMensaje() {
     direction: schema.message.direction,
     type: schema.message.type,
     text: schema.message.text,
+    privacyFlags: schema.message.privacyFlags,
     createdAt: schema.message.createdAt,
     waMediaId: schema.mediaAsset.waMediaId,
     mimeType: schema.mediaAsset.mimeType,
@@ -56,6 +58,7 @@ function paraEvento(m: {
   createdAt: Date;
   type: string;
   text: string | null;
+  privacyFlags: string[] | null;
   waMediaId: string | null;
   mimeType: string | null;
   caption: string | null;
@@ -68,6 +71,7 @@ function paraEvento(m: {
     createdAt: m.createdAt,
     type: m.type,
     text: m.text,
+    privacyFlags: m.privacyFlags,
     media: m.assetId
       ? {
           waMediaId: m.waMediaId,
@@ -223,6 +227,9 @@ export async function construirEvento(
     .where(eq(schema.organization.id, fila.organizationId))
     .limit(1);
   if (!org) return null;
+  // 069 — La huella del perfil con el que se filtró: el cerebro avisa si no
+  // cuadra con la suya (P1 de la 068). Sin perfil legible, no viaja.
+  const perfil = await perfilVigente(fila.organizationId, db);
 
   const [contact] = await db
     .select()
@@ -245,7 +252,7 @@ export async function construirEvento(
 
   return armarEvento({
     dispatchId: fila.id,
-    organization: org,
+    organization: { ...org, privacyProfileHash: perfil?.huella ?? null },
     conversation: {
       id: conv.id,
       channel: conv.channel,
