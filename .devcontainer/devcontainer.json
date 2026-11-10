@@ -3,13 +3,15 @@
 // Guía: aliantis-espacio/docs/codespaces.md
 {
   "name": "Aliantis (Vocero CRM + cerebro)",
+  // Ubuntu 24.04 ya trae Python 3.12 (graphify se instala con pipx en el arranque).
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
     "ghcr.io/devcontainers/features/node:1": { "version": "22" },
-    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
     // Docker dentro del contenedor: Testcontainers funciona sin ajustes de red.
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    // Servidor SSH: `gh codespace ssh` y `gh codespace logs` desde el PC.
+    "ghcr.io/devcontainers/features/sshd:1": {}
   },
   // 2 núcleos: rinde la cuota gratuita (unas 60 h al mes). Se sube a 4 a mano cuando haga falta.
   "hostRequirements": { "cpus": 2 },
