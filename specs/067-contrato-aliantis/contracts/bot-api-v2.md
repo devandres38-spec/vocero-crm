@@ -117,7 +117,7 @@ La segunda red de salud: el LLM marcó salud en un mensaje que el filtro de Voce
 - **Omite:** el texto pasa a `[mensaje con información de salud omitido]` (la misma frase del filtro), `privacy_flags` suma `salud`, el `caption` del adjunto se borra, y las filas de `webhook_event` de la organización que traían esos `wa_message_id` se borran.
 - **No toca:** el mensaje en sí (sigue en el hilo, con su hora), la conversación ni el contacto.
 - `200 { "omitted": <número> }`. Repetirlo da el mismo resultado sin cambiar nada más (idempotente).
-- Publica `message.updated` para que la bandeja muestre el texto omitido.
+- Publica `conversation.updated` (ya existe en el bus). Hoy no hay un evento `message.updated`: si al implementar se ve que la bandeja abierta no refresca el texto, se decide entonces entre agregar un evento al contrato SSE (`specs/001-vocero-core/contracts/sse.md`, aditivo) o volver a leer el hilo.
 - Si Vocero no responde, el cerebro **no** guarda su punto de control: el turno se reintenta, como en `aliantis-core`.
 
 ## 5. `GET /api/bot/history` (nuevo)
