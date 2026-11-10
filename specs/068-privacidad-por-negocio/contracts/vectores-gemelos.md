@@ -52,6 +52,6 @@ Los genera el cerebro (`npm run privacidad:vectores` → `test/fixtures/privacid
 5. **Sin perfil:** texto (se omite) y botón (se conserva).
 6. **Salud apagada:** un mensaje de salud con `sin-salud-us` pasa, pero su correo y su teléfono se enmascaran.
 
-**Implementado (10-nov-2026):** 293 casos y 5 perfiles. Huella del archivo (saltos LF): `6243a5db34e0101b2930b15e6caad657da18ac5dcc5778ce099f56ecb09f4127`. Fija también las fugas conocidas del filtro de hoy (pasaporte con letras, teléfonos de otro país escritos con espacios), que se arreglan en un PR aparte antes del paso 3.2.
+**Implementado (10-nov-2026):** 293 casos y 5 perfiles en el paso 3.1. **Bloque A (las fugas, spec 011 del cerebro):** 409 casos (116 nuevos: documentos con letras, teléfonos anunciados por una palabra, el `+` internacional, 30 textos que no deben taparse y la limitación conocida, cada uno con un negocio de Colombia y uno de Estados Unidos). Huella del archivo (saltos LF): `0657c14f767c1d15640d394e4fa2d61bcd9ef52527f9504d5e18e4f58554b05d`.
 
 Cuando un caso real se escape en el piloto, se agrega al corpus del cerebro, se regeneran los vectores y se copian a Vocero.
