@@ -37,6 +37,7 @@ El cerebro de Aliantis (`aliantis-brain`) reemplaza a Nea. Sigue una arquitectur
 - **D10. Historial por el CRM.** `GET /api/bot/history` devuelve los últimos mensajes de una conversación, ya filtrados. El cerebro no guarda una copia: una sola retención y un solo borrado (D2 de Aliantis).
 - **D11. `reset` solo en el Laboratorio.** En una conversación real responde `409 solo_laboratorio`. Solo una persona devuelve una conversación al bot.
 - **D13. Envío idempotente** (T2, agregada el 9-nov-2026): `clientMessageId` opcional en `POST /api/bot/messages`. Vocero reserva la llave por organización antes de llamar a Meta; un repetido devuelve el mensaje original sin enviar. En `aliantis-core` una caída entre enviar y marcar podía reenviar; con la llave, no.
+- **D14. Segunda red de salud en Vocero** (P2, agregada el 10-nov-2026): `POST /api/bot/omit` omite el texto de entrantes que el LLM marcó con salud. Solo entrantes de esa conversación y organización; idempotente.
 - **D12. Sin endpoint de reconciliación para `conversation.deleted`** (brecha N6). Con D10 el cerebro ya no guarda texto de la conversación; lo que guarda (pendientes, punto de control, costo) está indexado por `conversation.id`, que no se reutiliza, y su retención lo borra. Se revisa si la fase 3 encuentra otra cosa.
 
 ## User Scenarios & Testing
@@ -100,6 +101,14 @@ El cerebro de Aliantis (`aliantis-brain`) reemplaza a Nea. Sigue una arquitectur
 4. **Dado** `"k1"` en la organización A, **cuando** la B manda `"k1"`, **entonces** son dos mensajes distintos.
 5. **Dado** un mensaje sin `clientMessageId`, **entonces** todo sigue como hoy.
 
+### Historia 9. La segunda red de salud también omite en Vocero (P1, agregada el 10-nov-2026, P2)
+
+**Por qué**: si el filtro de Vocero no reconoce un mensaje de salud y el LLM sí, el texto ya quedó guardado en Vocero. Sin esta ruta, la segunda red solo protege la copia del cerebro.
+
+1. **Dado** un entrante guardado con su texto, **cuando** el cerebro llama `POST /api/bot/omit` con su id y `reason: "salud"`, **entonces** su texto queda como `[mensaje con información de salud omitido]`, con la marca `salud`, sin `caption`, y su copia en `webhook_event` se borra.
+2. **Dado** un id de un mensaje saliente, de otra conversación o de otra organización, **entonces** no se toca y no cuenta en `omitted`.
+3. **Dado** lo mismo dos veces, **entonces** el segundo no cambia nada.
+
 ### Casos borde
 
 - Un botón cuyo webhook trae id pero no rótulo: se guarda con el id como texto (como hoy) y `buttonId`.
@@ -124,6 +133,7 @@ El cerebro de Aliantis (`aliantis-brain`) reemplaza a Nea. Sigue una arquitectur
 - **FR-010**: el catálogo de motivos incluye los de D9, con sus rótulos en Resultados y en el hilo.
 - **FR-011**: `POST /api/bot/reset` responde `409 solo_laboratorio` en una conversación real.
 - **FR-012**: `docs/openapi.json`, `AGENTS.md` y el contrato del despacho quedan al día; el contrato de esta spec manda.
+- **FR-014** (P2, 10-nov-2026): `POST /api/bot/omit` según la historia 9 y `contracts/bot-api-v2.md` §4b.
 - **FR-013** (T2, 9-nov-2026): `POST /api/bot/messages` acepta `clientMessageId` (1 a 128) y lo reserva con un índice único por organización **antes** de llamar a Meta, según la historia 8 y `contracts/bot-api-v2.md` («Envío idempotente»).
 
 ### Entidades
