@@ -53,7 +53,7 @@ Ninguna rompe a un cerebro que siga el contrato publicado con una sola organizac
 
 ### Segunda red de salud (P2, agregado el 10-nov-2026)
 
-- `src/app/api/bot/omit/route.ts` y `src/server/inbox/omitir.ts`: en una transacción, actualiza `message.text`, `privacy_flags` y el `caption` del adjunto solo para entrantes de la conversación y la organización, y borra los `webhook_event` que los traían (la misma búsqueda que `forget`). Publica `message.updated`.
+- `src/app/api/bot/omit/route.ts` y `src/server/inbox/omitir.ts`: en una transacción, actualiza `message.text`, `privacy_flags` y el `caption` del adjunto solo para entrantes de la conversación y la organización, y borra los `webhook_event` que los traían (la misma búsqueda que `forget`). Publica `conversation.updated` (corregido el 10-nov-2026: `message.updated` no existe en el bus; ver el contrato §4b).
 - La frase sale del mismo módulo de privacidad que usa la ingesta (fase 3.1), para que sea idéntica byte a byte.
 
 ### Envío idempotente (T2, agregado el 9-nov-2026)
