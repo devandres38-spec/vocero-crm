@@ -1,6 +1,6 @@
 # 067 — Modelo de datos
 
-Una migración aditiva, `0027_contrato_aliantis.sql`, generada con `pnpm db:generate` desde `src/lib/db/schema.ts`. Se aplica al arrancar, sin pasos manuales. No toca filas existentes.
+Una migración aditiva, `0028_contrato_aliantis.sql` (era la `0027`; la tomó la spec 068, que se implementa antes), generada con `pnpm db:generate` desde `src/lib/db/schema.ts`. Se aplica al arrancar, sin pasos manuales. No toca filas existentes.
 
 ## Tabla nueva: `consent`
 
