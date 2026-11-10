@@ -1,0 +1,47 @@
+// El Codespace de Aliantis: vocero-crm + aliantis-brain + aliantis-core en un solo entorno Linux.
+// IDÉNTICO en vocero-crm y aliantis-brain: si cambias uno, cambia el otro.
+// Guía: aliantis-espacio/docs/codespaces.md
+{
+  "name": "Aliantis (Vocero CRM + cerebro)",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
+    // Docker dentro del contenedor: Testcontainers funciona sin ajustes de red.
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  // 2 núcleos: rinde la cuota gratuita (unas 60 h al mes). Se sube a 4 a mano cuando haga falta.
+  "hostRequirements": { "cpus": 2 },
+  "forwardPorts": [3000, 8000],
+  "portsAttributes": {
+    "3000": { "label": "Vocero CRM", "onAutoForward": "notify" },
+    "8000": { "label": "aliantis-brain", "onAutoForward": "silent" }
+  },
+  // Rápido: los repos en /workspaces/agencia, con las rutas relativas del PC.
+  "onCreateCommand": "bash .devcontainer/arranque.sh clonar",
+  // Lento: herramientas, dependencias, Chromium, .env y grafos de graphify.
+  "postCreateCommand": "bash .devcontainer/arranque.sh instalar",
+  "customizations": {
+    "codespaces": {
+      // Los repos hermanos (privados) que el Codespace puede clonar y a los que puede subir.
+      "repositories": {
+        "devandres38-spec/aliantis-espacio": {
+          "permissions": { "contents": "write", "pull_requests": "write" }
+        },
+        "devandres38-spec/aliantis-brain": {
+          "permissions": { "contents": "write", "pull_requests": "write" }
+        },
+        "devandres38-spec/aliantis-core": {
+          "permissions": { "contents": "write", "pull_requests": "write" }
+        },
+        "devandres38-spec/vocero-crm": {
+          "permissions": { "contents": "write", "pull_requests": "write" }
+        }
+      }
+    },
+    "vscode": {
+      "extensions": ["anthropic.claude-code", "dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
+}
