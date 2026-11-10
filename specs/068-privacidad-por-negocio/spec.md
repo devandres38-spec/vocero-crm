@@ -91,7 +91,7 @@ Como Andres, al dar de alta un negocio quiero registrar en Vocero el mismo perfi
 - **FR-005** En el cerebro: `npm run privacidad:exportar -- <cliente.yaml>` escribe el perfil resuelto en la salida estándar (formato del contrato) y la huella en la salida de errores.
 - **FR-006** En el cerebro: `npm run privacidad:vectores` regenera `test/fixtures/privacidad-vectores.json` (formato en `contracts/vectores-gemelos.md`).
 - **FR-007** Prueba gemela en los dos repos sobre el mismo archivo de vectores, con su huella y la versión de `libphonenumber-js` fijadas (D7, D8).
-- **FR-008** `pnpm seed:demo` registra el perfil de la demo dental desde `scripts/seed/perfil-privacidad-demo.json`, exportado del cerebro.
+- **FR-008** `pnpm seed:demo` registra el perfil de la demo dental desde `src/server/privacy/perfil-privacidad-demo.json`, exportado del cerebro, solo si la organización no tenía uno. La carga de la demo desde la app (`POST /api/seed/demo`) no lo toca (D5; ver `plan.md`, «La demo»).
 - **FR-009** Nada de este paso cambia la ingesta, el despacho, la bandeja ni ninguna respuesta de la API.
 
 ### Entidades

@@ -1401,3 +1401,39 @@ export const conversationNote = pgTable(
     index("conversation_note_conv_idx").on(t.organizationId, t.conversationId, t.createdAt),
   ]
 );
+
+/**
+ * 068 — El perfil de privacidad de cada negocio: con qué listas de salud se
+ * filtra lo que escribe un paciente (o ninguna), qué frases de sus servicios
+ * no cuentan como salud y de qué país son sus teléfonos. Sale del cerebro
+ * (`npm run privacidad:exportar`) y solo Andres lo registra
+ * (`pnpm privacidad:sembrar`): ni pantalla ni API, y el rol del negocio no lo
+ * toca. Sin fila, no hay revisión (D3): el texto no se guarda.
+ */
+export const privacyProfile = pgTable(
+  "privacy_profile",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** El tipo de negocio en el cerebro (`odontologia`, `generico`…). Informativo. */
+    profileName: text("profile_name").notNull(),
+    /** La `version` de ese perfil en el cerebro. Informativo. */
+    profileVersion: integer("profile_version").notNull(),
+    /** ISO 3166-1 alfa-2: decide qué es un teléfono. */
+    country: text("country").notNull(),
+    /** `{ urgencia, sintoma, condicion, medicamento }`. NULL = salud apagada (solo con `--sin-filtro-salud`). */
+    sensitiveTerms: jsonb("sensitive_terms").$type<Record<string, string[]> | null>(),
+    /** Nombres y sinónimos de los servicios, en el orden en que los exporta el cerebro. */
+    allowlist: text("allowlist").array().notNull().default(sql`'{}'::text[]`),
+    /** SHA-256 de `canonicalJson({ pais, permitidos, sensible })`. Se recalcula al leer. */
+    fingerprint: text("fingerprint").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("privacy_profile_org_uq").on(t.organizationId),
+    check("privacy_profile_country_chk", sql`char_length(${t.country}) = 2`),
+  ]
+);

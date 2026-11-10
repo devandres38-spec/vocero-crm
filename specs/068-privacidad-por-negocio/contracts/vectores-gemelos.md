@@ -40,6 +40,7 @@ Los genera el cerebro (`npm run privacidad:vectores` → `test/fixtures/privacid
 | `dental-co` | `clientes/demo` (odontología, CO) | Las tres listas de salud y frases permitidas de servicios |
 | `generico-co` | `clientes/demo-academia` | Solo `salud-general` |
 | `sin-salud-us` | `clientes/demo-barberia` (`sensible: null`, US) | Salud apagada; teléfonos de otro país |
+| `dental-ferula-co` | `dental-co` + «Férula para bruxismo» y «férula» en `permitidos` | Una frase permitida que contiene un término de salud: ninguna frase de servicio de la demo dental contiene uno (agregado en la implementación, 10-nov-2026) |
 | `dental-mx` | `dental-co` con `pais: "MX"` | Teléfonos mexicanos (la huella cambia) |
 
 ## Casos
@@ -50,5 +51,7 @@ Los genera el cerebro (`npm run privacidad:vectores` → `test/fixtures/privacid
 4. **Bordes de datos personales:** correo; tarjeta con espacios, guiones y fecha pegada («4111 1111 1111 1111 12/27»); cédula con y sin aviso, con puntos de miles; precios que no son documento («1.200.000 pesos», «$350.000»); teléfonos de Colombia, México y Estados Unidos, con y sin prefijo, con cada perfil de país.
 5. **Sin perfil:** texto (se omite) y botón (se conserva).
 6. **Salud apagada:** un mensaje de salud con `sin-salud-us` pasa, pero su correo y su teléfono se enmascaran.
+
+**Implementado (10-nov-2026):** 293 casos y 5 perfiles. Huella del archivo (saltos LF): `6243a5db34e0101b2930b15e6caad657da18ac5dcc5778ce099f56ecb09f4127`. Fija también las fugas conocidas del filtro de hoy (pasaporte con letras, teléfonos de otro país escritos con espacios), que se arreglan en un PR aparte antes del paso 3.2.
 
 Cuando un caso real se escape en el piloto, se agrega al corpus del cerebro, se regeneran los vectores y se copian a Vocero.

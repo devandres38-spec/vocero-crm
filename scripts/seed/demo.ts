@@ -9,6 +9,7 @@ import postgres from "postgres";
 import { PG_CONNECTION_OPTIONS } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { seedDemo, isDomainEmpty } from "@/server/seed/demo";
+import { sembrarPerfilDemo } from "@/server/privacy/demo";
 
 function loadEnvVar(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
@@ -52,6 +53,15 @@ if (!force && !(await isDomainEmpty(db, org.id))) {
 const result = await seedDemo(db, org.id);
 console.log(
   `[seed] Ferretería El Martillo cargada: ${result.contacts} contactos, ${result.kbEntries} entradas de KB, 1 corrida de ejemplo`
+);
+// 068 — El perfil de privacidad de la demo, solo si no tiene uno.
+const privacidad = await sembrarPerfilDemo(db, org.id);
+console.log(
+  !privacidad.ok
+    ? `[seed] Perfil de privacidad NO registrado: ${privacidad.error}`
+    : "yaTenia" in privacidad
+      ? "[seed] Perfil de privacidad: ya tenía uno, no se toca"
+      : `[seed] Perfil de privacidad: ${privacidad.perfil} v${privacidad.versionPerfil}, huella ${privacidad.huella}`
 );
 await sql.end();
 process.exit(0);

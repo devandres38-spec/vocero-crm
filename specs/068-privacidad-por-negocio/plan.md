@@ -87,7 +87,9 @@ En Vocero vive en `tests/unit/privacidad-gemela.test.ts` con el archivo en `test
 
 ### La demo
 
-`scripts/seed/perfil-privacidad-demo.json` = `npm run privacidad:exportar -- clientes/demo/cliente.yaml`. `scripts/seed/demo.ts` lo registra con `guardarPerfil` para la organización de demo.
+`src/server/privacy/perfil-privacidad-demo.json` = `npm run privacidad:exportar -- clientes/demo/cliente.yaml`. Lo registra `sembrarPerfilDemo` (`src/server/privacy/demo.ts`), que llama **solo** `scripts/seed/demo.ts` (`pnpm seed:demo`) y solo si la organización no tenía perfil.
+
+> **Cambio en la implementación (10-nov-2026):** el plan decía `scripts/seed/` y registrarlo dentro de la siembra. Pero `seedDemo` también la llama `POST /api/seed/demo`, que puede usar el dueño del negocio: así el negocio podría pisar su propio perfil de privacidad (contra D5). Por eso el registro va solo en el comando y no pisa un perfil existente; una prueba (`privacidad-frontera.test.ts`) impide que algo fuera de `src/server/privacy/` lo escriba. La demo de Vocero es una ferretería, pero recibe el perfil dental porque es el que usa el cerebro para esa organización (`clientes/demo`): así las huellas cuadran (P1).
 
 ### Que no llegue al navegador
 
