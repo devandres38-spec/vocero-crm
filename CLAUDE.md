@@ -170,24 +170,18 @@ solo el `.md`.
 
 ## Método de trabajo con Andres (reemplaza al "Modo Objetivo")
 
-En este fork **no existe el modo autónomo**: está **prohibido usar `/loop-sdd`** o avanzar
-módulos enteros sin permiso, aunque Andres dé una meta grande.
+En este fork **no existe el modo autónomo**: está **prohibido usar `/loop-sdd`** y el "Modo
+Objetivo", aunque Andres dé una meta grande. Por bloques no significa autónomo sin límite.
 
-1. **Un paso pequeño a la vez.** Explica en español simple qué harás y por qué, y espera su
-   **"sigue"** antes de empezar y antes del paso siguiente.
-2. **Especifica antes de programar con Spec-Kit** (`specs/NNN-nombre/`): ciclo completo
-   (`spec.md` → `plan.md` → `tasks.md`, con `contracts/`) si toca el modelo de datos, RLS o un
-   contrato público (`/api/bot/*`, despacho, webhooks); `spec.md` ligero si es solo
-   comportamiento. El plan se revisa contra el código real y dice también lo que no se hará.
-3. **Cada paso de código** sigue `aliantis-core/docs/trabajo/procedimiento.md`: pruebas que fijen
-   lo que no debe cambiar antes de tocarlo; revisión completa
-   `pnpm typecheck && pnpm lint && pnpm build && pnpm test` en verde, dicha con números (más el
-   self-test E2E con mocks si cambia comportamiento observable); **sabotajes** de lo importante
-   (privacidad, aislamiento entre organizaciones, dinero), y uno no detectado se investiga
-   siempre; y `aliantis-core/docs/trabajo/estado.md` al día.
-4. **Ramas y PRs** (`feat/…`, `fix/…`, `docs/…`); nunca en `main`. Merge o force push solo si
-   Andres lo pide con esas palabras. El "loop de auto-corrección" de la Definición de Hecho vale
-   **dentro** del paso aprobado, nunca para seguir al siguiente.
+**El método está en `aliantis-core/docs/trabajo/procedimiento.md` («El ciclo de cada bloque») y
+es el único que vale;** no se repite aquí para que no haya copias que se contradigan. En corto:
+Andres aprueba una vez el plan de un bloque (2 o 3 pasos del plan maestro) y el asistente lo
+trabaja entero; se detiene al final o ante un bloqueo o una decisión no prevista. Spec-Kit
+completo (`specs/NNN-nombre/`) solo si el bloque toca un contrato público, el esquema, RLS o la
+agenda. La revisión completa es `pnpm typecheck && pnpm lint && pnpm build && pnpm test` (más el
+self-test E2E con mocks si cambia comportamiento observable). Ramas y PRs, nunca en `main`; merge
+o force push solo si Andres lo pide con esas palabras. El "loop de auto-corrección" de la
+Definición de Hecho vale **dentro** del bloque aprobado, nunca para seguir al siguiente.
 
 ## Memoria persistente
 
