@@ -39,6 +39,8 @@ export type MensajeDelEvento = {
   location?: UbicacionDelEvento;
   /** 031 — Solo si `type` es `contacts`: los nombres de las tarjetas. */
   contacts?: { name: string }[];
+  /** 069 — Solo si el mensaje tiene marcas de privacidad. Siempre al final. */
+  privacyFlags?: string[];
 };
 
 /**
@@ -54,7 +56,8 @@ export type UbicacionDelEvento = {
 
 export type EventoDespacho = {
   dispatchId: string;
-  organization: { id: string; slug: string | null };
+  /** 069 — `privacyProfileHash` solo si el negocio tiene un perfil de privacidad legible. */
+  organization: { id: string; slug: string | null; privacyProfileHash?: string };
   conversation: {
     id: string;
     channel: CanalDelEvento;
@@ -93,6 +96,8 @@ export type MensajeParaEvento = {
     /** 031 — `media_asset.payload`: la ubicación o las tarjetas tal como llegaron. */
     payload?: unknown;
   } | null;
+  /** 069 — `message.privacy_flags`. */
+  privacyFlags?: string[] | null;
 };
 
 /**
@@ -103,7 +108,7 @@ export type MensajeParaEvento = {
  */
 export function armarEvento(datos: {
   dispatchId: string;
-  organization: { id: string; slug: string | null };
+  organization: { id: string; slug: string | null; privacyProfileHash?: string | null };
   conversation: {
     id: string;
     channel: CanalDelEvento;
@@ -123,6 +128,10 @@ export function armarEvento(datos: {
     organization: {
       id: datos.organization.id,
       slug: datos.organization.slug,
+      // 069 — Solo cuando aplica, al final: el cuerpo gemelo no cambia.
+      ...(datos.organization.privacyProfileHash
+        ? { privacyProfileHash: datos.organization.privacyProfileHash }
+        : {}),
     },
     conversation: {
       id: datos.conversation.id,
@@ -169,6 +178,8 @@ function mensajeDelEvento(m: MensajeParaEvento): MensajeDelEvento {
     const nombres = nombresDeTarjetas(m.media?.payload);
     if (nombres.length) evento.contacts = nombres.map((name) => ({ name }));
   }
+  // 069 — Las marcas de privacidad, al final y solo si las hay.
+  if (m.privacyFlags?.length) evento.privacyFlags = [...m.privacyFlags];
   return evento;
 }
 

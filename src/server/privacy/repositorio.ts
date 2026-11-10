@@ -54,10 +54,14 @@ function perfilDeFila(fila: Fila) {
   });
 }
 
-export async function perfilDePrivacidad(
+/**
+ * 069 — La política de un negocio y la huella de su perfil, o `null` (D3).
+ * La huella viaja en el despacho para que el cerebro note un perfil viejo.
+ */
+export async function perfilVigente(
   organizationId: string,
   db: Db = getDb()
-): Promise<PrivacyPolicy | null> {
+): Promise<{ politica: PrivacyPolicy; huella: string } | null> {
   const [fila] = await db
     .select()
     .from(schema.privacyProfile)
@@ -74,7 +78,14 @@ export async function perfilDePrivacidad(
     });
     return null;
   }
-  return politicaDesdePerfil(perfil.data);
+  return { politica: politicaDesdePerfil(perfil.data), huella: perfil.data.huella };
+}
+
+export async function perfilDePrivacidad(
+  organizationId: string,
+  db: Db = getDb()
+): Promise<PrivacyPolicy | null> {
+  return (await perfilVigente(organizationId, db))?.politica ?? null;
 }
 
 /**

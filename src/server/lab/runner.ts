@@ -1,4 +1,6 @@
 import { and, asc, desc, eq, gt } from "drizzle-orm";
+import { filtrarTexto } from "@/server/privacy/filtrar";
+import { perfilDePrivacidad } from "@/server/privacy/repositorio";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -252,16 +254,21 @@ async function runConversation(
   });
 
   let falla: string | null = null;
+  // 069 — Lo que escribe la persona de prueba se filtra como lo de un paciente:
+  // el Laboratorio tampoco guarda texto sin revisar (D6).
+  const politica = await perfilDePrivacidad(organizationId);
   for (const line of persona.script) {
     const now = new Date();
     const messageId = newId("message");
+    const filtrado = filtrarTexto(line, politica);
     await db.insert(schema.message).values({
       id: messageId,
       organizationId,
       conversationId: convId,
       direction: "in",
       type: "text",
-      text: line,
+      text: filtrado.text,
+      privacyFlags: filtrado.marcas.length > 0 ? filtrado.marcas : null,
       status: "delivered",
       waTimestamp: now,
     });

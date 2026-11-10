@@ -239,6 +239,58 @@ describe("031 — lo que el webhook le daba al cerebro, ahora en el despacho", (
   });
 });
 
+describe("069 — marcas de privacidad y huella del perfil", () => {
+  const conMensaje = (privacyFlags: string[] | null, type = "contacts") =>
+    armarEvento({
+      ...datosMinimos(),
+      messages: [
+        {
+          id: "msg_1",
+          createdAt: new Date("2026-10-08T05:10:03.000Z"),
+          type,
+          text: "[mensaje con información de salud omitido]",
+          media:
+            type === "contacts"
+              ? {
+                  waMediaId: null,
+                  mimeType: null,
+                  caption: null,
+                  payload: [{ name: { formatted_name: "Luis" } }],
+                }
+              : null,
+          privacyFlags,
+        },
+      ],
+    });
+
+  it("un mensaje con marcas lleva privacyFlags al final, después de contacts", () => {
+    const [m] = conMensaje(["salud", "urgencia"]).messages;
+    expect(m?.privacyFlags).toEqual(["salud", "urgencia"]);
+    expect(Object.keys(m ?? {}).at(-1)).toBe("privacyFlags");
+    expect(Object.keys(m ?? {}).at(-2)).toBe("contacts");
+  });
+
+  it("sin marcas (NULL o vacías) no lleva la llave: el cuerpo gemelo no cambia", () => {
+    expect("privacyFlags" in conMensaje(null, "text").messages[0]!).toBe(false);
+    expect("privacyFlags" in conMensaje([], "text").messages[0]!).toBe(false);
+  });
+
+  it("la huella del perfil va al final de organization, solo si hay", () => {
+    const huella = "678b2aee0a921aeb002a5af7c79cfc853e65e77cf2bdb03426630ef8a98fa5ce";
+    const con = armarEvento({
+      ...datosMinimos(),
+      organization: { id: "org_x", slug: "mi-negocio", privacyProfileHash: huella },
+    });
+    expect(con.organization).toEqual({ id: "org_x", slug: "mi-negocio", privacyProfileHash: huella });
+    expect(Object.keys(con.organization)).toEqual(["id", "slug", "privacyProfileHash"]);
+    const sin = armarEvento({
+      ...datosMinimos(),
+      organization: { id: "org_x", slug: null, privacyProfileHash: null },
+    });
+    expect(sin.organization).toEqual({ id: "org_x", slug: null });
+  });
+});
+
 function datosMinimos() {
   return {
     dispatchId: "dsp_x",

@@ -1,5 +1,6 @@
 import { IG_PREFIX } from "@/server/inbox/identity";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
+import { marcasDe } from "@/server/privacy/webhook";
 import {
   getInstagramCredentialsByAccountRef,
   getInstagramCredentialsByIgUserId,
@@ -88,6 +89,8 @@ export async function processZernioEvent(payload: unknown): Promise<void> {
     text,
     timestamp: zernioSentAtSeconds(evt.message?.sentAt),
     threadRef: evt.message?.conversationId ?? null,
+    // 069: las marcas que dejó guardarEvento (null si no pasó por él).
+    marcas: marcasDe(evt.message),
   });
 }
 
@@ -165,6 +168,8 @@ export async function processMetaInstagramPayload(
           m.timestamp ? Math.floor(m.timestamp / 1000) : Math.floor(Date.now() / 1000)
         ),
         threadRef: null,
+        // 069: las marcas que dejó guardarEvento (null si no pasó por él).
+        marcas: marcasDe(m.message),
       });
     }
   }

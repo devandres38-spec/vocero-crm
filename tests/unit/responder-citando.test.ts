@@ -60,6 +60,9 @@ vi.mock("@/server/inbox/lead-activity", () => ({
   onLeadActivity: vi.fn(async () => {}),
 }));
 vi.mock("@/server/brains/config", () => ({ despachoActivo: () => false }));
+// 069: el payload de prueba no pasó por guardarEvento; la ingesta filtra con el
+// perfil del negocio, que aquí no tiene (sin consulta a la base simulada).
+vi.mock("@/server/privacy/repositorio", () => ({ perfilDePrivacidad: async () => null }));
 vi.mock("@/server/dispatch/encolar", () => ({
   despacharAlCerebro: vi.fn(async () => {}),
 }));

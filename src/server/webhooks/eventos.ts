@@ -3,6 +3,8 @@ import { and, count, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
+import { perfilVigente } from "@/server/privacy/repositorio";
+import { filtrarPayload } from "@/server/privacy/webhook";
 
 /**
  * 047 — Los eventos de webhook guardados antes de procesarse.
@@ -55,6 +57,11 @@ export function resumenDeError(err: unknown): string {
  * Guarda el evento. Si el mismo cuerpo ya estaba, devuelve la fila que había
  * (`nuevo: false`): quien llama no lo vuelve a procesar.
  *
+ * 069 — Lo que se guarda es el payload FILTRADO con el perfil de privacidad del
+ * negocio (sin perfil legible, el texto del paciente no se guarda): ningún
+ * texto crudo llega a `webhook_event`. La huella sigue siendo la del cuerpo
+ * crudo, para deduplicar las reentregas de la fuente.
+ *
  * Lanza si la base no responde: la ruta contesta 503 y reintenta quien mandó.
  */
 export async function guardarEvento(params: {
@@ -66,13 +73,15 @@ export async function guardarEvento(params: {
   const db = getDb();
   const huella = huellaDe(params.rawBody);
   const id = newId("webhookEvent");
+  const perfil = await perfilVigente(params.organizationId, db);
+  const payload = filtrarPayload(params.payload, perfil?.politica ?? null);
   const [nueva] = await db
     .insert(schema.webhookEvent)
     .values({
       id,
       organizationId: params.organizationId,
       fuente: params.fuente,
-      payload: params.payload as object,
+      payload: payload as object,
       huella,
     })
     .onConflictDoNothing({ target: schema.webhookEvent.huella })

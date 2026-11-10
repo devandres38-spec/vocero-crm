@@ -1,4 +1,5 @@
 import { TT_PREFIX } from "@/server/inbox/identity";
+import { marcasDe } from "@/server/privacy/webhook";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
 import { getTiktokCredentialsByAccountRef } from "@/server/tiktok/credentials";
 import { zernioSentAtSeconds, type ZernioEvent } from "@/server/zernio";
@@ -31,6 +32,8 @@ export type TiktokInbound = {
   profileName: string | null;
   /** `conversationId` opaco de Zernio: hace falta para responder. */
   threadRef: string | null;
+  /** 069 — Las marcas que dejó guardarEvento en el mensaje (null si no pasó por él). */
+  marcas: string[] | null;
 };
 
 /**
@@ -97,6 +100,8 @@ export function normalizeZernioTiktokEvent(payload: unknown): TiktokInbound[] {
         (sender?.username ? `@${sender.username.replace(/^@/, "")}` : null),
       // Opaco por contrato: se guarda tal cual y no se parsea.
       threadRef: evt.message?.conversationId ?? evt.conversation?.id ?? null,
+      // 069: las marcas que dejó guardarEvento (null si no pasó por él).
+      marcas: marcasDe(evt.message),
     },
   ];
 }
@@ -128,6 +133,7 @@ export async function processZernioTiktokEvent(payload: unknown): Promise<void> 
       text: evt.text,
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
+      marcas: evt.marcas,
     });
   }
 }

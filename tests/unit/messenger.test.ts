@@ -102,6 +102,8 @@ describe("017 · normalizeMetaPagePayload (qué entra y qué se descarta)", () =
       type: "text",
       timestamp: "1770000123",
       profileName: null,
+      // 069: sin pasar por guardarEvento no hay marcas: la ingesta filtra.
+      marcas: null,
       threadRef: null,
     });
   });

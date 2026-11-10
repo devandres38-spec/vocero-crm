@@ -417,6 +417,12 @@ export const message = pgTable(
     direction: text("direction", { enum: ["in", "out"] }).notNull(),
     type: text("type").notNull().default("text"),
     text: text("text"),
+    /**
+     * 069 — Las marcas del filtro de privacidad de un entrante (`salud`,
+     * `sin_revisar`, `correo`…). NULL: sin marcas. Lo saliente, siempre NULL.
+     * `text` ya está filtrado: el crudo nunca se guarda.
+     */
+    privacyFlags: text("privacy_flags").array(),
     status: text("status", {
       enum: ["pending", "sent", "delivered", "read", "failed"],
     })
