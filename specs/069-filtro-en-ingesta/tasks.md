@@ -10,5 +10,5 @@ Un bloque: dos PRs (`vocero-crm` y `aliantis-brain`) y el estado en `aliantis-co
 - [x] T6 Laboratorio: filtra la línea de la persona.
 - [x] T7 Despacho: `privacyFlags` y `organization.privacyProfileHash`; contrato gemelo intacto.
 - [x] T8 Cerebro: `privacyProfileHash` y aviso; pruebas.
-- [ ] T9 E2E con mocks: un mensaje de salud llega omitido a la bandeja y al cerebro falso. **Parcial en el PC:** `scripts/e2e-despacho.mjs` corrió 106 checks en verde, sin fallas (el caso 069, 9 de 9), hasta el Laboratorio; ahí Next en modo desarrollo se reinició por memoria (el PC tiene 3,9 GB). Lo que falta se corre en un Codespace si Andres lo aprueba.
+- [x] T9 E2E con mocks: un mensaje de salud llega omitido a la bandeja y al cerebro falso. En el PC no terminaba (3,9 GB de RAM); corrió completo en GitHub Actions (`.github/workflows/e2e.yml`): 144/144 checks con `AGENT_COALESCE_MS=1500`, Laboratorio incluido, y la migración `0027`→`0028` sobre una base con datos.
 - [x] T10 Revisión completa en los dos repos, 4 sabotajes, CI en verde. `AGENTS.md`, índice de specs, `estado.md`.
