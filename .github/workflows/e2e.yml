@@ -1,0 +1,137 @@
+name: E2E
+
+# El E2E del despacho (scripts/e2e-despacho.mjs) y la migración sobre una base
+# con datos, en una máquina de GitHub y no en el PC de desarrollo (3,9 GB de
+# RAM: `next dev` + Postgres + el arnés lo tumban a mitad de corrida).
+#
+# Se corre a mano, solo en los bloques que tocan webhook, ingesta, despacho o
+# base (procedimiento.md de aliantis-core):
+#   - `workflow_dispatch`, una vez que este archivo está en main
+#     (`gh workflow run e2e.yml --ref <rama>`);
+#   - o poniendo la etiqueta `e2e` en el PR, que sirve también antes del merge
+#     (GitHub solo deja disparar a mano workflows que ya viven en main).
+#
+# Sin secretos del repo: las claves se generan al vuelo y mueren con la
+# máquina. Todo canal y el proveedor de IA son los mocks de desarrollo, que
+# solo existen en `next dev` (dev-guard), por eso no se usa `next start`.
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.label.name == 'e2e' }}
+    name: migración sobre datos · e2e-despacho
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vocero_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+    env:
+      PGPASSWORD: postgres
+      PORT: "3260"
+      APP_BASE_URL: http://localhost:3260
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vocero_e2e
+      WA_MOCK_ENABLED: "true"
+      META_GRAPH_BASE_URL: http://localhost:3260/api/dev/wa-mock/graph
+      OPENROUTER_BASE_URL: http://localhost:3260/api/dev/ai-mock
+      OPENROUTER_MODEL: mock/agente
+      ZERNIO_BASE_URL: http://localhost:3260/api/dev/zernio-mock
+      ZOOM_BASE_URL: http://localhost:3260/api/dev/zoom-mock
+      ZOOM_OAUTH_BASE_URL: http://localhost:3260/api/dev/zoom-mock
+      CHANNELS: whatsapp,instagram,messenger,tiktok
+      AGENDA: "on"
+      # La receta exigente del arnés: 5 mensajes seguidos deben ir en UN
+      # despacho con solo 1,5 s de ventana (AC2). En producción son 6 s.
+      AGENT_COALESCE_MS: "1500"
+      MEDIA_DIR: ./.dev-media
+      BRAIN_DISPATCH_URL: http://127.0.0.1:3261/vocero/dispatch
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: claves de un solo uso
+        run: |
+          for v in BETTER_AUTH_SECRET BOT_API_KEY META_WEBHOOK_VERIFY_TOKEN OPENROUTER_API_TOKEN; do
+            k=$(openssl rand -hex 24); echo "::add-mask::$k"; echo "$v=$k" >> "$GITHUB_ENV"
+          done
+          k=$(openssl rand -base64 32); echo "::add-mask::$k"; echo "ENCRYPTION_KEY=$k" >> "$GITHUB_ENV"
+
+      # Las migraciones de main sobre una base vacía, unas filas de verdad, y
+      # encima las de esta rama: lo que pasará en producción. Después, una
+      # segunda pasada para probar que es idempotente.
+      - name: migración sobre una base con datos
+        run: |
+          U=postgresql://postgres:postgres@localhost:5432/vocero_mig
+          psql -h localhost -U postgres -qc "create database vocero_mig"
+          mkdir -p /tmp/main && git archive "origin/${{ github.base_ref || 'main' }}" drizzle | tar -x -C /tmp/main
+          echo "main llega hasta: $(ls /tmp/main/drizzle/*.sql | tail -1)"
+          DATABASE_URL=$U MIGRATIONS_DIR=/tmp/main/drizzle node scripts/migrate.mjs
+          psql -h localhost -U postgres -d vocero_mig -v ON_ERROR_STOP=1 -qc "
+            insert into organization (id,name,created_at) values ('org_1','N',now());
+            insert into contact (id,organization_id,name,wa_identity) values ('ct_1','org_1','Ana','573001112233');
+            insert into conversation (id,organization_id,contact_id) values ('cv_1','org_1','ct_1');
+            insert into message (id,organization_id,conversation_id,direction,type,text)
+              values ('msg_1','org_1','cv_1','in','text','hola'),('msg_2','org_1','cv_1','out','text','buenas');"
+          echo "esta rama llega hasta: $(ls drizzle/*.sql | tail -1)"
+          DATABASE_URL=$U MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
+          n=$(psql -h localhost -U postgres -d vocero_mig -tAc "select count(*) from message where id in ('msg_1','msg_2')")
+          [ "$n" = "2" ] || { echo "::error::la migración perdió filas ($n de 2)"; exit 1; }
+          DATABASE_URL=$U MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
+          echo "migración sobre datos: ok, filas intactas, idempotente"
+
+      - name: migrar la base del E2E
+        run: MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
+
+      - name: levantar Vocero (next dev)
+        run: |
+          nohup node node_modules/next/dist/bin/next dev -p 3260 > .tmp-dev-e2e.log 2>&1 &
+          for i in $(seq 1 90); do
+            [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3260/api/health)" = "200" ] && { echo "app arriba en ~$((i*2)) s"; exit 0; }
+            sleep 2
+          done
+          tail -40 .tmp-dev-e2e.log; exit 1
+
+      - name: e2e-despacho (AGENT_COALESCE_MS=1500)
+        run: node scripts/e2e-despacho.mjs 2>&1 | tee .tmp-e2e-despacho.log
+
+      - name: resumen
+        if: ${{ !cancelled() }}
+        run: |
+          echo "checks OK: $(grep -cE '^\s+OK ' .tmp-e2e-despacho.log || true)"
+          grep -E '^\s+(FAIL|FALLA)' .tmp-e2e-despacho.log || echo "sin fallas"
+          grep -E '^==' .tmp-e2e-despacho.log | tail -3 || true
+
+      - name: log de la app si algo falló
+        if: ${{ failure() }}
+        run: tail -150 .tmp-dev-e2e.log
