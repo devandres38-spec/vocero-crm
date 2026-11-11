@@ -63,6 +63,9 @@ jobs:
       AGENT_COALESCE_MS: "1500"
       # 070 — El primer reintento del olvido, en 1,5 s y no en 1 min.
       OLVIDO_REINTENTO_MS: "1500"
+      # 071 — Avisos por Telegram contra el mock de desarrollo.
+      AVISOS: "on"
+      TELEGRAM_API_BASE_URL: http://localhost:3260/api/dev/telegram-mock
       MEDIA_DIR: ./.dev-media
       BRAIN_DISPATCH_URL: http://127.0.0.1:3261/vocero/dispatch
       NEXT_TELEMETRY_DISABLED: "1"
@@ -84,7 +87,7 @@ jobs:
 
       - name: claves de un solo uso
         run: |
-          for v in BETTER_AUTH_SECRET BOT_API_KEY META_WEBHOOK_VERIFY_TOKEN OPENROUTER_API_TOKEN; do
+          for v in BETTER_AUTH_SECRET BOT_API_KEY META_WEBHOOK_VERIFY_TOKEN OPENROUTER_API_TOKEN TELEGRAM_BOT_TOKEN; do
             k=$(openssl rand -hex 24); echo "::add-mask::$k"; echo "$v=$k" >> "$GITHUB_ENV"
           done
           k=$(openssl rand -base64 32); echo "::add-mask::$k"; echo "ENCRYPTION_KEY=$k" >> "$GITHUB_ENV"
@@ -139,10 +142,19 @@ jobs:
           set -o pipefail
           node scripts/e2e-consentimiento.mjs 2>&1 | tee .tmp-e2e-consentimiento.log
 
+      # 071 — Salud con el Agente apagado, historial, omisión, envío
+      # idempotente, motivos, notas sin salud y avisos por Telegram.
+      - name: e2e-contrato-aliantis
+        if: ${{ !cancelled() }}
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-contrato-aliantis.mjs 2>&1 | tee .tmp-e2e-contrato-aliantis.log
+
       - name: resumen
         if: ${{ !cancelled() }}
         run: |
-          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log; do
+          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log; do
             [ -f "$log" ] || continue
             echo "== $log: checks OK $(grep -cE '^\s+OK ' "$log" || true)"
             grep -E '^\s+(FAIL|FALLA)' "$log" || echo "sin fallas"

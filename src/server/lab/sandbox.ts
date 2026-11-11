@@ -17,10 +17,12 @@ export async function guardarRespuestaDePrueba(params: {
   text: string;
   /** 070: los botones se guardan con la respuesta, como en una real. */
   buttons?: { id: string; title: string }[];
-}): Promise<{ messageId: string }> {
+  /** 071: la llave de idempotencia del cerebro; un repetido no guarda otra. */
+  clientMessageId?: string;
+}): Promise<{ messageId: string; repetido?: true }> {
   const db = getDb();
   const messageId = newId("message");
-  await db.insert(schema.message).values({
+  const guardado = await db.insert(schema.message).values({
     id: messageId,
     organizationId: params.organizationId,
     conversationId: params.conversationId,
@@ -31,7 +33,23 @@ export async function guardarRespuestaDePrueba(params: {
     aiGenerated: true,
     origin: "ai",
     buttons: params.buttons?.length ? params.buttons : null,
-  });
+    clientMessageId: params.clientMessageId ?? null,
+  })
+    .onConflictDoNothing()
+    .returning({ id: schema.message.id });
+  if (!guardado[0] && params.clientMessageId) {
+    const [previo] = await db
+      .select({ id: schema.message.id })
+      .from(schema.message)
+      .where(
+        and(
+          eq(schema.message.organizationId, params.organizationId),
+          eq(schema.message.clientMessageId, params.clientMessageId)
+        )
+      )
+      .limit(1);
+    if (previo) return { messageId: previo.id, repetido: true };
+  }
   await db
     .update(schema.conversation)
     .set({ lastMessageAt: new Date(), updatedAt: new Date() })

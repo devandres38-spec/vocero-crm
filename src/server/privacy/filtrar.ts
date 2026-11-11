@@ -1,3 +1,4 @@
+import { perfilDePrivacidad } from "./repositorio";
 import {
   classifyAndMask,
   privacyFlagsOf,
@@ -26,4 +27,20 @@ export function filtrarTexto(
 /** Une marcas sin repetir, en el orden en que aparecieron. */
 export function unirMarcas(...listas: readonly string[][]): string[] {
   return [...new Set(listas.flat())];
+}
+
+/**
+ * 071 (3.6, D12) — El texto libre que escribe el equipo o el cerebro (notas
+ * internas, notas del contacto y de citas, valores de la ficha), filtrado con
+ * el perfil del negocio antes de guardarse. Sin perfil legible, queda
+ * `[mensaje omitido: no se pudo revisar]` (D3 de la 068). `null` y `undefined`
+ * pasan tal cual.
+ */
+export async function filtrarTextoLibre<T extends string | null | undefined>(
+  organizationId: string,
+  texto: T
+): Promise<T> {
+  if (typeof texto !== "string" || !texto) return texto;
+  const politica = await perfilDePrivacidad(organizationId);
+  return filtrarTexto(texto, politica).text as T;
 }

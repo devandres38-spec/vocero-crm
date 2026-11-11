@@ -1,3 +1,4 @@
+import { enviarAvisosPendientes } from "@/server/avisos/avisos";
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { leerConfigDespacho } from "@/server/brains/config";
@@ -148,6 +149,12 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
     } catch (err) {
       console.error("[olvido] el reintento falló:", err instanceof Error ? err.message : err);
     }
+    // 071 (3.10) — Los avisos de traspaso por Telegram.
+    try {
+      await enviarAvisosPendientes();
+    } catch (err) {
+      console.error("[avisos] la pasada falló:", err instanceof Error ? err.message : err);
+    }
     return count;
   } catch (err) {
     console.error("[despacho] la tanda falló:", err);
@@ -214,6 +221,18 @@ async function procesar(fila: FilaDespacho): Promise<void> {
    */
   if (evento.messages.length === 0) {
     await descartarDespacho(fila, "sin mensajes por despachar");
+    return;
+  }
+  /**
+   * 071 (3.8) — Con el Agente apagado solo viaja un despacho que traiga algo
+   * marcado con salud. El interruptor se lee al entregar: pudo apagarse
+   * durante la ventana de agrupado.
+   */
+  if (
+    evento.conversation.agentEnabled === false &&
+    !evento.messages.some((m) => m.privacyFlags?.includes("salud"))
+  ) {
+    await descartarDespacho(fila, "el agente está apagado");
     return;
   }
 

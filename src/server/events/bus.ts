@@ -26,6 +26,11 @@ export type SseEvent =
       type: "message.media";
       data: { conversationId: string; messageId: string; media: unknown };
     }
+  /**
+   * 071 — El texto de un mensaje cambió (la segunda red de salud lo omitió):
+   * el hilo abierto lo reemplaza sin recargar.
+   */
+  | { type: "message.updated"; data: { conversationId: string; message: unknown } }
   | { type: "conversation.updated"; data: { conversation: unknown } }
   /** 026 — alguien del equipo eliminó la conversación: se quita de la bandeja. */
   | {

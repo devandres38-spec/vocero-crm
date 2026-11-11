@@ -13,6 +13,8 @@ export type EventHandlers = {
     /** Motivo, presente solo cuando status = "failed". */
     error?: string | null;
   }) => void;
+  /** 071 — El texto de un mensaje cambió (omitido por la segunda red de salud). */
+  onMessageUpdated?: (data: { conversationId: string; message: unknown }) => void;
   /** 044 — El adjunto de un mensaje terminó de descargarse (o falló). */
   onMessageMedia?: (data: {
     conversationId: string;
@@ -85,6 +87,7 @@ export function useEvents(handlers: EventHandlers): void {
         handlersRef.current.onMessageStatus?.(d as never)
       );
       listen(es, "message.media", (d) => handlersRef.current.onMessageMedia?.(d as never));
+      listen(es, "message.updated", (d) => handlersRef.current.onMessageUpdated?.(d as never));
       listen(es, "note.new", (d) => handlersRef.current.onNoteNew?.(d as never));
       listen(es, "note.deleted", (d) => handlersRef.current.onNoteDeleted?.(d as never));
       listen(es, "conversation.updated", (d) =>

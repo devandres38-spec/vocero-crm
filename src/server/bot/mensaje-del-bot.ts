@@ -30,6 +30,10 @@ export const bodySchema = z
       .min(1)
       .max(MAX_TEXT_CHARS_ANY_CHANNEL, TEXT_TOO_LONG_ANY_CHANNEL),
     buttons: z.array(boton).min(1).max(MAX_BOTONES).optional(),
+    /** 071 (3.8) — Solo `"seguridad"`: con el Agente apagado, la respuesta a un entrante de salud. */
+    motivo: z.literal("seguridad").optional(),
+    /** 071 — La llave de idempotencia del cerebro (067 §2). */
+    clientMessageId: z.string().min(1).max(128).optional(),
   })
   .superRefine((body, ctx) => {
     if (!body.buttons) return;

@@ -1,3 +1,4 @@
+import { avisarSeguimiento } from "@/server/avisos/avisos";
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { filtrarTexto, unirMarcas } from "@/server/privacy/filtrar";
@@ -584,7 +585,21 @@ export async function ingestInboundMessage(input: {
 
   // 036 — Quien contesta es el cerebro conectado; sin él, una persona. El
   // 025: `message.id` es lo que el despacho le debe al cerebro.
-  if (despachoActivo()) await despacharAlCerebro(conversation.id, organizationId, message.id);
+  // 071 (3.10): con el traspaso abierto, el equipo se entera de que la persona
+  // volvió a escribir (como mucho un aviso cada 30 minutos).
+  if (conversation.handoffAt && !conversation.isTest) {
+    void avisarSeguimiento({
+      organizationId,
+      conversationId: conversation.id,
+      handoffAt: conversation.handoffAt,
+    });
+  }
+
+  if (despachoActivo()) {
+    await despacharAlCerebro(conversation.id, organizationId, message.id, {
+      salud: marcas.includes("salud"),
+    });
+  }
 }
 
 /**

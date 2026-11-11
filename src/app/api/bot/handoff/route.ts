@@ -1,3 +1,4 @@
+import { registrarTraspaso } from "@/server/avisos/avisos";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
     .select({
       id: schema.conversation.id,
       handoffAt: schema.conversation.handoffAt,
+      isTest: schema.conversation.isTest,
     })
     .from(schema.conversation)
     .where(
@@ -55,18 +57,28 @@ export async function POST(req: Request) {
   if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
 
   if (!conv.handoffAt) {
+    const ahora = new Date();
+    const reason = toHandoffReason(body.data.reason);
     await db
       .update(schema.conversation)
       .set({
         aiEnabled: false,
-        handoffAt: new Date(),
-        handoffReason: toHandoffReason(body.data.reason),
-        updatedAt: new Date(),
+        handoffAt: ahora,
+        handoffReason: reason,
+        updatedAt: ahora,
       })
       .where(eq(schema.conversation.id, conv.id));
     publish(organizationId, {
       type: "conversation.updated",
       data: { conversation: { id: conv.id } },
+    });
+    // 071 (3.10): el equipo se entera por Telegram (si el negocio tiene avisos).
+    await registrarTraspaso({
+      organizationId,
+      conversationId: conv.id,
+      handoffAt: ahora,
+      reason,
+      esPrueba: conv.isTest,
     });
   }
   return Response.json({ ok: true });

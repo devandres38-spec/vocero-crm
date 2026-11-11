@@ -19,7 +19,9 @@ import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 export async function despacharAlCerebro(
   conversationId: string,
   organizationId: string,
-  messageId: string
+  messageId: string,
+  /** 071 (3.8): el entrante trae la marca `salud`. */
+  opciones: { salud?: boolean } = {}
 ): Promise<void> {
   try {
     const [conv] = await getDb()
@@ -50,7 +52,9 @@ export async function despacharAlCerebro(
       .from(schema.agentProfile)
       .where(eq(schema.agentProfile.organizationId, organizationId))
       .limit(1);
-    if (!perfil?.enabled) return;
+    // 071 (3.8, D9 de Aliantis): con el Agente apagado, lo marcado con salud se
+    // despacha igual; lo demás queda para una persona.
+    if (!perfil?.enabled && !opciones.salud) return;
 
     // 025 — El despacho anota qué entrante lo provoca: es lo que le debe al
     // cerebro, aunque después la conversación tenga una respuesta.

@@ -1,3 +1,4 @@
+import { agenteEncendido } from "@/server/bot/seguridad";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
@@ -271,6 +272,9 @@ export async function construirEvento(
         windowMsFor(conv.channel)
       ),
       test: conv.isTest,
+      // 071 (3.8): el interruptor al ENTREGAR (pudo apagarse en la ventana).
+      // El Laboratorio no depende de él.
+      agentEnabled: conv.isTest ? true : await agenteEncendido(fila.organizationId),
     },
     contact: {
       id: contact.id,

@@ -1,3 +1,4 @@
+import { filtrarTextoLibre } from "@/server/privacy/filtrar";
 import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
@@ -76,6 +77,8 @@ export async function crearNota(
   texto: string
 ): Promise<NotaDto> {
   await conversacionDeLaOrganizacion(quien.organizationId, conversationId);
+  // 071 (3.6): una nota del equipo tampoco guarda salud ni datos personales.
+  texto = await filtrarTextoLibre(quien.organizationId, texto);
   const [autor] = await getDb()
     .select({ name: schema.user.name })
     .from(schema.user)

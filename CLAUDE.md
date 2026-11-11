@@ -175,8 +175,9 @@ Objetivo", aunque Andres dé una meta grande. Por bloques no significa autónomo
 
 **El método está en `aliantis-core/docs/trabajo/procedimiento.md` («El ciclo de cada bloque») y
 es el único que vale;** no se repite aquí para que no haya copias que se contradigan. En corto:
-Andres aprueba una vez el plan de un bloque (2 o 3 pasos del plan maestro) y el asistente lo
-trabaja entero; se detiene al final o ante un bloqueo o una decisión no prevista. Spec-Kit
+un bloque agrupa los pasos de una fase por afinidad y por riesgo (los críticos van solos), el
+plan se escribe a fondo y revisado contra el código, Andres lo aprueba una vez y el asistente
+lo trabaja entero, un commit por paso; si aparece algo fuera del plan, para y pregunta. Spec-Kit
 (`specs/NNN-nombre/`, dos archivos: `spec.md` y `tasks.md`) solo si el bloque toca un contrato
 público, el esquema, RLS o la agenda. **La revisión completa es el CI de GitHub en verde** (los
 cuatro gates en dos configuraciones), más **`.github/workflows/e2e.yml`** (etiqueta `e2e` en el

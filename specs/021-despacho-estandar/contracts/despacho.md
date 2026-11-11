@@ -187,6 +187,14 @@ Esa conversación no vuelve a despacharse hasta que alguien reactive la IA desde
 la bandeja. El mensaje del cliente **ya está en la bandeja** en todos estos
 caminos.
 
+### Llaves que viajan solo cuando aplican (067 a 071)
+
+Todas al final de su objeto, para que el cuerpo fijado en la prueba gemela no cambie:
+
+- `organization.privacyProfileHash` (069): la huella del perfil de privacidad del negocio.
+- `conversation.agentEnabled: false` (071): el Agente está apagado y el despacho va porque un entrante trae la marca `salud`. Contesta solo con `motivo: "seguridad"` en `/api/bot/messages`: uno por cada entrante de salud.
+- `messages[].privacyFlags` (069) y `messages[].buttonId` (070), en ese orden.
+
 ## Eventos que no son un turno
 
 ### `conversation.deleted` (026)

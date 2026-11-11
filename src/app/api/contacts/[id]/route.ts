@@ -1,3 +1,4 @@
+import { filtrarTextoLibre } from "@/server/privacy/filtrar";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
@@ -86,7 +87,10 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
     // Lo escribio una persona: a partir de aqui WhatsApp ya no lo pisa (#51).
     set.nameSource = "manual";
   }
-  if (body.data.notes !== undefined) set.notes = body.data.notes;
+  // 071 (3.6): las notas del contacto pasan por el filtro.
+  if (body.data.notes !== undefined) {
+    set.notes = await filtrarTextoLibre(session.organizationId, body.data.notes);
+  }
   if (body.data.archived !== undefined) {
     set.archivedAt = body.data.archived ? new Date() : null;
   }

@@ -5,6 +5,8 @@ import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
 import { SendError, sendText } from "@/server/inbox/send";
 import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
 import { bodySchema } from "@/server/bot/mensaje-del-bot";
+import { marcarReservaFallida, reservarEnvio } from "@/server/bot/envio-idempotente";
+import { agenteEncendido, saludSinRespuesta } from "@/server/bot/seguridad";
 
 export const dynamic = "force-dynamic";
 
@@ -63,14 +65,48 @@ export async function POST(req: Request) {
   if (body.data.buttons && conv.channel !== "whatsapp") {
     return apiError(409, "canal_sin_botones", "Este canal no admite botones");
   }
+  // 071 (3.8) — Con el Agente apagado, en una conversación real, solo pasa un
+  // mensaje de seguridad por cada entrante de salud. El Laboratorio no.
+  if (!conv.isTest && !(await agenteEncendido(organizationId))) {
+    const seguridad =
+      body.data.motivo === "seguridad" &&
+      (await saludSinRespuesta(organizationId, body.data.conversationId));
+    if (!seguridad) {
+      return apiError(409, "agente_apagado", "El agente está apagado en este negocio");
+    }
+  }
   if (conv.isTest) {
     const guardada = await guardarRespuestaDePrueba({
       organizationId,
       conversationId: body.data.conversationId,
       text: body.data.text,
       ...(body.data.buttons ? { buttons: body.data.buttons } : {}),
+      ...(body.data.clientMessageId ? { clientMessageId: body.data.clientMessageId } : {}),
     });
-    return Response.json({ messageId: guardada.messageId, status: "sent" });
+    return Response.json({
+      messageId: guardada.messageId,
+      status: "sent",
+      ...(guardada.repetido ? { repetido: true } : {}),
+    });
+  }
+
+  // 071 (D6) — Con `clientMessageId`, la llave se reserva ANTES de Meta.
+  let reservado: string | undefined;
+  if (body.data.clientMessageId) {
+    const reserva = await reservarEnvio({
+      organizationId,
+      conversationId: body.data.conversationId,
+      clave: body.data.clientMessageId,
+      text: body.data.text,
+      buttons: body.data.buttons ?? null,
+    });
+    if (reserva.tipo === "repetido") {
+      return Response.json({ messageId: reserva.messageId, repetido: true });
+    }
+    if (reserva.tipo === "en_curso") {
+      return apiError(409, "mensaje_en_curso", "Ese mensaje se está enviando; reintenta después");
+    }
+    reservado = reserva.messageId;
   }
 
   try {
@@ -80,9 +116,18 @@ export async function POST(req: Request) {
       text: body.data.text,
       aiGenerated: true,
       ...(body.data.buttons ? { buttons: body.data.buttons } : {}),
+      ...(reservado ? { reservado } : {}),
     });
     return Response.json({ messageId: result.messageId });
   } catch (err) {
+    // La reserva queda fallida: el reintento del cerebro con la misma llave vuelve a intentar.
+    if (reservado) {
+      await marcarReservaFallida(
+        organizationId,
+        reservado,
+        err instanceof Error ? err.message.slice(0, 500) : "error desconocido"
+      ).catch(() => {});
+    }
     if (err instanceof SendError) {
       if (err.code === "window_closed") {
         return apiError(409, "window_closed", err.message);

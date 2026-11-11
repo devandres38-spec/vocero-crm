@@ -1,3 +1,4 @@
+import { filtrarTextoLibre } from "@/server/privacy/filtrar";
 import { desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
@@ -134,7 +135,8 @@ export const POST = withAuth(async (session, req: Request) => {
       name: body.data.name,
       phone,
       waIdentity: phone,
-      notes: body.data.notes ?? null,
+      // 071 (3.6): las notas del contacto pasan por el filtro.
+      notes: (await filtrarTextoLibre(session.organizationId, body.data.notes)) ?? null,
       source: body.data.source ?? null,
     })
     // El canal entra en el target porque entra en el índice único desde 014

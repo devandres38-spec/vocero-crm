@@ -14,6 +14,14 @@ export const HANDOFF_REASONS = [
   "error",
   "ventana",
   "hostilidad",
+  // 071 (D10 de Aliantis) — Los motivos que manda aliantis-brain
+  // (`src/vocero/motivos.ts`, `MotivoVocero`). `salud` nunca puede caer en `modelo`.
+  "salud",
+  "reclamo",
+  "no_entiende",
+  "agendar",
+  "tope_gasto",
+  "medios",
 ] as const;
 
 export type HandoffReason = (typeof HANDOFF_REASONS)[number];

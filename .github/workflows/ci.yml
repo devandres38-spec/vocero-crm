@@ -41,13 +41,17 @@ jobs:
           - name: default
             channels: ""
             agenda: ""
+            avisos: ""
           - name: completo
             channels: "whatsapp,instagram,messenger,tiktok"
             agenda: "on"
+            avisos: "on"
 
     env:
       CHANNELS: ${{ matrix.config.channels }}
       AGENDA: ${{ matrix.config.agenda }}
+      # 071 — Avisos por Telegram (conector opcional), apagados y encendidos.
+      AVISOS: ${{ matrix.config.avisos }}
 
     steps:
       - uses: actions/checkout@v7

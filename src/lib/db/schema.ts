@@ -385,6 +385,14 @@ export const conversation = pgTable(
         "ventana",
         "hostilidad",
         "manual_reply",
+        // 071 (D10 de Aliantis): solo tipos de TypeScript; la columna no
+        // tiene `check` en la base, así que no hay migración.
+        "salud",
+        "reclamo",
+        "no_entiende",
+        "agendar",
+        "tope_gasto",
+        "medios",
       ],
     }),
     lastInboundAt: timestamp("last_inbound_at"),
@@ -427,6 +435,12 @@ export const message = pgTable(
     buttonId: text("button_id"),
     /** 070 — Saliente: los botones que se enviaron con el texto. */
     buttons: jsonb("buttons").$type<{ id: string; title: string }[]>(),
+    /**
+     * 071 — Saliente del cerebro: su llave de idempotencia. Se reserva ANTES
+     * de llamar a Meta (índice único por organización): un reintento no envía
+     * dos veces.
+     */
+    clientMessageId: text("client_message_id"),
     status: text("status", {
       enum: ["pending", "sent", "delivered", "read", "failed"],
     })
@@ -462,6 +476,9 @@ export const message = pgTable(
       t.conversationId,
       t.createdAt
     ),
+    uniqueIndex("message_org_client_msg_uq")
+      .on(t.organizationId, t.clientMessageId)
+      .where(sql`${t.clientMessageId} is not null`),
   ]
 );
 
@@ -1526,5 +1543,65 @@ export const olvidoPendiente = pgTable(
       .on(t.notBefore)
       .where(sql`${t.status} = 'pendiente'`),
     check("olvido_pendiente_status_chk", sql`${t.status} in ('pendiente', 'agotado')`),
+  ]
+);
+
+/* ============================================================
+ * 071 — Avisos de traspaso por Telegram (D4 de Aliantis)
+ * ============================================================ */
+
+/**
+ * El grupo de Telegram de cada negocio. Solo lo registra Andres
+ * (`pnpm avisos:grupo`). El token del bot va en el entorno, nunca aquí.
+ */
+export const avisoCanal = pgTable(
+  "aviso_canal",
+  {
+    organizationId: text("organization_id")
+      .primaryKey()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    telegramChatId: text("telegram_chat_id").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    check("aviso_canal_chat_chk", sql`${t.telegramChatId} ~ '^-?[0-9]{1,20}$'`),
+  ]
+);
+
+/**
+ * Un aviso por traspaso (`handoff_at`). Nunca guarda datos del paciente:
+ * solo ids, el motivo y el estado del envío.
+ */
+export const avisoTraspaso = pgTable(
+  "aviso_traspaso",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id, { onDelete: "cascade" }),
+    handoffAt: timestamp("handoff_at").notNull(),
+    reason: text("reason").notNull(),
+    status: text("status", { enum: ["pendiente", "enviado", "fallido", "omitido"] })
+      .notNull()
+      .default("pendiente"),
+    attempts: integer("attempts").notNull().default(0),
+    notifiedAt: timestamp("notified_at"),
+    lastFollowupAt: timestamp("last_followup_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("aviso_traspaso_conv_handoff_uq").on(t.conversationId, t.handoffAt),
+    index("aviso_traspaso_pendiente_idx")
+      .on(t.createdAt)
+      .where(sql`${t.status} = 'pendiente'`),
+    check(
+      "aviso_traspaso_status_chk",
+      sql`${t.status} in ('pendiente', 'enviado', 'fallido', 'omitido')`
+    ),
   ]
 );

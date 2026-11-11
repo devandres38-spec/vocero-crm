@@ -45,6 +45,8 @@ const prefixes = {
   privacyProfile: "prv",
   // 070 — consentimiento (registro de solo agregar)
   consent: "cns",
+  // 071 — avisos de traspaso por Telegram
+  avisoTraspaso: "avs",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

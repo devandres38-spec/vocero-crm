@@ -1,3 +1,4 @@
+import { filtrarTextoLibre } from "@/server/privacy/filtrar";
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
@@ -197,7 +198,8 @@ export async function createSessionBooking(input: {
         // el que le tocó y sigue hablando con él al moverse o cancelarse.
         connector: settings.connector,
         isTest,
-        notes: input.notes ?? null,
+        // 071 (3.6): las notas de una cita pasan por el filtro (y así viajan al conector).
+        notes: (await filtrarTextoLibre(input.organizationId, input.notes)) ?? null,
       })
       .returning();
     booking = inserted[0]!;
@@ -269,7 +271,8 @@ export async function createBlock(input: {
         source: "manual",
         scheduledAt: new Date(input.startUtc),
         durationMinutes: input.durationMinutes,
-        notes: input.notes ?? null,
+        // 071 (3.6): las notas de una cita pasan por el filtro (y así viajan al conector).
+        notes: (await filtrarTextoLibre(input.organizationId, input.notes)) ?? null,
       })
       .returning();
     const block = inserted[0]!;
