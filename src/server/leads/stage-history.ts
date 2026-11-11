@@ -4,6 +4,7 @@ import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import type { LossReason, StageChangeSource } from "@/lib/types";
 import { reportStageChange } from "@/server/attribution/conversions";
+import { filtrarTextoLibre } from "@/server/privacy/filtrar";
 
 /**
  * La ÚNICA puerta que escribe `lead.stage_id`.
@@ -54,6 +55,10 @@ export type MoveInput = {
 export async function moveLeadToStage(input: MoveInput): Promise<MoveResult> {
   const db = getDb();
   const occurredAt = input.occurredAt ?? new Date();
+  // 072 (D8) — La nota de pérdida es texto libre: pasa por el filtro antes de
+  // guardarse, como las demás notas (3.6). Fuera de la transacción: lee el
+  // perfil del negocio.
+  const lossNote = await filtrarTextoLibre(input.organizationId, input.lossNote);
 
   // 016: se anota aquí dentro y se reporta a Meta DESPUÉS del commit. Una
   // llamada de red dentro de la transacción la mantendría abierta mientras
@@ -140,7 +145,7 @@ export async function moveLeadToStage(input: MoveInput): Promise<MoveResult> {
         source: input.source,
         approximate: false,
         lossReason: target.kind === "lost" ? input.lossReason ?? null : null,
-        lossNote: target.kind === "lost" ? input.lossNote ?? null : null,
+        lossNote: target.kind === "lost" ? lossNote ?? null : null,
       });
     }
 
