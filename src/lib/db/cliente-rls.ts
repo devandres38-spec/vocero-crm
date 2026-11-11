@@ -55,7 +55,7 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
     const ctx = contextoActual();
     if (ctx?.tipo === "negocio") return ctx.organizationId;
     if (ctx?.tipo === "sistema") return null;
-    if (modo === "lanzar") throw new ConsultaSinNegocio(resumen(query));
+    if (modo === "lanzar") return null;
     avisar(resumen(query));
     return null;
   }
