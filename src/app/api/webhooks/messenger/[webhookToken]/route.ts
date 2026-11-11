@@ -8,6 +8,7 @@ import {
 import { looksLikeMetaPayload, zernioSignatureFrom } from "@/server/zernio";
 import { isAuthenticZernioDelivery } from "@/server/zernio/dispatch";
 import { recibirEvento } from "@/server/webhooks/recibir";
+import { webhookEntrante } from "@/server/webhooks/entrada";
 
 /**
  * 017 — Webhook público del canal de Messenger.
@@ -42,7 +43,7 @@ export async function GET(req: Request, { params }: Params) {
   return new Response(null, { status: 403 });
 }
 
-export async function POST(req: Request, { params }: Params) {
+async function postSinNegocio(req: Request, { params }: Params) {
   if (!isChannelEnabled("messenger")) return channelDisabledResponse();
   const { webhookToken } = await params;
   const env = getEnv();
@@ -92,3 +93,6 @@ export async function POST(req: Request, { params }: Params) {
   // webhook.
   return recibirEvento("zernio", payload, rawBody, "messenger");
 }
+
+// 075 — Llega sin negocio: modo sistema hasta verificar de quién es.
+export const POST = webhookEntrante(postSinNegocio);

@@ -114,39 +114,6 @@ export async function tomarEvento(
 }
 
 /**
- * Toma hasta `limite` eventos listos: pendientes cuya hora llegó, o en proceso
- * con la reserva vencida (el proceso que los tenía murió a mitad).
- */
-export async function tomarPendientes(
-  limite = 10,
-  ahora: Date = new Date()
-): Promise<FilaEvento[]> {
-  const candidatos = await getDb()
-    .select()
-    .from(schema.webhookEvent)
-    .where(
-      or(
-        and(
-          eq(schema.webhookEvent.status, "pendiente"),
-          lte(schema.webhookEvent.notBefore, ahora)
-        ),
-        and(
-          eq(schema.webhookEvent.status, "en_proceso"),
-          lte(schema.webhookEvent.leasedUntil, ahora)
-        )
-      )
-    )
-    .orderBy(schema.webhookEvent.notBefore)
-    .limit(limite);
-  const tomados: FilaEvento[] = [];
-  for (const fila of candidatos) {
-    const t = await reclamar(fila, ahora);
-    if (t) tomados.push(t);
-  }
-  return tomados;
-}
-
-/**
  * El reclamo es este UPDATE, condicionado al estado y al contador de intentos
  * (igual que en el despacho: comparar timestamps falla en silencio por la
  * diferencia de precisión entre Postgres y `Date`).
@@ -306,7 +273,15 @@ export async function conteoGlobal(): Promise<{ pendientes: number; agotados: nu
 export const RETENCION_PROCESADO_MS = 7 * 24 * 3_600_000;
 export const RETENCION_AGOTADO_MS = 30 * 24 * 3_600_000;
 
-/** Borra lo que ya no hace falta: el cuerpo trae datos del cliente (D7). */
+/** 075 — Los cortes de la purga, para saber qué negocios tienen algo que borrar. */
+export function cortesDePurga(ahora: Date): { procesado: Date; agotado: Date } {
+  return {
+    procesado: new Date(ahora.getTime() - RETENCION_PROCESADO_MS),
+    agotado: new Date(ahora.getTime() - RETENCION_AGOTADO_MS),
+  };
+}
+
+/** Borra lo que ya no hace falta: el cuerpo trae datos del cliente (D7). Dentro de un negocio (075). */
 export async function purgar(ahora: Date = new Date()): Promise<number> {
   const filas = await getDb()
     .delete(schema.webhookEvent)

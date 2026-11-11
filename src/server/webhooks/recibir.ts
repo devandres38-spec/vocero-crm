@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import { guardarEvento, type FuenteWebhook } from "./eventos";
 import { resolverOrganizacion } from "./organizacion";
 import { procesarFuente } from "./procesar";
@@ -34,16 +35,22 @@ export async function recibirEvento(
       ? resuelta.organizationId
       : await resolverOrganizacion(fuente, payload);
     if (!organizationId) {
+      // 075 — Sin negocio: en modo sistema el RLS no le deja ver nada, así
+      // que se descarta como siempre (ningún negocio tiene esa cuenta).
       after(async () => {
         try {
-          await procesarFuente(fuente, payload);
+          await trabajoDeFondo("webhook-sin-negocio", () => procesarFuente(fuente, payload));
         } catch (err) {
           console.error(`[${etiqueta}] error procesando un evento sin organización:`, resumen(err));
         }
       });
       return Response.json({ received: true });
     }
-    evento = await guardarEvento({ organizationId, fuente, payload, rawBody });
+    const org = organizationId;
+    // 075 — Se guarda dentro de su negocio (RLS).
+    evento = await conNegocio(org, () =>
+      guardarEvento({ organizationId: org, fuente, payload, rawBody })
+    );
   } catch (err) {
     console.error(
       `[${etiqueta}] no se pudo guardar el evento; se responde 503 para que la fuente reintente:`,
@@ -53,7 +60,7 @@ export async function recibirEvento(
   }
 
   // Una entrega repetida ya está guardada: la procesa (o la procesó) su fila.
-  if (evento.nuevo) after(() => procesarEvento(evento.id));
+  if (evento.nuevo) after(() => procesarEvento(evento.id, organizationId));
   return Response.json({ received: true });
 }
 

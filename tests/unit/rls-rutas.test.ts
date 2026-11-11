@@ -20,7 +20,7 @@ const rel = (p: string) => path.relative(RAIZ, p).split(path.sep).join("/");
 
 /** Las marcas de que la ruta fija su negocio (o corre en sistema, a propósito). */
 const ENVOLTORIOS =
-  /\b(withAuth|rutaDelCerebro|conNegocio|comoSistema|trabajoDeFondo|paginaConSesion|marcaDeLaPeticion)\b/;
+  /\b(withAuth|rutaDelCerebro|conNegocio|comoSistema|trabajoDeFondo|paginaConSesion|marcaDeLaPeticion|webhookEntrante)\b/;
 
 /** Rutas que no necesitan envoltorio, con su porqué. */
 const SIN_ENVOLTORIO: Record<string, string> = {
@@ -33,10 +33,6 @@ const SIN_ENVOLTORIO: Record<string, string> = {
 
 /** 075 — Se fijan en T5 (webhooks) y T7 (mocks); esta lista se vacía en T7. */
 const PENDIENTES = new Set<string>([
-  "src/app/api/webhooks/wa/[webhookToken]/route.ts",
-  "src/app/api/webhooks/ig/[webhookToken]/route.ts",
-  "src/app/api/webhooks/messenger/[webhookToken]/route.ts",
-  "src/app/api/webhooks/tiktok/[webhookToken]/route.ts",
   "src/app/api/dev/retencion/route.ts",
   "src/app/api/dev/wa-mock/echo/route.ts",
   "src/app/api/dev/wa-mock/inbound/route.ts",

@@ -13,6 +13,8 @@ vi.mock("@/server/tiktok/ingest", async (orig) => ({
   zernioPlatform: () => "instagram",
 }));
 vi.mock("@/server/zernio/conexiones", () => ({
+  // 075 — El negocio sale primero de la función de solo ids.
+  negocioDeCuentaZernio: async () => "org_a",
   findZernioConnection: async () => ({ connection: { organizationId: "org_a", token: "t" } }),
   healZernioAccountRef: async () => undefined,
   storedZernioSecrets: async () => [],

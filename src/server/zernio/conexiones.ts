@@ -1,3 +1,4 @@
+import { negocioPorCanal } from "@/server/db-sistema";
 import { randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
@@ -136,6 +137,22 @@ type EventAccount = { id?: string; accountId?: string; profileId?: string };
  * verificar la firma, así que no puede cambiar nada. `viaProfile` dice que la
  * fila guardó el id del perfil en vez del de la cuenta.
  */
+/**
+ * 075 — El negocio de una cuenta de Zernio, por la función de solo ids: por el
+ * id de la cuenta y, si no, por el del perfil (como `findZernioConnection`).
+ */
+export async function negocioDeCuentaZernio(
+  channel: ZernioChannel,
+  account: EventAccount | undefined
+): Promise<string | null> {
+  const tipo = `zernio:${channel}` as const;
+  const id = account?.id ?? account?.accountId;
+  if (!id) return null;
+  const directo = await negocioPorCanal(tipo, id);
+  if (directo) return directo;
+  return account?.profileId ? negocioPorCanal(tipo, account.profileId) : null;
+}
+
 export async function findZernioConnection(
   channel: ZernioChannel,
   account: EventAccount | undefined

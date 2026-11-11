@@ -7,6 +7,7 @@ import {
 import { zernioSignatureFrom } from "@/server/zernio";
 import { isAuthenticZernioDelivery } from "@/server/zernio/dispatch";
 import { recibirEvento } from "@/server/webhooks/recibir";
+import { webhookEntrante } from "@/server/webhooks/entrada";
 
 /**
  * 022 — Webhook público del canal de TikTok.
@@ -34,7 +35,7 @@ export async function GET(_req: Request, { params }: Params) {
   return Response.json({ ok: true });
 }
 
-export async function POST(req: Request, { params }: Params) {
+async function postSinNegocio(req: Request, { params }: Params) {
   if (!isChannelEnabled("tiktok")) return channelDisabledResponse();
   const { webhookToken } = await params;
   if (!isValidWebhookToken(webhookToken, getEnv().META_WEBHOOK_VERIFY_TOKEN)) {
@@ -62,3 +63,6 @@ export async function POST(req: Request, { params }: Params) {
   // se procesa fuera de la ruta (047: si falla, lo reintenta el barrido).
   return recibirEvento("zernio", payload, rawBody, "tiktok");
 }
+
+// 075 — Llega sin negocio: modo sistema hasta verificar de quién es.
+export const POST = webhookEntrante(postSinNegocio);

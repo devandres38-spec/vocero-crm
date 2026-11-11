@@ -2,6 +2,7 @@ import { getEnv } from "@/lib/env";
 import { isValidWebhookToken } from "@/server/inbox/webhook";
 import { verificarFirmaMeta } from "@/server/webhooks/firma";
 import { recibirEvento } from "@/server/webhooks/recibir";
+import { webhookEntrante } from "@/server/webhooks/entrada";
 
 /**
  * Webhook público de WhatsApp (contrato webhook.md).
@@ -34,7 +35,7 @@ export async function GET(req: Request, { params }: Params) {
   return new Response(null, { status: 403 });
 }
 
-export async function POST(req: Request, { params }: Params) {
+async function postSinNegocio(req: Request, { params }: Params) {
   const { webhookToken } = await params;
   const env = getEnv();
   if (!isValidWebhookToken(webhookToken, env.META_WEBHOOK_VERIFY_TOKEN)) {
@@ -64,3 +65,6 @@ export async function POST(req: Request, { params }: Params) {
     organizationId: firma.organizationId,
   });
 }
+
+// 075 — Llega sin negocio: modo sistema hasta verificar de quién es.
+export const POST = webhookEntrante(postSinNegocio);
