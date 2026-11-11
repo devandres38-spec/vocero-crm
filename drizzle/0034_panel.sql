@@ -142,7 +142,7 @@ BEGIN
     EXISTS (SELECT 1 FROM instagram_credentials c WHERE c.organization_id = o.id AND c.status = 'connected'),
     EXISTS (SELECT 1 FROM messenger_credentials c WHERE c.organization_id = o.id AND c.status = 'connected'),
     EXISTS (SELECT 1 FROM tiktok_credentials c WHERE c.organization_id = o.id AND c.status = 'connected'),
-    (SELECT count(*) FROM member m WHERE m.organization_id = o.id),
+    (SELECT count(DISTINCT m.user_id) FROM member m WHERE m.organization_id = o.id),
     (SELECT count(*) FROM conversation c WHERE c.organization_id = o.id AND NOT c.is_test),
     (SELECT count(*) FROM conversation c
       WHERE c.organization_id = o.id AND NOT c.is_test AND c.last_inbound_at > ahora - interval '7 days'),
@@ -204,12 +204,18 @@ AS $$
 BEGIN
   PERFORM vocero_panel_quien();
   RETURN QUERY
-  SELECT u.id, u.name, u.email, m.role, m.created_at,
+  -- Una fila por persona aunque tenga membresías repetidas, con su rol más alto.
+  SELECT u.id, u.name, u.email,
+    CASE WHEN bool_or(m.role = 'owner') THEN 'owner'
+         WHEN bool_or(m.role = 'admin') THEN 'admin'
+         ELSE min(m.role) END,
+    min(m.created_at),
     (SELECT max(s.created_at) FROM session s WHERE s.user_id = u.id),
     u.debe_cambiar_contrasena
   FROM member m JOIN "user" u ON u.id = m.user_id
   WHERE m.organization_id = p_org
-  ORDER BY m.created_at, m.id;
+  GROUP BY u.id, u.name, u.email, u.debe_cambiar_contrasena
+  ORDER BY min(m.created_at), u.id;
 END
 $$;
 --> statement-breakpoint
@@ -279,12 +285,19 @@ DECLARE
   v_rol text;
   v_correo text;
 BEGIN
-  SELECT m.role, u.email INTO v_rol, v_correo FROM member m JOIN "user" u ON u.id = m.user_id
-   WHERE m.organization_id = p_org AND m.user_id = p_user_id;
+  -- Robusto a membresías repetidas: es dueño si CUALQUIERA de las suyas lo es, y los dueños
+  -- se cuentan por persona, no por fila.
+  SELECT u.email,
+         CASE WHEN bool_or(m.role = 'owner') THEN 'owner' ELSE min(m.role) END
+    INTO v_correo, v_rol
+    FROM member m JOIN "user" u ON u.id = m.user_id
+   WHERE m.organization_id = p_org AND m.user_id = p_user_id
+   GROUP BY u.email;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'vocero_panel: ese usuario no es de ese negocio' USING ERRCODE = 'P0002';
   END IF;
-  IF v_rol = 'owner' AND (SELECT count(*) FROM member m WHERE m.organization_id = p_org AND m.role = 'owner') <= 1 THEN
+  IF v_rol = 'owner'
+     AND (SELECT count(DISTINCT m.user_id) FROM member m WHERE m.organization_id = p_org AND m.role = 'owner') <= 1 THEN
     RAISE EXCEPTION 'vocero_panel: no se puede quitar al último dueño' USING ERRCODE = '23514';
   END IF;
   DELETE FROM "user" u WHERE u.id = p_user_id;

@@ -516,6 +516,10 @@ async function panel(tablas) {
     "no se puede quitar al último dueño",
     (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_quitar_usuario(${A}, 'usr_rls_a')`)) === "23514"
   );
+  // El sembrador deja a usr_rls_a con dos membresías en A (member y owner): cuenta una vez, como dueño.
+  const usuariosA = await comoPanelCrudo(SUPER, (tx) => tx`select * from vocero_panel_usuarios(${A})`);
+  const deA = usuariosA.filter((u) => u.user_id === "usr_rls_a");
+  ok("membresías repetidas: una fila por persona, con su rol más alto", deA.length === 1 && deA[0].rol === "owner", JSON.stringify(deA));
   ok(
     "no se restablece la contraseña de alguien de otro negocio",
     (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_restablecer(${B}, 'usr_rls_a', 'h')`)) === "P0002"
