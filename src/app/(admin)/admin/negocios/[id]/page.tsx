@@ -2,10 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { fechaCorta, hace, numero, ROLES } from "@/components/panel/formato";
+import { dolares, fechaCorta, hace, numero, ROLES } from "@/components/panel/formato";
 import { AccionesDeUsuario, PausarNegocio } from "@/components/panel/acciones-negocio";
 import { Cifra, Encabezado, Seccion } from "@/components/panel/piezas";
 import { negociosDelPanel, usuariosDelPanel } from "@/server/panel/datos";
+import { gastoDelCerebro } from "@/server/panel/gasto";
 import { paginaDelPanel } from "@/server/panel/ruta";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,8 @@ async function Negocio(
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) notFound();
   const negocio = (await negociosDelPanel()).find((n) => n.id === id);
   if (!negocio) notFound();
-  const usuarios = await usuariosDelPanel(id);
+  const [usuarios, gasto] = await Promise.all([usuariosDelPanel(id), gastoDelCerebro()]);
+  const suGasto = gasto?.negocios.find((g) => g.organizationId === id) ?? null;
   const duenos = usuarios.filter((u) => u.rol === "owner").length;
 
   return (
@@ -42,6 +44,17 @@ async function Negocio(
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Cifra
+          etiqueta="Gasto LLM hoy"
+          valor={suGasto ? dolares(suGasto.hoyUsd) : "—"}
+          nota={
+            suGasto
+              ? `tope ${suGasto.topeDiarioUsd === null ? "sin configurar en el cerebro" : dolares(suGasto.topeDiarioUsd)} · mes ${dolares(suGasto.mesUsd)}`
+              : gasto
+                ? "sin uso del LLM"
+                : "el cerebro no respondió"
+          }
+        />
         <Cifra etiqueta="Conversaciones" valor={numero(negocio.conversaciones)} nota={`${numero(negocio.conversaciones7d)} en 7 días`} />
         <Cifra etiqueta="Entrantes 24 h" valor={numero(negocio.entrantes24h)} nota={`último ${hace(negocio.ultimoEntranteEn)}`} />
         <Cifra etiqueta="A una persona 24 h" valor={numero(negocio.aHumano24h)} nota={`${numero(negocio.despachosPendientes)} despachos en espera`} />

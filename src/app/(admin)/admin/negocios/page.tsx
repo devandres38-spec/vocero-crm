@@ -5,13 +5,15 @@ import { Encabezado } from "@/components/panel/piezas";
 import { TablaDeNegocios, type FilaDeNegocio } from "@/components/panel/tabla-negocios";
 import { cn } from "@/lib/utils";
 import { negociosDelPanel } from "@/server/panel/datos";
+import { gastoDelCerebro } from "@/server/panel/gasto";
 import { paginaDelPanel } from "@/server/panel/ruta";
 
 export const dynamic = "force-dynamic";
 
 /** 076 — Los negocios de la instalación, con conteos (respuesta 4: cuántas cuentas tiene cada uno). */
 async function Negocios() {
-  const negocios = await negociosDelPanel();
+  const [negocios, gasto] = await Promise.all([negociosDelPanel(), gastoDelCerebro()]);
+  const porNegocio = new Map((gasto?.negocios ?? []).map((g) => [g.organizationId, g]));
   const filas: FilaDeNegocio[] = negocios.map((n) => ({
     id: n.id,
     nombre: n.nombre,
@@ -22,7 +24,9 @@ async function Negocios() {
     conversaciones: n.conversaciones,
     entrantes24h: n.entrantes24h,
     creadoEn: n.creadoEn,
-    gasto: null,
+    gasto: porNegocio.has(n.id)
+      ? { hoyUsd: porNegocio.get(n.id)!.hoyUsd, topeUsd: porNegocio.get(n.id)!.topeDiarioUsd }
+      : null,
   }));
   return (
     <div className="mx-auto max-w-6xl">

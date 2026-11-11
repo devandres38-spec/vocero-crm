@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { hace, numero, type Tono } from "@/components/panel/formato";
+import { GastoResumen, type FilaDeGasto } from "@/components/panel/gasto-resumen";
 import { Cifra, Encabezado, Punto, Seccion } from "@/components/panel/piezas";
 import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
 import { negociosDelPanel, saludDelPanel, type NegocioDelPanel, type SaludDelPanel } from "@/server/panel/datos";
+import { gastoDelCerebro } from "@/server/panel/gasto";
 import { paginaDelPanel } from "@/server/panel/ruta";
 
 export const dynamic = "force-dynamic";
@@ -80,7 +82,22 @@ function alertas(negocios: NegocioDelPanel[]): Alerta[] {
 
 async function Resumen() {
   const [salud, negocios] = await Promise.all([saludDelPanel(), negociosDelPanel()]);
-  const cerebro = await getBrainHealth(urlSaludCerebro() ?? undefined).catch(() => null);
+  const [cerebro, gasto] = await Promise.all([
+    getBrainHealth(urlSaludCerebro() ?? undefined).catch(() => null),
+    gastoDelCerebro(),
+  ]);
+  const nombres = new Map(negocios.map((n) => [n.id, n.nombre]));
+  const filasDeGasto: FilaDeGasto[] | null = gasto
+    ? gasto.negocios.map((g) => ({
+        id: g.organizationId,
+        nombre: nombres.get(g.organizationId) ?? "(no está en Vocero)",
+        hoyUsd: g.hoyUsd,
+        mesUsd: g.mesUsd,
+        topeUsd: g.topeDiarioUsd,
+        pruebasHoyUsd: g.pruebasHoyUsd,
+        fallidasHoy: g.fallidasHoy,
+      }))
+    : null;
   const activos = negocios.filter((n) => !n.pausadoEn).length;
   const entrantes = negocios.reduce((s, n) => s + n.entrantes24h, 0);
   const conversaciones7d = negocios.reduce((s, n) => s + n.conversaciones7d, 0);
@@ -97,7 +114,9 @@ async function Resumen() {
         <Cifra etiqueta="Negocios en total" valor={numero(salud.negocios)} />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <GastoResumen filas={filasDeGasto} />
+
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
         <Seccion titulo="Servicios">
           <ul className="divide-y">
             {filasDeServicios(salud, cerebro).map((f) => (
