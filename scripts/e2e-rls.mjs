@@ -189,7 +189,7 @@ async function catalogo() {
 
 /** Como lo escribe `pg_get_function_result` (076). */
 function tabla(columnas) {
-  return `TABLE(${columnas.replace(/timestamp/g, "timestamp without time zone")})`;
+  return `TABLE(${columnas.replace(/\btimestamp\b/g,"timestamp without time zone")})`;
 }
 
 /** Valores para una columna obligatoria, según su tipo. */
