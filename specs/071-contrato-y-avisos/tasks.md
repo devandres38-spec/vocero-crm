@@ -2,8 +2,8 @@
 
 Un commit por paso, cada uno con las pruebas de su módulo. PRs: `vocero-crm` (código, spec y `CLAUDE.md`), `aliantis-brain` y `aliantis-espacio` (solo el método en `CLAUDE.md` y el RELEVO), `aliantis-core` (método, `decisiones.md` y `estado.md`). Un solo merge.
 
-- [ ] T1 Spec y estas tareas (aprobadas por Andres).
-- [ ] T2 Migración `0030`: `message.client_message_id` y su índice único parcial, `aviso_canal`, `aviso_traspaso`; prefijo `avs`. `pnpm db:generate` sin diferencias.
+- [x] T1 Spec y estas tareas (aprobadas por Andres).
+- [x] T2 Migración `0030`: `message.client_message_id` y su índice único parcial, `aviso_canal`, `aviso_traspaso`; prefijo `avs`. `pnpm db:generate` sin diferencias.
 - [ ] T3 (3.7) Motivos de Aliantis en el catálogo, sus rótulos y el OpenAPI; prueba contra la lista del cerebro. Sabotaje opcional 14.
 - [ ] T4 (3.6) Notas internas, notas del contacto, notas de citas y valores de la ficha por el filtro; `/api/bot/bookings` descarta `notes`. Sabotajes: nota y ficha sin filtrar.
 - [ ] T5 `GET /api/bot/history`. Sabotaje 15.
