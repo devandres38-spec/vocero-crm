@@ -18,6 +18,7 @@ import {
   levantarCerebroFalso,
   urlDelDespacho,
 } from "./lib/cerebro-falso.mjs";
+import { cabecerasDelCerebro } from "./lib/credencial.mjs";
 
 const BASE = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const BOT_KEY = process.env.BOT_API_KEY ?? "";
@@ -64,11 +65,29 @@ async function api(path, opts = {}) {
   return { res, json };
 }
 
+
+/**
+ * 073 — El negocio del operador del arnés: el «cerebro» del guion contesta con
+ * la credencial derivada de ese negocio, como el cerebro real (contrato 067).
+ */
+let ORG = null;
+async function orgDelOperador(email) {
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [r] = await sql`
+      select m.organization_id as id from member m join "user" u on u.id = m.user_id
+       where u.email = ${email} limit 1`;
+    return r?.id ?? null;
+  } finally {
+    await sql.end();
+  }
+}
+
 const bot = (path, body) =>
   api(path, {
     method: body === undefined ? "GET" : "POST",
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    headers: { "x-api-key": BOT_KEY },
+    headers: cabecerasDelCerebro(BOT_KEY, ORG),
   });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -137,6 +156,8 @@ async function preparar() {
     });
   }
   ok("registro o login del operador", su.res.ok, JSON.stringify(su.json));
+  ORG = await orgDelOperador(email);
+  ok("el negocio del operador, para la credencial derivada", Boolean(ORG), String(ORG));
   const conn = await api("/api/settings/whatsapp", {
     method: "PUT",
     body: JSON.stringify({
