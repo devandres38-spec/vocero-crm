@@ -56,7 +56,7 @@ export function sentenciasUsuarioApp({ usuario, clave }, estado) {
   const rol = `"${usuario}"`;
   if (estado === null) {
     return [
-      `CREATE ROLE ${rol} LOGIN PASSWORD ${literal(clave)} NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE`,
+      `CREATE ROLE ${rol} LOGIN PASSWORD ${literal(clave)} NOSUPERUSER BYPASSRLS NOCREATEDB NOCREATEROLE`,
       `GRANT vocero_app TO ${rol}`,
     ];
   }
