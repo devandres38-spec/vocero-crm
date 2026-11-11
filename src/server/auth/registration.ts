@@ -17,6 +17,19 @@ export type BloqueoDeAuth = {
 export const MENSAJE_REGISTRO_CERRADO =
   "El registro está cerrado: las cuentas las crea Aliantis. Si eres parte de un negocio, pide acceso a su dueño.";
 
+/**
+ * 076 (D16) — Del plugin `twoFactor`, solo quedan abiertas las dos rutas que
+ * verifican el código al iniciar sesión. `enable` se abre únicamente por
+ * dentro (la ruta del panel, para el superadmin sin segundo factor). Todo lo
+ * demás (`disable`, `get-totp-uri`, `generate-backup-codes`, `send-otp`,
+ * `verify-otp` y lo que traiga una versión futura) nace cerrado: el segundo
+ * factor solo se reinicia con el comando, con la llave del dueño de la base.
+ */
+export const DOS_FACTORES_ABIERTAS = new Set([
+  "/two-factor/verify-totp",
+  "/two-factor/verify-backup-code",
+]);
+
 export function bloqueoDeRuta(
   path: string,
   interno: boolean
@@ -24,8 +37,24 @@ export function bloqueoDeRuta(
   if (path === "/organization" || path.startsWith("/organization/")) {
     return { status: "NOT_FOUND", message: "No encontrado" };
   }
+  if (path === "/two-factor" || path.startsWith("/two-factor/")) {
+    if (DOS_FACTORES_ABIERTAS.has(path)) return null;
+    if (path === "/two-factor/enable" && interno) return null;
+    return { status: "NOT_FOUND", message: "No encontrado" };
+  }
   if (path.startsWith("/sign-up") && !interno) {
     return { status: "FORBIDDEN", message: MENSAJE_REGISTRO_CERRADO };
   }
   return null;
+}
+
+/**
+ * 076 (respuesta 6 de Andres) — Sin «confiar en este dispositivo»: una
+ * verificación del segundo factor que lo pida se rechaza entera (no se
+ * ignora en silencio), y el código se pide en cada inicio de sesión.
+ */
+export function pideConfiarDispositivo(path: string, body: unknown): boolean {
+  if (!path.startsWith("/two-factor/")) return false;
+  const valor = (body as { trustDevice?: unknown } | null | undefined)?.trustDevice;
+  return valor !== undefined && valor !== false;
 }
