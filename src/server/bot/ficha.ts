@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { filtrarTexto } from "@/server/privacy/filtrar";
+import { perfilDePrivacidad } from "@/server/privacy/repositorio";
 
 /**
  * Ficha de calificación del lead: lo que el cerebro externo va descubriendo
@@ -108,6 +110,13 @@ export async function upsertFicha(input: {
     .where(alcance)
     .limit(1);
   if (!rows[0]) return null;
+
+  // 071 (3.6, D12): los valores de texto pasan por el filtro antes de guardarse,
+  // los escriba el cerebro o el dueño. Las llaves no (lista blanca: fase 5).
+  const politica = await perfilDePrivacidad(input.organizationId);
+  for (const [llave, valor] of Object.entries(patch)) {
+    if (typeof valor === "string") patch[llave] = filtrarTexto(valor, politica).text;
+  }
 
   const merged = mergeFicha(rows[0].ficha as Ficha | null, patch);
 

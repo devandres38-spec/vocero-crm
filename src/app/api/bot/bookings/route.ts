@@ -26,6 +26,10 @@ export const dynamic = "force-dynamic";
 const createSchema = z.object({
   conversationId: z.string().min(1),
   startUtc: z.string().min(1),
+  /**
+   * 071 (D12): el cerebro no escribe notas. Se acepta para no romper el
+   * contrato, y se descarta.
+   */
   notes: z.string().nullish(),
 });
 
@@ -46,7 +50,7 @@ export async function POST(req: Request) {
       organizationId: gate.organizationId,
       conversationId: body.data.conversationId,
       startUtc: body.data.startUtc,
-      notes: body.data.notes ?? null,
+      notes: null,
       source: "ai",
       // La regla innegociable: el agente solo reserva lo que ya ofreció.
       requireOffer: true,
