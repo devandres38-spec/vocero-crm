@@ -34,8 +34,8 @@ function ok(name, cond, extra = "") {
 
 const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 
-/** Los ids de un negocio: `<cosa>_<negocio>_<corrida>`. */
-const idDe = (org) => (cosa) => `${cosa}_${org.slice(-1)}_${RUN}`;
+/** Los ids de un negocio: `<cosa>_<negocio>` (el negocio ya lleva la corrida). */
+const idDe = (org) => (cosa) => `${cosa}_${org}`;
 
 async function sembrar(org, dias) {
   const id = idDe(org);

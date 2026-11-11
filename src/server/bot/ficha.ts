@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import { and, eq, gte, isNotNull, lt, notExists, or, sql } from "drizzle-orm";
+import { QueryBuilder } from "drizzle-orm/pg-core";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { filtrarTexto } from "@/server/privacy/filtrar";
@@ -151,6 +152,44 @@ export async function vaciarFicha(
         eq(schema.contact.id, contactId)
       )
     );
+}
+
+/**
+ * 072 (D21 de Aliantis) — La retención: un contacto INACTIVO (sin cambios
+ * desde `corte` y sin conversación con mensajes desde `corte`) pierde sus
+ * notas y su ficha. El nombre, el teléfono y la identidad se quedan. No toca
+ * `updatedAt`: vaciar no es actividad. Devuelve los ids vaciados.
+ */
+export async function vaciarFichasInactivas(
+  ejecutor: Pick<ReturnType<typeof getDb>, "update">,
+  organizationId: string,
+  corte: Date
+): Promise<{ id: string }[]> {
+  return ejecutor
+    .update(schema.contact)
+    .set({ notes: null, ficha: null })
+    .where(
+      scoped(
+        schema.contact.organizationId,
+        organizationId,
+        and(
+          or(isNotNull(schema.contact.notes), isNotNull(schema.contact.ficha)),
+          lt(schema.contact.updatedAt, corte),
+          notExists(
+            new QueryBuilder()
+              .select({ uno: sql`1` })
+              .from(schema.conversation)
+              .where(
+                and(
+                  eq(schema.conversation.contactId, schema.contact.id),
+                  gte(schema.conversation.lastMessageAt, corte)
+                )
+              )
+          )
+        )
+      )
+    )
+    .returning({ id: schema.contact.id });
 }
 
 export function serializeFicha(

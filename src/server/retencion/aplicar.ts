@@ -1,7 +1,6 @@
 import {
   and,
   eq,
-  gte,
   inArray,
   isNotNull,
   lt,
@@ -12,6 +11,7 @@ import {
 } from "drizzle-orm";
 import { QueryBuilder } from "drizzle-orm/pg-core";
 import { getDb, schema } from "@/lib/db";
+import { vaciarFichasInactivas } from "@/server/bot/ficha";
 import { RETENCION_POR_DEFECTO } from "@/server/privacy/repositorio";
 import { deleteMediaFile } from "@/server/whatsapp/media";
 
@@ -260,28 +260,9 @@ async function vaciarLoDemas(
 
     // Un contacto inactivo: sin cambios desde el corte y sin conversación con
     // mensajes desde el corte. El nombre, el teléfono y la identidad se quedan.
-    const contactos = await tx
-      .update(schema.contact)
-      .set({ notes: null, ficha: null })
-      .where(
-        and(
-          eq(schema.contact.organizationId, organizationId),
-          or(isNotNull(schema.contact.notes), isNotNull(schema.contact.ficha)),
-          lt(schema.contact.updatedAt, corte),
-          notExists(
-            qb
-              .select({ uno: sql`1` })
-              .from(schema.conversation)
-              .where(
-                and(
-                  eq(schema.conversation.contactId, schema.contact.id),
-                  gte(schema.conversation.lastMessageAt, corte),
-                ),
-              ),
-          ),
-        ),
-      )
-      .returning({ id: schema.contact.id });
+    // Un contacto inactivo pierde notas y ficha; la ficha solo la escribe su
+    // puerta (`bot/ficha.ts`, guardarraíl `ficha-guard.test.ts`).
+    const contactos = await vaciarFichasInactivas(tx, organizationId, corte);
 
     const laboratorio = await tx
       .update(schema.agentTestCase)
