@@ -27,7 +27,7 @@ export type ModoSinContexto = "avisar" | "lanzar";
 /** 075 — «lanzar» siempre (respuesta 1 de Andres); «avisar» solo existió de T3 a T7. */
 export const MODO_SIN_CONTEXTO: ModoSinContexto = "lanzar";
 
-export const FIJAR_NEGOCIO = "select set_config('app.organization_id', $1, true)";
+export const FIJAR_NEGOCIO = "select set_config('app.organization_id', $1, false)";
 
 type Opciones = { modo?: ModoSinContexto; avisar?: (detalle: string) => void };
 
