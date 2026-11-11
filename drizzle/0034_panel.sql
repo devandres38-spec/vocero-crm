@@ -126,7 +126,7 @@ RETURNS TABLE (
   agente_encendido boolean, whatsapp boolean, instagram boolean, messenger boolean, tiktok boolean,
   usuarios bigint, conversaciones bigint, conversaciones_7d bigint, entrantes_24h bigint,
   ultimo_entrante_en timestamp, despachos_pendientes bigint, a_humano_24h bigint,
-  webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer
+  webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer, contacto text
 )
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
@@ -155,7 +155,8 @@ BEGIN
       AND d.updated_at > ahora - interval '24 hours'),
     (SELECT count(*) FROM webhook_event w WHERE w.organization_id = o.id AND w.status IN ('pendiente', 'en_proceso')),
     (SELECT count(*) FROM webhook_event w WHERE w.organization_id = o.id AND w.status = 'agotado'),
-    (SELECT p.retencion_dias FROM privacy_profile p WHERE p.organization_id = o.id LIMIT 1)
+    (SELECT p.retencion_dias FROM privacy_profile p WHERE p.organization_id = o.id LIMIT 1),
+    (SELECT k.name FROM contact k WHERE k.organization_id = o.id LIMIT 1)
   FROM organization o
   ORDER BY o.created_at, o.id;
 END
