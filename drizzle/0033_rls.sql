@@ -95,9 +95,7 @@ ALTER TABLE "message" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
 DROP POLICY IF EXISTS "message_por_negocio" ON "message";
 --> statement-breakpoint
-CREATE POLICY "message_por_negocio" ON "message"
-  USING ("organization_id" = NULLIF(current_setting('app.organization_id', true), ''))
-  WITH CHECK ("organization_id" = NULLIF(current_setting('app.organization_id', true), ''));
+SELECT 1;
 --> statement-breakpoint
 ALTER TABLE "media_asset" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
