@@ -21,6 +21,11 @@ async function AppLayout({
   const authSession = await getAuth().api.getSession({
     headers: await headers(),
   });
+  // 076 (respuesta 3 de Andres) — La contraseña la puso otra persona (el
+  // alta, el dueño o un restablecimiento): primero, la suya.
+  if ((authSession?.user as { debeCambiarContrasena?: boolean } | undefined)?.debeCambiarContrasena === true) {
+    redirect("/cuenta");
+  }
   // 062 — Para el botón de sol y luna: salta a la pareja del tema actual.
   const { apariencia } = await aparienciaActual(session.organizationId);
   // El agente encendido y sin con qué pensar se ve desde fuera igual que un

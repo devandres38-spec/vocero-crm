@@ -79,7 +79,9 @@ function createAuth() {
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
-      minPasswordLength: 8,
+      // 076 (respuesta 3 de Andres) — 12 para toda contraseña nueva. Iniciar
+      // sesión no lo exige: las contraseñas de antes siguen sirviendo.
+      minPasswordLength: 12,
     },
     // 074 — Nadie crea negocios por el plugin: solo `crearNegocio` (Andres).
     // Sus rutas, además, quedan en 404 en el gancho de abajo.

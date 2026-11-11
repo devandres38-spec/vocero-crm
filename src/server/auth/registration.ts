@@ -42,6 +42,11 @@ export function bloqueoDeRuta(
     if (path === "/two-factor/enable" && interno) return null;
     return { status: "NOT_FOUND", message: "No encontrado" };
   }
+  // 076 — Cambiar la contraseña solo por «Mi cuenta» (`/api/cuenta/contrasena`),
+  // que además limpia «debe cambiarla».
+  if (path === "/change-password" && !interno) {
+    return { status: "NOT_FOUND", message: "No encontrado" };
+  }
   if (path.startsWith("/sign-up") && !interno) {
     return { status: "FORBIDDEN", message: MENSAJE_REGISTRO_CERRADO };
   }

@@ -44,6 +44,9 @@ try {
     console.error("[e2e-operador] no se pudo fijar la contraseña del operador");
     process.exit(1);
   }
+  // 076 — El arnés acaba de poner su propia contraseña: no debe cambiarla al
+  // entrar (si no, las páginas lo mandarían a /cuenta).
+  await sql`update "user" set debe_cambiar_contrasena = false where email = ${CORREO}`;
   console.log("[e2e-operador] listo: los arneses entran con su contraseña fija");
 } finally {
   await sql.end();

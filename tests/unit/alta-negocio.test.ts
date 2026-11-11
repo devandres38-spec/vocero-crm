@@ -46,6 +46,8 @@ describe("074 — crearNegocio", () => {
     const valores = (t: unknown) => inserciones.find((o) => o.tabla === t)!.valores as Record<string, unknown>;
     expect(valores(schema.organization)).toMatchObject({ id: n.organizationId, name: "Clínica Sonrisa", slug: "clinica-sonrisa" });
     expect(valores(schema.user)).toMatchObject({ id: n.userId, email: "duena@sonrisa.co", name: "Ana" });
+    // 076 — La contraseña la generó el alta: el dueño pone la suya al entrar.
+    expect(valores(schema.user)).toMatchObject({ debeCambiarContrasena: true });
     expect(valores(schema.account)).toMatchObject({
       accountId: n.userId,
       userId: n.userId,
