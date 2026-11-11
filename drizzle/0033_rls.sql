@@ -350,7 +350,7 @@ $$;
 --> statement-breakpoint
 CREATE OR REPLACE FUNCTION vocero_organizacion_existe(p_id text)
 RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp
+LANGUAGE sql STABLE SECURITY DEFINER
 AS $$
   SELECT EXISTS (SELECT 1 FROM organization WHERE id = p_id)
 $$;
