@@ -102,8 +102,17 @@ async function catalogo() {
   ok("cada una con RLS (sin FORCE) y una política ALL con USING y WITH CHECK exactos", mal.length === 0, mal.join(" | "));
   const sinRls = tablas.filter((t) => !conRls.includes(t)).map((t) => t.tabla).sort();
   ok(
-    "sin RLS solo las de Better Auth",
-    JSON.stringify(sinRls) === JSON.stringify(["account", "session", "user", "verification"]),
+    "sin RLS solo las de Better Auth y las del panel (076)",
+    JSON.stringify(sinRls) ===
+      JSON.stringify([
+        "account",
+        "registro_panel",
+        "session",
+        "superadministrador",
+        "two_factor",
+        "user",
+        "verification",
+      ]),
     sinRls.join(", ")
   );
 
@@ -123,7 +132,7 @@ async function catalogo() {
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.prosecdef`;
   const RESULTADOS = {
-    vocero_membresia: "TABLE(organization_id text, role text)",
+    vocero_membresia: "TABLE(organization_id text, role text, pausado boolean)",
     vocero_organizacion_existe: "boolean",
     vocero_hasta_dos_organizaciones: "text[]",
     vocero_organizaciones: "SETOF text",
@@ -135,8 +144,35 @@ async function catalogo() {
     vocero_negocios_con_olvidos: "SETOF text",
     vocero_negocios_con_avisos: "SETOF text",
     vocero_slugs_ocupados: "text[]",
+    // 076 — El panel de Andres: solo agregados (y el personal del negocio).
+    vocero_superadmin_marcar_totp: "timestamp without time zone",
+    vocero_member_sin_superadmin: "trigger",
+    vocero_panel_quien: "text",
+    vocero_panel_negocios: tabla(
+      "id text, nombre text, slug text, creado_en timestamp, pausado_en timestamp, " +
+        "agente_encendido boolean, whatsapp boolean, instagram boolean, messenger boolean, " +
+        "tiktok boolean, usuarios bigint, conversaciones bigint, conversaciones_7d bigint, " +
+        "entrantes_24h bigint, ultimo_entrante_en timestamp, despachos_pendientes bigint, " +
+        "a_humano_24h bigint, webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer"
+    ),
+    vocero_panel_salud: tabla(
+      "negocios bigint, pausados bigint, webhooks_pendientes bigint, webhooks_agotados bigint, " +
+        "despachos_pendientes bigint, despachos_en_vuelo bigint, despachos_vencidos bigint, " +
+        "olvidos_pendientes bigint, avisos_pendientes bigint, ultimo_entrante_en timestamp"
+    ),
+    vocero_panel_usuarios: tabla(
+      "user_id text, nombre text, correo text, rol text, creado_en timestamp, " +
+        "ultima_sesion_en timestamp, debe_cambiar_contrasena boolean"
+    ),
+    vocero_panel_pausar: "timestamp without time zone",
+    vocero_panel_restablecer: "void",
+    vocero_panel_quitar_usuario: "void",
+    vocero_panel_anotar: "void",
+    vocero_panel_registro: tabla(
+      "cuando timestamp, accion text, negocio_id text, nombre text, detalle jsonb"
+    ),
   };
-  ok("las 12 funciones SECURITY DEFINER esperadas", funciones.length === 12, funciones.map((f) => f.nombre).join(", "));
+  ok("las 23 funciones SECURITY DEFINER esperadas", funciones.length === 23, funciones.map((f) => f.nombre).join(", "));
   const raras = funciones.filter(
     (f) =>
       !(f.config ?? []).includes("search_path=public, pg_temp") ||
@@ -149,6 +185,11 @@ async function catalogo() {
     raras.map((f) => `${f.nombre}: ${f.resultado} ${f.config} publica=${f.publica}`).join(" | ")
   );
   return conRls.map((t) => t.tabla);
+}
+
+/** Como lo escribe `pg_get_function_result` (076). */
+function tabla(columnas) {
+  return `TABLE(${columnas.replace(/timestamp/g, "timestamp without time zone")})`;
 }
 
 /** Valores para una columna obligatoria, según su tipo. */
