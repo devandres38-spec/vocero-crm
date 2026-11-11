@@ -18,6 +18,8 @@ vi.mock("@/lib/db", async (importOriginal) => {
   return { ...original, getDb: () => h.base.db };
 });
 vi.mock("@/server/whatsapp/media", () => ({ deleteMediaFile: h.borrarArchivo }));
+// 075 — Los negocios salen de la función de solo ids; sus días, de su perfil (dentro de cada uno).
+vi.mock("@/server/db-sistema", () => ({ todasLasOrganizaciones: async () => ["org_a", "org_b"] }));
 
 import { schema } from "@/lib/db";
 import {
@@ -209,10 +211,8 @@ describe("072 — lo demás del negocio", () => {
 
 describe("072 — la pasada diaria", () => {
   it("cada negocio con sus días; sin perfil, 90", async () => {
-    h.base.responder(schema.organization, [
-      { organizationId: "org_a", dias: 7 },
-      { organizationId: "org_b", dias: null },
-    ]);
+    h.base.responder(schema.privacyProfile, [{ dias: 7 }]);
+    h.base.responder(schema.privacyProfile, []);
     const r = await aplicarRetencion(AHORA);
     expect(r?.map((x) => [x.organizationId, x.dias])).toEqual([
       ["org_a", 7],
@@ -229,10 +229,8 @@ describe("072 — la pasada diaria", () => {
   });
 
   it("un negocio que falla no frena a los demás", async () => {
-    h.base.responder(schema.organization, [
-      { organizationId: "org_a", dias: 7 },
-      { organizationId: "org_b", dias: 7 },
-    ]);
+    h.base.responder(schema.privacyProfile, [{ dias: 7 }]);
+    h.base.responder(schema.privacyProfile, [{ dias: 7 }]);
     let primera = true;
     h.base = Object.assign(h.base, {
       db: {

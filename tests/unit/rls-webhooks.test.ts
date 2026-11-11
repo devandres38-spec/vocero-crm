@@ -17,7 +17,7 @@ vi.mock("@/server/db-sistema", () => ({
   negocioPorCanal: async () => "org_z",
 }));
 
-import { negocioActual } from "@/lib/db/contexto";
+import { conNegocio, negocioActual } from "@/lib/db/contexto";
 
 beforeEach(() => {
   h.vistos = [];
@@ -43,7 +43,8 @@ describe("075 — el barrido procesa cada evento en SU negocio", () => {
       { id: "whe_1", organizationId: "org_a" },
       { id: "whe_2", organizationId: "org_b" },
     ];
-    await barrido(new Date(0));
+    // Disparado desde dentro de otro negocio (un temporizador heredado).
+    await conNegocio("org_x", () => barrido(new Date(0)));
     expect(h.vistos).toEqual([
       { que: "whe_1", negocio: "org_a" },
       { que: "whe_2", negocio: "org_b" },

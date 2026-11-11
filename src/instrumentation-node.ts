@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { getDb, getSql, schema } from "@/lib/db";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import { ARREGLO_RLS, decisionDeArranque, motivosParaNoArrancar } from "@/lib/db/rls-arranque";
+import { todasLasOrganizaciones } from "@/server/db-sistema";
 import { mediaDirStatus } from "@/server/media-dir";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { iniciarWorker, tanda } from "@/server/dispatch/worker";
@@ -67,16 +69,26 @@ export async function checkMediaDir(): Promise<void> {
  */
 export async function cleanupOrphanRuns(): Promise<void> {
   try {
-    const db = getDb();
-    const updated = await db
-      .update(schema.agentTestRun)
-      .set({
-        status: "failed",
-        error: "Interrumpida por un reinicio del servidor",
-        finishedAt: new Date(),
-      })
-      .where(eq(schema.agentTestRun.status, "running"))
-      .returning({ id: schema.agentTestRun.id });
+    // 075 — Negocio por negocio (RLS): los ids salen de la función de solo ids.
+    const updated = await trabajoDeFondo("arranque", async () => {
+      const todas: { id: string }[] = [];
+      for (const org of await todasLasOrganizaciones()) {
+        todas.push(
+          ...(await conNegocio(org, () =>
+            getDb()
+              .update(schema.agentTestRun)
+              .set({
+                status: "failed",
+                error: "Interrumpida por un reinicio del servidor",
+                finishedAt: new Date(),
+              })
+              .where(eq(schema.agentTestRun.status, "running"))
+              .returning({ id: schema.agentTestRun.id })
+          ))
+        );
+      }
+      return todas;
+    });
     if (updated.length > 0) {
       console.log(
         `[boot] ${updated.length} corrida(s) del Laboratorio huérfana(s) marcada(s) como fallida(s)`
@@ -97,7 +109,14 @@ export async function cleanupOrphanRuns(): Promise<void> {
  */
 export async function encryptLegacySecrets(): Promise<void> {
   try {
-    const cifrados = await cifrarSecretosEnClaro();
+    // 075 — Negocio por negocio (RLS).
+    const cifrados = await trabajoDeFondo("arranque", async () => {
+      let n = 0;
+      for (const org of await todasLasOrganizaciones()) {
+        n += await conNegocio(org, () => cifrarSecretosEnClaro());
+      }
+      return n;
+    });
     if (cifrados > 0) {
       console.log(`[boot] ${cifrados} secreto(s) de firma de Zernio cifrado(s) en reposo`);
     }
