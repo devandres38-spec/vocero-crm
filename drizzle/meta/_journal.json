@@ -225,6 +225,13 @@
       "when": 1794365174954,
       "tag": "0031_retencion",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1794398435584,
+      "tag": "0032_autenticacion_por_negocio",
+      "breakpoints": true
     }
   ]
 }
