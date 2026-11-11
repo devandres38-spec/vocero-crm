@@ -1,5 +1,6 @@
 import { getEnv } from "@/lib/env";
-import { isValidSignature, isValidWebhookToken } from "@/server/inbox/webhook";
+import { isValidWebhookToken } from "@/server/inbox/webhook";
+import { verificarFirmaMeta } from "@/server/webhooks/firma";
 import {
   channelDisabledResponse,
   isChannelEnabled,
@@ -65,16 +66,17 @@ export async function POST(req: Request, { params }: Params) {
     // Meta firma cada entrega con el App Secret. Sin esta capa, quien conozca
     // la URL secreta puede inyectar mensajes falsos: el agente los contestaría
     // enviando un mensaje REAL desde la página al destinatario que el atacante
-    // elija.
-    if (
-      !isValidSignature(
-        rawBody,
-        req.headers.get("x-hub-signature-256"),
-        env.META_APP_SECRET
-      )
-    ) {
-      return new Response(null, { status: 401 });
-    }
+    // elija. 073: con el secreto de Messenger del negocio al que va.
+    const firma = await verificarFirmaMeta(
+      "messenger",
+      payload,
+      rawBody,
+      req.headers.get("x-hub-signature-256")
+    );
+    if (!firma.ok) return new Response(null, { status: 401 });
+    return recibirEvento("meta_messenger", payload, rawBody, "messenger", {
+      organizationId: firma.organizationId,
+    });
   } else {
     // Zernio: la firma se valida contra los secretos de la organización dueña
     // de ESTA cuenta, que hay que resolver leyendo el cuerpo primero (023).
@@ -88,5 +90,5 @@ export async function POST(req: Request, { params }: Params) {
   // el barrido). Un evento de Zernio se reparte por plataforma: la misma URL
   // sirve para Instagram y para Messenger, porque Zernio entrega todo por un
   // webhook.
-  return recibirEvento(isMeta ? "meta_messenger" : "zernio", payload, rawBody, "messenger");
+  return recibirEvento("zernio", payload, rawBody, "messenger");
 }

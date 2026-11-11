@@ -18,6 +18,7 @@ import {
   WEBHOOKS_RECHECK_MS,
   webhookSecretsFromZernio,
 } from "@/server/zernio/webhooks";
+import { firmaObligatoria } from "@/server/webhooks/obligatoria";
 
 /**
  * 017 — Reparto de un evento de Zernio al canal que le toca.
@@ -83,7 +84,16 @@ export async function isAuthenticZernioDelivery(
     return true;
   }
   const fresh = await webhookSecretsFromZernio(token, segment, WEBHOOKS_RECHECK_MS);
-  if (stored.length === 0 && fresh.length === 0) return true;
+  // 073: sin ningún secreto, solo fuera de producción (D14, la misma regla que Meta).
+  if (stored.length === 0 && fresh.length === 0) {
+    if (firmaObligatoria()) {
+      console.warn(
+        `[zernio] ${found.connection.organizationId} no tiene secreto de webhook: entrega rechazada`
+      );
+      return false;
+    }
+    return true;
+  }
   return fresh.length > 0 && isValidZernioSignatureAny(rawBody, signature, fresh);
 }
 
