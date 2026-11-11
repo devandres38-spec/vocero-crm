@@ -421,27 +421,46 @@ async function persistOutbound(input: {
   cita?: CitaEncontrada | null;
   /** 070: los botones enviados con el texto. */
   buttons?: BotonSaliente[] | null;
+  /**
+   * 071 — El mensaje ya reservado con su `clientMessageId` antes de llamar a
+   * Meta: se actualiza esa fila en vez de insertar otra.
+   */
+  reservado?: string | null;
 }): Promise<string> {
   const db = getDb();
-  const inserted = await db
-    .insert(schema.message)
-    .values({
-      id: newId("message"),
-      organizationId: input.organizationId,
-      conversationId: input.conversationId,
-      waMessageId: input.waMessageId,
-      direction: "out",
-      type: input.type,
-      text: input.text,
-      status: input.status,
-      error: input.error ?? null,
-      aiGenerated: input.aiGenerated ?? false,
-      origin: input.origin,
-      mediaAssetId: input.mediaAssetId ?? null,
-      replyToWaMessageId: input.cita?.message.waMessageId ?? null,
-      buttons: input.buttons?.length ? input.buttons : null,
-    })
-    .returning();
+  const valores = {
+    waMessageId: input.waMessageId,
+    type: input.type,
+    text: input.text,
+    status: input.status,
+    error: input.error ?? null,
+    aiGenerated: input.aiGenerated ?? false,
+    origin: input.origin,
+    mediaAssetId: input.mediaAssetId ?? null,
+    replyToWaMessageId: input.cita?.message.waMessageId ?? null,
+    buttons: input.buttons?.length ? input.buttons : null,
+  };
+  const inserted = input.reservado
+    ? await db
+        .update(schema.message)
+        .set(valores)
+        .where(
+          and(
+            eq(schema.message.organizationId, input.organizationId),
+            eq(schema.message.id, input.reservado)
+          )
+        )
+        .returning()
+    : await db
+        .insert(schema.message)
+        .values({
+          id: newId("message"),
+          organizationId: input.organizationId,
+          conversationId: input.conversationId,
+          direction: "out",
+          ...valores,
+        })
+        .returning();
   const message = inserted[0]!;
 
   await db
@@ -473,6 +492,8 @@ export async function sendText(input: {
   replyToMessageId?: string;
   /** 070: botones de respuesta rápida (solo WhatsApp, de 1 a 3). */
   buttons?: BotonSaliente[];
+  /** 071: el id del mensaje reservado con su `clientMessageId` (envío idempotente). */
+  reservado?: string;
 }): Promise<SendResult> {
   const target = await prepareSend(
     input.conversationId,
@@ -553,6 +574,7 @@ export async function sendText(input: {
     origin: input.aiGenerated ? "ai" : "operator",
     cita,
     buttons,
+    reservado: input.reservado ?? null,
   });
 
   return { messageId };

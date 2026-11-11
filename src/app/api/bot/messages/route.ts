@@ -5,6 +5,7 @@ import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
 import { SendError, sendText } from "@/server/inbox/send";
 import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
 import { bodySchema } from "@/server/bot/mensaje-del-bot";
+import { marcarReservaFallida, reservarEnvio } from "@/server/bot/envio-idempotente";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +70,32 @@ export async function POST(req: Request) {
       conversationId: body.data.conversationId,
       text: body.data.text,
       ...(body.data.buttons ? { buttons: body.data.buttons } : {}),
+      ...(body.data.clientMessageId ? { clientMessageId: body.data.clientMessageId } : {}),
     });
-    return Response.json({ messageId: guardada.messageId, status: "sent" });
+    return Response.json({
+      messageId: guardada.messageId,
+      status: "sent",
+      ...(guardada.repetido ? { repetido: true } : {}),
+    });
+  }
+
+  // 071 (D6) — Con `clientMessageId`, la llave se reserva ANTES de Meta.
+  let reservado: string | undefined;
+  if (body.data.clientMessageId) {
+    const reserva = await reservarEnvio({
+      organizationId,
+      conversationId: body.data.conversationId,
+      clave: body.data.clientMessageId,
+      text: body.data.text,
+      buttons: body.data.buttons ?? null,
+    });
+    if (reserva.tipo === "repetido") {
+      return Response.json({ messageId: reserva.messageId, repetido: true });
+    }
+    if (reserva.tipo === "en_curso") {
+      return apiError(409, "mensaje_en_curso", "Ese mensaje se está enviando; reintenta después");
+    }
+    reservado = reserva.messageId;
   }
 
   try {
@@ -80,9 +105,18 @@ export async function POST(req: Request) {
       text: body.data.text,
       aiGenerated: true,
       ...(body.data.buttons ? { buttons: body.data.buttons } : {}),
+      ...(reservado ? { reservado } : {}),
     });
     return Response.json({ messageId: result.messageId });
   } catch (err) {
+    // La reserva queda fallida: el reintento del cerebro con la misma llave vuelve a intentar.
+    if (reservado) {
+      await marcarReservaFallida(
+        organizationId,
+        reservado,
+        err instanceof Error ? err.message.slice(0, 500) : "error desconocido"
+      ).catch(() => {});
+    }
     if (err instanceof SendError) {
       if (err.code === "window_closed") {
         return apiError(409, "window_closed", err.message);
