@@ -66,7 +66,7 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
   function negocioOFallar(query: string): { fijar: string; valor: string } | null {
     const ctx = contextoActual();
     if (ctx?.tipo === "negocio") return { fijar: FIJAR_NEGOCIO, valor: ctx.organizationId };
-    if (ctx?.tipo === "panel") return { fijar: FIJAR_PANEL, valor: ctx.superadminId };
+    if (ctx?.tipo === "panel") return null;
     if (ctx?.tipo === "sistema") return null;
     if (modo === "lanzar") throw new ConsultaSinNegocio(resumen(query));
     avisar(resumen(query));
