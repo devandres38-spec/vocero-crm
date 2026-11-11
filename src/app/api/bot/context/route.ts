@@ -9,6 +9,7 @@ import { windowMsFor } from "@/server/channels/capabilities";
 import { citasParaContexto } from "@/server/agenda/context";
 import { anuncioDelContacto } from "@/server/attribution/store";
 import { siguientesDelLead } from "@/server/bot/stage";
+import { consentimientoDelContacto } from "@/server/consent";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +103,7 @@ export async function GET(req: Request) {
     return apiError(404, "not_found", "Conversación no encontrada");
   }
 
-  const [leadRows, booking, anuncio] = await Promise.all([
+  const [leadRows, booking, anuncio, consent] = await Promise.all([
     db
       .select({ lead: schema.lead, stage: schema.pipelineStage })
       .from(schema.lead)
@@ -119,6 +120,7 @@ export async function GET(req: Request) {
       .limit(1),
     citasParaContexto(organizationId, contact.id),
     anuncioDelContacto(organizationId, contact.id),
+    consentimientoDelContacto(organizationId, contact.id),
   ]);
   const nextStages = leadRows[0]
     ? await siguientesDelLead(organizationId, leadRows[0].lead.stageId)
@@ -173,5 +175,10 @@ export async function GET(req: Request) {
      * y uno que no lo lee no cambia. Aditivo.
      */
     ...(booking ? { booking } : {}),
+    /**
+     * 070 (067 §6) — El último consentimiento de cada tipo del contacto, o
+     * `null`. El cerebro decide con esto si pide el aviso.
+     */
+    consent,
   });
 }

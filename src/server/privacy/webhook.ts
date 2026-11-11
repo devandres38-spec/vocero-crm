@@ -1,3 +1,4 @@
+import { filtrarTarjetas, filtrarUbicacion } from "./adjuntos";
 import { filtrarTexto, unirMarcas } from "./filtrar";
 import type { PrivacyPolicy } from "./privacy-filter";
 
@@ -62,7 +63,7 @@ export function filtrarPayload(payload: unknown, politica: PrivacyPolicy | null)
       for (const change of lista(entry.changes)) {
         if (!esObj(change) || change.field !== "messages" || !esObj(change.value)) continue;
         for (const msg of lista(change.value.messages)) {
-          if (esObj(msg)) filtrarMensajeWhatsapp(msg, filtrarCampo);
+          if (esObj(msg)) filtrarMensajeWhatsapp(msg, filtrarCampo, politica);
         }
       }
       // Meta (Instagram y Messenger): `entry[].messaging[]`; los ecos no.
@@ -91,7 +92,8 @@ export function filtrarPayload(payload: unknown, politica: PrivacyPolicy | null)
 
 function filtrarMensajeWhatsapp(
   msg: Obj,
-  filtrarCampo: (o: Obj, campo: string, botonId?: string | null) => string[]
+  filtrarCampo: (o: Obj, campo: string, botonId?: string | null) => string[],
+  politica: PrivacyPolicy | null
 ): void {
   const marcas: string[][] = [];
   if (esObj(msg.text)) marcas.push(filtrarCampo(msg.text, "body"));
@@ -112,6 +114,19 @@ function filtrarMensajeWhatsapp(
   for (const medio of MEDIOS) {
     const adjunto = msg[medio];
     if (esObj(adjunto)) marcas.push(filtrarCampo(adjunto, "caption"));
+  }
+  // 070 (D4): el nombre del archivo lo escribió el paciente.
+  if (esObj(msg.document)) marcas.push(filtrarCampo(msg.document, "filename"));
+  // 070 (D4): ubicación y tarjetas de contacto, por lista blanca.
+  if (esObj(msg.location)) {
+    const r = filtrarUbicacion(msg.location, politica);
+    msg.location = r.payload;
+    marcas.push(r.marcas);
+  }
+  if (Array.isArray(msg.contacts)) {
+    const r = filtrarTarjetas(msg.contacts, politica);
+    msg.contacts = r.payload;
+    marcas.push(r.marcas);
   }
   msg[CLAVE_MARCAS] = unirMarcas(...marcas);
 }

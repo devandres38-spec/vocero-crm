@@ -1,23 +1,12 @@
-import {
-  MAX_TEXT_CHARS_ANY_CHANNEL,
-  TEXT_TOO_LONG_ANY_CHANNEL,
-} from "@/server/channels/capabilities";
 import { and, eq } from "drizzle-orm";
-import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
 import { SendError, sendText } from "@/server/inbox/send";
 import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
+import { bodySchema } from "@/server/bot/mensaje-del-bot";
 
 export const dynamic = "force-dynamic";
-
-const bodySchema = z.object({
-  conversationId: z.string().min(1),
-  // 022: el tope de aquí es el del canal que más admite; el de cada canal
-  // lo comprueba el envío y sale como el mismo 422 `invalid_body` de siempre.
-  text: z.string().min(1).max(MAX_TEXT_CHARS_ANY_CHANNEL, TEXT_TOO_LONG_ANY_CHANNEL),
-});
 
 /**
  * Envío del cerebro externo A TRAVÉS del CRM: el token de WhatsApp nunca sale
@@ -54,6 +43,7 @@ export async function POST(req: Request) {
       aiEnabled: schema.conversation.aiEnabled,
       handoffAt: schema.conversation.handoffAt,
       isTest: schema.conversation.isTest,
+      channel: schema.conversation.channel,
     })
     .from(schema.conversation)
     .where(
@@ -68,11 +58,17 @@ export async function POST(req: Request) {
   if (!conv.aiEnabled || conv.handoffAt) {
     return apiError(409, "ai_paused", "La IA está en pausa en esta conversación");
   }
+  // 070 — Los botones son de WhatsApp: en otro canal no se envía nada (el
+  // cerebro manda el texto sin ellos). También en el Laboratorio.
+  if (body.data.buttons && conv.channel !== "whatsapp") {
+    return apiError(409, "canal_sin_botones", "Este canal no admite botones");
+  }
   if (conv.isTest) {
     const guardada = await guardarRespuestaDePrueba({
       organizationId,
       conversationId: body.data.conversationId,
       text: body.data.text,
+      ...(body.data.buttons ? { buttons: body.data.buttons } : {}),
     });
     return Response.json({ messageId: guardada.messageId, status: "sent" });
   }
@@ -83,6 +79,7 @@ export async function POST(req: Request) {
       organizationId,
       text: body.data.text,
       aiGenerated: true,
+      ...(body.data.buttons ? { buttons: body.data.buttons } : {}),
     });
     return Response.json({ messageId: result.messageId });
   } catch (err) {
@@ -93,6 +90,8 @@ export async function POST(req: Request) {
       if (err.code === "sandbox_violation") {
         return apiError(409, "sandbox_violation", err.message);
       }
+      // 070: la ruta ya lo contestó antes; esto es por si el canal cambia en medio.
+      if (err.code === "canal_sin_botones") return apiError(409, err.code, err.message);
       if (err.code === "message_limit") {
         return apiError(409, "message_limit", err.message);
       }

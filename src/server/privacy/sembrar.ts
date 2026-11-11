@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { perfilPrivacidadSchema } from "./perfil";
-import { guardarPerfil } from "./repositorio";
+import { adjuntosPorDefecto, guardarPerfil } from "./repositorio";
 
 /**
  * 068 — Registrar el perfil de privacidad de un negocio (D2, D4, D5). Lo usa
@@ -20,12 +20,20 @@ export type ResultadoSembrar =
       conSalud: boolean;
       huella: string;
       huellaAnterior: string | null;
+      /** 070 (D1): si se guardan los archivos de los pacientes. */
+      adjuntos: boolean;
     }
   | { ok: false; error: string };
 
 export async function sembrarPerfil(
   db: Db,
-  entrada: { organizationId: string; contenido: string; sinFiltroSalud: boolean }
+  entrada: {
+    organizationId: string;
+    contenido: string;
+    sinFiltroSalud: boolean;
+    /** 070 (D1): fuerza los adjuntos; sin él, el valor por defecto del perfil. */
+    adjuntos?: boolean;
+  }
 ): Promise<ResultadoSembrar> {
   let crudo: unknown;
   try {
@@ -69,7 +77,10 @@ export async function sembrarPerfil(
     };
   }
 
-  const { huellaAnterior } = await guardarPerfil(db, entrada.organizationId, perfil);
+  const adjuntos = entrada.adjuntos ?? adjuntosPorDefecto(perfil);
+  const { huellaAnterior } = await guardarPerfil(db, entrada.organizationId, perfil, {
+    adjuntos,
+  });
   return {
     ok: true,
     perfil: perfil.perfil,
@@ -78,5 +89,6 @@ export async function sembrarPerfil(
     conSalud: perfil.sensible !== null,
     huella: perfil.huella,
     huellaAnterior,
+    adjuntos,
   };
 }

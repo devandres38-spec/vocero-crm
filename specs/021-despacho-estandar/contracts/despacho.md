@@ -221,12 +221,13 @@ No lleva `x-vocero-dispatch-id`: no es un despacho.
 - **Qué hacer:** borrar lo que guardes de esa conversación (historial,
   resúmenes, lo que hayas aprendido de la persona en ella) y contestar 2xx.
   Si el contacto se eliminó también, llega igual: un evento por conversación.
-- **Se intenta una vez**, con 8 segundos de espera, y no se reintenta. El
-  borrado en el CRM no depende de tu respuesta. Si no contestas 2xx, quien
-  eliminó ve que no confirmaste; la regla del `conversation.id` nuevo (arriba)
-  es la que evita que uses memoria de algo que ya no existe.
-- **`eventId`** identifica el aviso, por si tu infraestructura lo entrega dos
-  veces.
+- **Se reintenta hasta que confirmes** (070, revoca «se intenta una vez»):
+  el primer intento sale en el momento, con 8 segundos de espera. Si no
+  contestas 2xx, el CRM lo reintenta a 1 min, 5 min, 30 min y después cada
+  hora, hasta 7 días (`olvido_pendiente`). El borrado en el CRM no depende de
+  tu respuesta, y quien eliminó ve que no confirmaste.
+- **`eventId`** identifica el aviso y es **el mismo en cada reintento**:
+  deduplica por él, y que olvidar dos veces no haga nada.
 - Contestar 4xx a un evento que no conoces es inofensivo: no pausa la
   conversación ni cuenta como fallo del despacho.
 - Es el mismo evento que manda Vocero Cloud. El orden de las claves es

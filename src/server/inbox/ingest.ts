@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { filtrarTexto, unirMarcas } from "@/server/privacy/filtrar";
-import { perfilDePrivacidad } from "@/server/privacy/repositorio";
+import { filtrarAdjuntoEstructurado } from "@/server/privacy/adjuntos";
+import { perfilDePrivacidad, perfilVigente } from "@/server/privacy/repositorio";
 import { marcasDe } from "@/server/privacy/webhook";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
@@ -100,7 +101,9 @@ type MediaInput = {
   fileName: string | null;
   caption: string | null;
   payload: unknown;
-  fetchStatus: "available" | "pending";
+  fetchStatus: "available" | "pending" | "failed";
+  /** 070 (D2): por qué no se descargó (`adjuntos_apagados`). */
+  fetchError?: string | null;
 };
 
 /**
@@ -175,6 +178,7 @@ async function attachMediaAsset(
         caption: media.caption,
         payload: media.payload ?? null,
         fetchStatus: media.fetchStatus,
+        fetchError: media.fetchError ?? null,
       })
       .returning();
     const asset = inserted[0];
@@ -483,7 +487,9 @@ export async function ingestInboundMessage(input: {
 }): Promise<void> {
   const db = getDb();
   const { organizationId } = input;
-  const { text, media, marcas } = await textoFiltrado(input);
+  const filtrado = await textoFiltrado(input);
+  const { text, marcas } = filtrado;
+  const media = await segunAdjuntos(organizationId, filtrado.media);
 
   const { contact } = await getOrCreateContactByIdentity(
     organizationId,
@@ -533,6 +539,8 @@ export async function ingestInboundMessage(input: {
       type: input.type,
       text,
       privacyFlags: marcas.length > 0 ? marcas : null,
+      // 070 — el id del botón tocado: el cerebro lee el consentimiento de aquí.
+      buttonId: input.botonId ?? null,
       status: "delivered",
       replyToWaMessageId: input.replyToWaMessageId ?? null,
       waTimestamp,
@@ -596,11 +604,48 @@ async function textoFiltrado(input: {
 
   const politica = await perfilDePrivacidad(input.organizationId);
   const texto = input.text === null ? null : filtrarTexto(input.text, politica, input.botonId);
-  const pie = media?.caption ? filtrarTexto(media.caption, politica) : null;
+  if (!media) {
+    return { text: texto?.text ?? null, media, marcas: texto?.marcas ?? [] };
+  }
+  // 070 (D4): el pie, el nombre del archivo y la ubicación o las tarjetas.
+  const pie = media.caption ? filtrarTexto(media.caption, politica) : null;
+  const nombre = media.fileName ? filtrarTexto(media.fileName, politica) : null;
+  const estructurado = filtrarAdjuntoEstructurado(media.kind, media.payload, politica);
   return {
     text: texto?.text ?? null,
-    media: media && pie ? { ...media, caption: pie.text } : media,
-    marcas: unirMarcas(texto?.marcas ?? [], pie?.marcas ?? []),
+    media: {
+      ...media,
+      caption: pie ? pie.text : media.caption,
+      fileName: nombre ? nombre.text : media.fileName,
+      payload: estructurado.payload,
+    },
+    marcas: unirMarcas(
+      texto?.marcas ?? [],
+      pie?.marcas ?? [],
+      nombre?.marcas ?? [],
+      estructurado.marcas
+    ),
+  };
+}
+
+/**
+ * 070 (D2) — Con los adjuntos apagados (o sin perfil legible), un archivo del
+ * paciente no se descarga: queda la fila sin media id ni nombre, fallida con
+ * `adjuntos_apagados`. Ubicaciones y tarjetas no son archivos: pasan igual.
+ */
+async function segunAdjuntos(
+  organizationId: string,
+  media: MediaInput | null
+): Promise<MediaInput | null> {
+  if (!media || media.fetchStatus !== "pending") return media;
+  const perfil = await perfilVigente(organizationId);
+  if (perfil?.adjuntos) return media;
+  return {
+    ...media,
+    waMediaId: null,
+    fileName: null,
+    fetchStatus: "failed",
+    fetchError: "adjuntos_apagados",
   };
 }
 
@@ -666,6 +711,8 @@ export function serializeMessage(
           payload: media.payload,
         }
       : null,
+    /** 070: los botones que salieron con el texto. Solo si hay. */
+    ...(m.buttons?.length ? { buttons: m.buttons } : {}),
     /** 039: se le puede responder citando (tiene id en la plataforma). */
     quotable: Boolean(m.waMessageId),
     replyTo: m.replyToWaMessageId ? aCitaDto(cita) : null,

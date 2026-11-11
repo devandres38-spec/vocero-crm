@@ -9,6 +9,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const h = vi.hoisted(() => ({
   politica: null as unknown,
+  /** 070 — `privacy_profile.adjuntos` del perfil simulado. */
+  adjuntos: false,
+  ensure: vi.fn(async () => {}),
   graphRequest: vi.fn(),
   uploadGraphMedia: vi.fn(),
   saveMediaFile: vi.fn(),
@@ -31,7 +34,7 @@ vi.mock("@/server/whatsapp/media", async (importOriginal) => {
     ...original,
     uploadGraphMedia: h.uploadGraphMedia,
     saveMediaFile: h.saveMediaFile,
-    ensureAssetAvailable: vi.fn(async () => {}),
+    ensureAssetAvailable: h.ensure,
   };
 });
 
@@ -65,6 +68,9 @@ vi.mock("@/server/inbox/lead-activity", () => ({
 vi.mock("@/server/brains/config", () => ({ despachoActivo: () => false }));
 vi.mock("@/server/privacy/repositorio", () => ({
   perfilDePrivacidad: vi.fn(async () => h.politica),
+  perfilVigente: vi.fn(async () =>
+    h.politica ? { politica: h.politica, huella: "h", adjuntos: h.adjuntos } : null
+  ),
 }));
 vi.mock("@/server/dispatch/encolar", () => ({
   despacharAlCerebro: vi.fn(async () => {}),
@@ -166,6 +172,8 @@ beforeEach(() => {
   h.inserts.length = 0;
   h.selectRows.length = 0;
   h.politica = null;
+  h.adjuntos = false;
+  h.ensure.mockClear();
 });
 
 describe("069 — la ingesta guarda las marcas", () => {
@@ -217,5 +225,126 @@ describe("069 — segunda red: lo que no pasó por guardarEvento se filtra aquí
     );
     expect(JSON.stringify(h.inserts.map((i) => i.values))).not.toContain("me duele la muela");
     expect(entrantes()[0]).toMatchObject({ privacyFlags: ["salud", "sintoma"] });
+  });
+});
+
+const adjuntos = () =>
+  h.inserts.filter((i) => i.table === schema.mediaAsset).map((i) => i.values);
+const IMAGEN = {
+  type: "image",
+  image: { id: "media_1", mime_type: "image/jpeg", caption: "foto" },
+};
+const PDF = {
+  type: "document",
+  document: { id: "media_2", mime_type: "application/pdf", filename: "examen.pdf" },
+};
+
+describe("070 — adjuntos por negocio (D1, D2)", () => {
+  it("apagados: el archivo no se descarga y queda fallido, sin media id ni nombre", async () => {
+    h.politica = DENTAL;
+    await processMessagesValue(guardado(PDF) as never);
+    expect(adjuntos()[0]).toMatchObject({
+      kind: "document",
+      waMediaId: null,
+      fileName: null,
+      fetchStatus: "failed",
+      fetchError: "adjuntos_apagados",
+    });
+    expect(h.ensure).not.toHaveBeenCalled();
+    // El mensaje entra igual: abre la ventana y se despacha con su tipo.
+    expect(entrantes()[0]).toMatchObject({ type: "document" });
+  });
+
+  it("sin perfil legible, apagados", async () => {
+    await processMessagesValue(valor(IMAGEN) as never);
+    expect(adjuntos()[0]).toMatchObject({ waMediaId: null, fetchStatus: "failed" });
+    expect(h.ensure).not.toHaveBeenCalled();
+  });
+
+  it("encendidos: se descarga como siempre", async () => {
+    h.politica = DENTAL;
+    h.adjuntos = true;
+    await processMessagesValue(guardado(IMAGEN) as never);
+    expect(adjuntos()[0]).toMatchObject({ waMediaId: "media_1", fetchStatus: "pending" });
+    expect(h.ensure).toHaveBeenCalledTimes(1);
+  });
+
+  it("una ubicación no es un archivo: pasa con los adjuntos apagados", async () => {
+    h.politica = DENTAL;
+    await processMessagesValue(
+      guardado({ type: "location", location: { latitude: 4.6, longitude: -74.1, name: "Casa" } }) as never
+    );
+    expect(adjuntos()[0]).toMatchObject({
+      kind: "location",
+      fetchStatus: "available",
+      payload: { latitude: 4.6, longitude: -74.1, name: "Casa" },
+    });
+  });
+});
+
+describe("070 — ubicación, tarjetas y nombre de archivo por el filtro (D4)", () => {
+  it("segunda red: la salud del nombre de la ubicación se omite y marca el mensaje", async () => {
+    h.politica = DENTAL;
+    await processMessagesValue(
+      valor({
+        type: "location",
+        location: { latitude: 4.6, longitude: -74.1, name: "me duele la muela", url: "https://x" },
+      }) as never
+    );
+    expect(adjuntos()[0]!.payload).toEqual({
+      latitude: 4.6,
+      longitude: -74.1,
+      name: HEALTH_OMITTED_TEXT,
+    });
+    expect(entrantes()[0]).toMatchObject({ privacyFlags: ["salud", "sintoma"] });
+  });
+
+  it("segunda red: una tarjeta queda con nombre y teléfono enmascarado, y nada más", async () => {
+    h.politica = DENTAL;
+    await processMessagesValue(
+      valor({
+        type: "contacts",
+        contacts: [
+          {
+            name: { formatted_name: "Mamá Pérez", first_name: "Mamá", last_name: "Pérez" },
+            phones: [{ phone: "+57 300 123 4567", wa_id: "573001234567", type: "CELL" }],
+            emails: [{ email: "mama@mail.com" }],
+            birthday: "1960-01-01",
+          },
+        ],
+      }) as never
+    );
+    expect(adjuntos()[0]!.payload).toEqual([
+      { name: { formatted_name: "Mamá Pérez", first_name: "Mamá" }, phones: [{ phone: "[telefono]" }] },
+    ]);
+    const json = JSON.stringify(h.inserts.map((i) => i.values));
+    for (const crudo of ["573001234567", "mama@mail.com", "1960-01-01", "300 123 4567"]) {
+      expect(json).not.toContain(crudo);
+    }
+    expect(entrantes()[0]).toMatchObject({ privacyFlags: ["telefono"] });
+  });
+
+  it("segunda red: el nombre del archivo pasa por el filtro (con los adjuntos encendidos)", async () => {
+    h.politica = DENTAL;
+    h.adjuntos = true;
+    await processMessagesValue(
+      valor({
+        type: "document",
+        document: { id: "media_2", mime_type: "application/pdf", filename: "me duele la muela.pdf" },
+      }) as never
+    );
+    expect(adjuntos()[0]).toMatchObject({ fileName: HEALTH_OMITTED_TEXT, waMediaId: "media_2" });
+  });
+});
+
+describe("070 — el id del botón tocado (FR-004)", () => {
+  it("se guarda en button_id", async () => {
+    await processMessagesValue(
+      guardado({
+        type: "interactive",
+        interactive: { type: "button_reply", button_reply: { id: "aviso_no_acepto", title: "No acepto" } },
+      }) as never
+    );
+    expect(entrantes()[0]).toMatchObject({ text: "No acepto", buttonId: "aviso_no_acepto" });
   });
 });

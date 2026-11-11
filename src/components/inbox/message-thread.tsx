@@ -569,6 +569,19 @@ export function MessageThread({
                 ) : m.type === "text" || m.type === "template" ? (
                   <span className="whitespace-pre-wrap break-words">
                     <LinkedText text={m.text} />
+                    {/* 070 — Los botones que salieron con el texto; aquí no se tocan. */}
+                    {m.buttons?.length ? (
+                      <span className="mt-1.5 flex flex-wrap gap-1.5" aria-label="Botones enviados">
+                        {m.buttons.map((b) => (
+                          <span
+                            key={b.id}
+                            className="rounded-md border border-border px-2 py-0.5 text-[12.5px] text-text-2"
+                          >
+                            {b.title}
+                          </span>
+                        ))}
+                      </span>
+                    ) : null}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-text-3">

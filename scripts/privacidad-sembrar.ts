@@ -1,5 +1,8 @@
 /**
- * 068 — `pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] <perfil.json>`
+ * 068 — `pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] [--adjuntos si|no] <perfil.json>`
+ *
+ * 070 (D1): `--adjuntos` decide si se guardan los archivos de los pacientes.
+ * Sin él: no, si el perfil filtra salud; sí, si no lo filtra.
  *
  * Registra el perfil de privacidad de un negocio, exportado del cerebro con
  * `npm run privacidad:exportar -- <cliente.yaml> > perfil.json`. Solo lo corre
@@ -16,7 +19,7 @@ import * as schema from "@/lib/db/schema";
 import { sembrarPerfil } from "@/server/privacy/sembrar";
 
 const USO =
-  "Uso: pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] <perfil.json>";
+  "Uso: pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] [--adjuntos si|no] <perfil.json>";
 
 // pnpm reenvía el «--» de `pnpm privacidad:sembrar -- …`; parseArgs lo leería
 // como el fin de las opciones.
@@ -28,6 +31,7 @@ const { values, positionals } = parseArgs({
   options: {
     organizacion: { type: "string" },
     "sin-filtro-salud": { type: "boolean", default: false },
+    adjuntos: { type: "string" },
   },
   allowPositionals: true,
 });
@@ -37,6 +41,11 @@ if (!organizationId || !archivo) {
   console.error(USO);
   process.exit(1);
 }
+if (values.adjuntos !== undefined && values.adjuntos !== "si" && values.adjuntos !== "no") {
+  console.error(USO);
+  process.exit(1);
+}
+const adjuntos = values.adjuntos === undefined ? undefined : values.adjuntos === "si";
 
 function loadEnvVar(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
@@ -70,6 +79,7 @@ try {
     organizationId,
     contenido,
     sinFiltroSalud: values["sin-filtro-salud"] ?? false,
+    ...(adjuntos === undefined ? {} : { adjuntos }),
   });
   if (!r.ok) {
     console.error(`[privacidad] Rechazado, la base no cambió.\n${r.error}`);
@@ -77,7 +87,8 @@ try {
   } else {
     console.log(
       `[privacidad] ${organizationId}: perfil ${r.perfil} v${r.versionPerfil}, ${r.pais}, ` +
-        `${r.conSalud ? "con filtro de salud" : "SIN filtro de salud"}.\n` +
+        `${r.conSalud ? "con filtro de salud" : "SIN filtro de salud"}, ` +
+        `${r.adjuntos ? "guarda adjuntos" : "NO guarda adjuntos"}.\n` +
         `  huella anterior: ${r.huellaAnterior ?? "(no tenía)"}\n` +
         `  huella nueva:    ${r.huella}`
     );

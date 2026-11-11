@@ -19,6 +19,7 @@ import {
   tomarPendientes,
   type FilaDespacho,
 } from "@/server/dispatch/outbox";
+import { reintentarOlvidos } from "@/server/dispatch/olvidos";
 
 /**
  * 021 — El worker del despachador.
@@ -140,6 +141,12 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
       } finally {
         clearInterval(latido);
       }
+    }
+    // 070 (D7) — Los avisos de olvido que el cerebro no confirmó.
+    try {
+      await reintentarOlvidos();
+    } catch (err) {
+      console.error("[olvido] el reintento falló:", err instanceof Error ? err.message : err);
     }
     return count;
   } catch (err) {

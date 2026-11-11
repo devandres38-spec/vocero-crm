@@ -291,6 +291,34 @@ describe("069 — marcas de privacidad y huella del perfil", () => {
   });
 });
 
+describe("070 — el id del botón tocado", () => {
+  const conBoton = (buttonId: string | null, privacyFlags: string[] | null = null) =>
+    armarEvento({
+      ...datosMinimos(),
+      messages: [
+        {
+          id: "msg_1",
+          createdAt: new Date("2026-10-08T05:10:03.000Z"),
+          type: "text",
+          text: "No acepto",
+          media: null,
+          privacyFlags,
+          buttonId,
+        },
+      ],
+    }).messages[0]!;
+
+  it("viaja como buttonId, al final, después de privacyFlags", () => {
+    const m = conBoton("aviso_no_acepto", ["sin_revisar"]);
+    expect(m.buttonId).toBe("aviso_no_acepto");
+    expect(Object.keys(m).slice(-2)).toEqual(["privacyFlags", "buttonId"]);
+  });
+
+  it("sin botón no lleva la llave: el cuerpo gemelo no cambia", () => {
+    expect("buttonId" in conBoton(null)).toBe(false);
+  });
+});
+
 function datosMinimos() {
   return {
     dispatchId: "dsp_x",

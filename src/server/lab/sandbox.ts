@@ -15,6 +15,8 @@ export async function guardarRespuestaDePrueba(params: {
   organizationId: string;
   conversationId: string;
   text: string;
+  /** 070: los botones se guardan con la respuesta, como en una real. */
+  buttons?: { id: string; title: string }[];
 }): Promise<{ messageId: string }> {
   const db = getDb();
   const messageId = newId("message");
@@ -28,6 +30,7 @@ export async function guardarRespuestaDePrueba(params: {
     status: "sent",
     aiGenerated: true,
     origin: "ai",
+    buttons: params.buttons?.length ? params.buttons : null,
   });
   await db
     .update(schema.conversation)
