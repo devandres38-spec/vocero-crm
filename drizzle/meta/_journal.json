@@ -204,6 +204,13 @@
       "when": 1794344135264,
       "tag": "0028_marcas_privacidad",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1794355358967,
+      "tag": "0029_consentimiento_y_olvido",
+      "breakpoints": true
     }
   ]
 }

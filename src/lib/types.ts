@@ -91,6 +91,8 @@ export type MessageDto = {
   quotable: boolean;
   /** 039 — El mensaje que cita, o null si no cita ninguno. */
   replyTo: QuotedMessageDto | null;
+  /** 070 — Los botones que salieron con el texto (solo si hay). */
+  buttons?: { id: string; title: string }[];
   createdAt: string;
 };
 

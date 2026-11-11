@@ -70,7 +70,9 @@ export class SendError extends Error {
     | "meta_unavailable"
     | "upload_failed"
     /** 039: el mensaje a citar no es de aquí, no salió a la plataforma, o el canal no cita. */
-    | "reply_unavailable";
+    | "reply_unavailable"
+    /** 070: botones fuera de WhatsApp. */
+    | "canal_sin_botones";
   /** 008: presente cuando el fallo ocurrió TRAS persistir el mensaje (failed). */
   messageId?: string;
 
@@ -417,6 +419,8 @@ async function persistOutbound(input: {
   media?: typeof schema.mediaAsset.$inferSelect | null;
   /** 039: el mensaje citado, ya validado por `resolverMensajeCitado`. */
   cita?: CitaEncontrada | null;
+  /** 070: los botones enviados con el texto. */
+  buttons?: BotonSaliente[] | null;
 }): Promise<string> {
   const db = getDb();
   const inserted = await db
@@ -435,6 +439,7 @@ async function persistOutbound(input: {
       origin: input.origin,
       mediaAssetId: input.mediaAssetId ?? null,
       replyToWaMessageId: input.cita?.message.waMessageId ?? null,
+      buttons: input.buttons?.length ? input.buttons : null,
     })
     .returning();
   const message = inserted[0]!;
@@ -455,6 +460,9 @@ async function persistOutbound(input: {
   return message.id;
 }
 
+/** 070 — Un botón de respuesta rápida (límites en `/api/bot/messages`). */
+export type BotonSaliente = { id: string; title: string };
+
 /** Envía un mensaje de texto libre por WhatsApp. */
 export async function sendText(input: {
   conversationId: string;
@@ -463,6 +471,8 @@ export async function sendText(input: {
   aiGenerated?: boolean;
   /** 039: id local del mensaje al que se responde citando. */
   replyToMessageId?: string;
+  /** 070: botones de respuesta rápida (solo WhatsApp, de 1 a 3). */
+  buttons?: BotonSaliente[];
 }): Promise<SendResult> {
   const target = await prepareSend(
     input.conversationId,
@@ -471,6 +481,10 @@ export async function sendText(input: {
   );
   const { credentials } = target;
   const canal = target.conversation.channel;
+  const buttons = input.buttons?.length ? input.buttons : null;
+  if (buttons && (canal !== "whatsapp" || !credentials)) {
+    throw new SendError("canal_sin_botones", "Este canal no admite botones; manda el texto");
+  }
 
   // 024: la IA escribe con formato de WhatsApp (y a veces Markdown). En un
   // canal que no lo dibuja se le quitan las marcas ANTES de medir, enviar y
@@ -502,8 +516,22 @@ export async function sendText(input: {
             {
               messaging_product: "whatsapp",
               ...target.destinatario,
-              type: "text",
-              text: { body: text },
+              // 070 — Con botones, un interactivo de tipo `button`.
+              ...(buttons
+                ? {
+                    type: "interactive",
+                    interactive: {
+                      type: "button",
+                      body: { text },
+                      action: {
+                        buttons: buttons.map((b) => ({
+                          type: "reply",
+                          reply: { id: b.id, title: b.title },
+                        })),
+                      },
+                    },
+                  }
+                : { type: "text", text: { body: text } }),
             },
             cita?.message.waMessageId
           )
@@ -524,6 +552,7 @@ export async function sendText(input: {
     aiGenerated: input.aiGenerated,
     origin: input.aiGenerated ? "ai" : "operator",
     cita,
+    buttons,
   });
 
   return { messageId };

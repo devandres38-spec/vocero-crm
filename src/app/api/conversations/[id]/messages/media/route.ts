@@ -18,6 +18,8 @@ const SEND_ERROR_STATUS: Record<SendError["code"], number> = {
   meta_unavailable: 503,
   upload_failed: 502,
   reply_unavailable: 422,
+  // 070: los botones solo los manda el cerebro, nunca la bandeja.
+  canal_sin_botones: 409,
 };
 
 /**

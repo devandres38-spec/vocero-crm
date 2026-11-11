@@ -43,6 +43,7 @@ function columnasDelMensaje() {
     type: schema.message.type,
     text: schema.message.text,
     privacyFlags: schema.message.privacyFlags,
+    buttonId: schema.message.buttonId,
     createdAt: schema.message.createdAt,
     waMediaId: schema.mediaAsset.waMediaId,
     mimeType: schema.mediaAsset.mimeType,
@@ -59,6 +60,7 @@ function paraEvento(m: {
   type: string;
   text: string | null;
   privacyFlags: string[] | null;
+  buttonId: string | null;
   waMediaId: string | null;
   mimeType: string | null;
   caption: string | null;
@@ -72,6 +74,7 @@ function paraEvento(m: {
     type: m.type,
     text: m.text,
     privacyFlags: m.privacyFlags,
+    buttonId: m.buttonId,
     media: m.assetId
       ? {
           waMediaId: m.waMediaId,

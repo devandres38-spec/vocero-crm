@@ -30,6 +30,8 @@ const SEND_ERROR_STATUS: Record<SendError["code"], number> = {
   upload_failed: 502,
   // 039: el reenvío nunca cita, pero el mapa cubre todo `SendError`.
   reply_unavailable: 422,
+  // 070: los botones solo los manda el cerebro, nunca la bandeja.
+  canal_sin_botones: 409,
 };
 
 /**

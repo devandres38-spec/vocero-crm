@@ -43,6 +43,8 @@ describe("068 — sembrarPerfil", () => {
       conSalud: true,
       huella: dental.huella,
       huellaAnterior: null,
+      // 070 (D1): un perfil con salud no guarda adjuntos por defecto.
+      adjuntos: false,
     });
     expect(base.perfiles).toHaveLength(1);
     expect(base.perfiles[0]).toMatchObject({

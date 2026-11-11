@@ -43,6 +43,8 @@ const prefixes = {
   conversationNote: "nota",
   // 068 — perfil de privacidad por negocio
   privacyProfile: "prv",
+  // 070 — consentimiento (registro de solo agregar)
+  consent: "cns",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

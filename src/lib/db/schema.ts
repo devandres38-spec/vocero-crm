@@ -423,6 +423,10 @@ export const message = pgTable(
      * `text` ya está filtrado: el crudo nunca se guarda.
      */
     privacyFlags: text("privacy_flags").array(),
+    /** 070 — Entrante: el id del botón que tocó el cliente. */
+    buttonId: text("button_id"),
+    /** 070 — Saliente: los botones que se enviaron con el texto. */
+    buttons: jsonb("buttons").$type<{ id: string; title: string }[]>(),
     status: text("status", {
       enum: ["pending", "sent", "delivered", "read", "failed"],
     })
@@ -1435,11 +1439,92 @@ export const privacyProfile = pgTable(
     allowlist: text("allowlist").array().notNull().default(sql`'{}'::text[]`),
     /** SHA-256 de `canonicalJson({ pais, permitidos, sensible })`. Se recalcula al leer. */
     fingerprint: text("fingerprint").notNull(),
+    /**
+     * 070 (D11 de Aliantis) — Si se descargan los archivos que mandan los
+     * pacientes. Fuera de la huella: lo decide Vocero, no el filtro. Apagado en
+     * los perfiles que filtran salud, salvo que Andres lo encienda al sembrar.
+     */
+    adjuntos: boolean("adjuntos").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("privacy_profile_org_uq").on(t.organizationId),
     check("privacy_profile_country_chk", sql`char_length(${t.country}) = 2`),
+  ]
+);
+
+/* ============================================================
+ * 070 — Consentimiento y olvido
+ * ============================================================ */
+
+/**
+ * El consentimiento que dio (o negó) una persona: registro legal del negocio
+ * responsable (D6 de la 067). SOLO AGREGAR: ningún código hace `update` ni
+ * `delete` sobre esta tabla (lo verifica `consentimiento.test.ts`). Sobrevive
+ * a la conversación (`set null`) y a `forget`; se va solo con el contacto.
+ */
+export const consent = pgTable(
+  "consent",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    contactId: text("contact_id")
+      .notNull()
+      .references(() => contact.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id").references(() => conversation.id, {
+      onDelete: "set null",
+    }),
+    kind: text("kind", { enum: ["aviso_privacidad", "marketing"] }).notNull(),
+    granted: boolean("granted").notNull(),
+    noticeVersion: text("notice_version").notNull(),
+    /** Sin FK: `forget` borra el mensaje y el registro debe quedar. */
+    sourceMessageId: text("source_message_id"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("consent_org_contact_kind_idx").on(t.organizationId, t.contactId, t.kind, t.createdAt),
+    index("consent_org_conv_kind_idx").on(t.organizationId, t.conversationId, t.kind, t.createdAt),
+    check("consent_kind_chk", sql`${t.kind} in ('aviso_privacidad', 'marketing')`),
+    check(
+      "consent_notice_version_chk",
+      sql`char_length(${t.noticeVersion}) between 1 and 100`
+    ),
+  ]
+);
+
+/**
+ * Los avisos de `conversation.deleted` que el cerebro todavía no confirmó
+ * (D7 de la 070; revoca la D12 de la 067). El worker del despacho los
+ * reintenta: 1 min, 5 min, 30 min y después cada hora, hasta 7 días. Guarda el
+ * evento tal como se firma: ids y la identidad del contacto, nunca texto.
+ */
+export const olvidoPendiente = pgTable(
+  "olvido_pendiente",
+  {
+    /** El `eventId` del evento: el mismo en cada intento. */
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** Sin FK: la conversación ya no existe. */
+    conversationId: text("conversation_id").notNull(),
+    evento: jsonb("evento").notNull(),
+    status: text("status", { enum: ["pendiente", "agotado"] })
+      .notNull()
+      .default("pendiente"),
+    attempts: integer("attempts").notNull().default(0),
+    notBefore: timestamp("not_before").notNull().defaultNow(),
+    leasedUntil: timestamp("leased_until"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("olvido_pendiente_vivo_idx")
+      .on(t.notBefore)
+      .where(sql`${t.status} = 'pendiente'`),
+    check("olvido_pendiente_status_chk", sql`${t.status} in ('pendiente', 'agotado')`),
   ]
 );

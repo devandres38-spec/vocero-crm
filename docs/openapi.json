@@ -30,15 +30,41 @@
       "post": {
         "summary": "Contestarle al cliente",
         "description": "Sale por el mismo camino que la bandeja y queda marcado como IA. El CRM adapta el texto al canal (en Instagram, Messenger y TikTok le quita el formato). En una conversación de prueba del Laboratorio (`conversation.test` del despacho) la respuesta se GUARDA en el hilo y no se envía.",
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "text"], "properties": { "conversationId": { "type": "string" }, "text": { "type": "string", "minLength": 1 } } } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "text"], "properties": { "conversationId": { "type": "string" }, "text": { "type": "string", "minLength": 1 }, "buttons": { "type": "array", "minItems": 1, "maxItems": 3, "description": "070 — Botones de respuesta rápida, solo WhatsApp. `id` de 1 a 256 y `title` de 1 a 20, ids y títulos únicos; con botones, `text` hasta 1024. Fuera de eso, 422. En otro canal, 409 `canal_sin_botones` y no se envía nada.", "items": { "type": "object", "required": ["id", "title"], "properties": { "id": { "type": "string", "minLength": 1, "maxLength": 256 }, "title": { "type": "string", "minLength": 1, "maxLength": 20 } } } } } } } } },
         "responses": {
           "200": { "description": "Enviado (o guardado, en una de prueba)", "content": { "application/json": { "schema": { "type": "object", "properties": { "messageId": { "type": "string" }, "status": { "type": "string", "enum": ["sent"] } }, "required": ["messageId"] } } } },
           "404": { "$ref": "#/components/responses/NoEncontrada" },
-          "409": { "description": "`ai_paused`: una persona tomó la conversación (no insistas). `window_closed`: la ventana del canal cerró. `message_limit`: el canal no admite más hasta que el cliente escriba (TikTok). `sandbox_violation`: reservado. `no_org`.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "409": { "description": "`ai_paused`: una persona tomó la conversación (no insistas). `window_closed`: la ventana del canal cerró. `message_limit`: el canal no admite más hasta que el cliente escriba (TikTok). `sandbox_violation`: reservado. `canal_sin_botones`: mandaste `buttons` en un canal que no los admite; manda el texto sin ellos. `no_org`.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "422": { "$ref": "#/components/responses/Invalido" },
           "502": { "description": "El canal (Meta o Zernio) rechazó el envío.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         },
-        "x-codigos-409": ["ai_paused", "window_closed", "sandbox_violation", "message_limit", "no_org"]
+        "x-codigos-409": ["ai_paused", "window_closed", "sandbox_violation", "message_limit", "canal_sin_botones", "no_org"]
+      }
+    },
+    "/api/bot/consent": {
+      "post": {
+        "summary": "Registrar un consentimiento",
+        "description": "070 — Lo que la persona respondió al aviso de privacidad (o al de marketing). Solo agrega: no hay edición ni borrado. Vale también en el Laboratorio.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "kind", "granted", "noticeVersion"], "properties": { "conversationId": { "type": "string" }, "kind": { "type": "string", "enum": ["aviso_privacidad", "marketing"] }, "granted": { "type": "boolean" }, "noticeVersion": { "type": "string", "minLength": 1, "maxLength": 100 }, "sourceMessageId": { "type": "string", "minLength": 1, "maxLength": 64 } } } } } },
+        "responses": {
+          "201": { "description": "Registrado", "content": { "application/json": { "schema": { "type": "object", "required": ["id", "createdAt"], "properties": { "id": { "type": "string" }, "createdAt": { "type": "string", "format": "date-time" } } } } } },
+          "404": { "$ref": "#/components/responses/NoEncontrada" },
+          "409": { "$ref": "#/components/responses/SinOrganizacion" },
+          "422": { "$ref": "#/components/responses/Invalido" }
+        }
+      }
+    },
+    "/api/bot/forget": {
+      "post": {
+        "summary": "«No acepto»: borrar la conversación",
+        "description": "070 — Borra los mensajes de la conversación, sus adjuntos y los eventos de webhook que los traían, y vacía la ficha. Solo si el último aviso de privacidad de ESA conversación es un rechazo (`POST /api/bot/consent` con `granted: false`). Conserva el contacto, la conversación vacía, el lead y los consentimientos. Orden esperado: `consent` (rechazo), `forget` y `messages` con el texto fijo.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "reason"], "properties": { "conversationId": { "type": "string" }, "reason": { "type": "string", "enum": ["no_acepta"] } } } } } },
+        "responses": {
+          "200": { "description": "Borrado; repetirlo da `deleted: 0`", "content": { "application/json": { "schema": { "type": "object", "required": ["deleted"], "properties": { "deleted": { "type": "integer", "minimum": 0 } } } } } },
+          "404": { "$ref": "#/components/responses/NoEncontrada" },
+          "409": { "description": "`sin_rechazo`: no hay un rechazo registrado para esta conversación; nada se borró. `no_org`.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "422": { "$ref": "#/components/responses/Invalido" }
+        }
       }
     },
     "/api/bot/profile": {
@@ -243,6 +269,7 @@
       "Error": { "type": "object", "required": ["error"], "properties": { "error": { "type": "object", "required": ["code", "message"], "properties": { "code": { "type": "string" }, "message": { "type": "string" } } } } },
       "Ok": { "type": "object", "properties": { "ok": { "type": "boolean" } } },
       "Canal": { "type": "string", "description": "Informativo: la lista crece. No hagas un switch exhaustivo.", "examples": ["whatsapp", "instagram", "messenger", "tiktok"] },
+      "Consentimiento": { "type": ["object", "null"], "required": ["granted", "noticeVersion", "at"], "properties": { "granted": { "type": "boolean" }, "noticeVersion": { "type": "string" }, "at": { "type": "string", "format": "date-time" } } },
       "Contexto": {
         "type": "object",
         "properties": {
@@ -250,7 +277,8 @@
           "conversation": { "type": "object", "properties": { "id": { "type": "string" }, "aiEnabled": { "type": "boolean" }, "handoffAt": { "type": ["string", "null"] }, "windowOpen": { "type": "boolean" }, "windowRemainingMs": { "type": ["integer", "null"] } } },
           "lead": { "type": ["object", "null"], "properties": { "id": { "type": "string" }, "stageName": { "type": "string" }, "nextStages": { "type": "array", "description": "038 — A qué etapas puede moverlo el cerebro con `POST /api/bot/stage`: las abiertas después de la actual, en el orden del pipeline. Vacía en la última abierta o en una de cierre.", "items": { "type": "object", "required": ["id", "name"], "properties": { "id": { "type": "string" }, "name": { "type": "string" } } } } } },
           "adOrigen": { "type": ["object", "null"], "description": "031 — De qué anuncio llegó la persona.", "properties": { "headline": { "type": ["string", "null"] }, "body": { "type": ["string", "null"] }, "sourceType": { "type": ["string", "null"] }, "sourceUrl": { "type": ["string", "null"] }, "hasCtwaClid": { "type": "boolean" }, "capturedAt": { "type": "string" } } },
-          "booking": { "type": "object", "description": "Solo con la agenda encendida.", "additionalProperties": true }
+          "booking": { "type": "object", "description": "Solo con la agenda encendida.", "additionalProperties": true },
+          "consent": { "type": "object", "description": "070 — El último consentimiento de cada tipo del contacto, o `null`.", "required": ["avisoPrivacidad", "marketing"], "properties": { "avisoPrivacidad": { "$ref": "#/components/schemas/Consentimiento" }, "marketing": { "$ref": "#/components/schemas/Consentimiento" } } }
         }
       },
       "Perfil": {

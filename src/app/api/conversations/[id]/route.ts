@@ -3,7 +3,8 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
 import { newId } from "@/lib/db/ids";
 import { construirEventoOlvido } from "@/server/brains/contract";
-import { avisarOlvido, type ResultadoOlvido } from "@/server/brains/deliver";
+import type { ResultadoOlvido } from "@/server/brains/deliver";
+import { avisarOlvidoConRed } from "@/server/dispatch/olvidos";
 import { publish } from "@/server/events/bus";
 import { eliminarConversacion } from "@/server/inbox/eliminar";
 import { serializeConversation, getConversation, updateConversation } from "@/server/inbox/queries";
@@ -87,7 +88,8 @@ export const DELETE = withAuth(async (session, req: Request, ctx: Params) => {
   let agente: ResultadoOlvido = "no_aplica";
   const deletedAt = new Date();
   for (const conversacion of resultado.conversaciones) {
-    const aviso = await avisarOlvido(
+    // 070 (D7): con red; si el cerebro no confirma, el worker lo reintenta.
+    const aviso = await avisarOlvidoConRed(
       construirEventoOlvido({
         eventId: newId("olvido"),
         organization: resultado.organization,

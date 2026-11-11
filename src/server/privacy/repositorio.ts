@@ -61,7 +61,7 @@ function perfilDeFila(fila: Fila) {
 export async function perfilVigente(
   organizationId: string,
   db: Db = getDb()
-): Promise<{ politica: PrivacyPolicy; huella: string } | null> {
+): Promise<{ politica: PrivacyPolicy; huella: string; adjuntos: boolean } | null> {
   const [fila] = await db
     .select()
     .from(schema.privacyProfile)
@@ -78,7 +78,12 @@ export async function perfilVigente(
     });
     return null;
   }
-  return { politica: politicaDesdePerfil(perfil.data), huella: perfil.data.huella };
+  return {
+    politica: politicaDesdePerfil(perfil.data),
+    huella: perfil.data.huella,
+    // 070 (D1): fuera de la huella; sin perfil legible, apagado.
+    adjuntos: fila.adjuntos,
+  };
 }
 
 export async function perfilDePrivacidad(
@@ -89,20 +94,32 @@ export async function perfilDePrivacidad(
 }
 
 /**
+ * 070 (D1) — Si se guardan los archivos de los pacientes: apagado si el
+ * perfil filtra salud, encendido si no, salvo que Andres lo fuerce.
+ */
+export function adjuntosPorDefecto(perfil: PerfilPrivacidad): boolean {
+  return perfil.sensible === null;
+}
+
+/**
  * Inserta o reemplaza el perfil de un negocio. Devuelve la huella del que
  * había, para que Andres vea qué cambió. El perfil ya viene validado.
  */
 export async function guardarPerfil(
   db: Db,
   organizationId: string,
-  perfil: PerfilPrivacidad
+  perfil: PerfilPrivacidad,
+  opciones: { adjuntos?: boolean } = {}
 ): Promise<{ huellaAnterior: string | null }> {
   const [anterior] = await db
     .select({ fingerprint: schema.privacyProfile.fingerprint })
     .from(schema.privacyProfile)
     .where(scoped(schema.privacyProfile.organizationId, organizationId))
     .limit(1);
-  const columnas = filaDesdePerfil(organizationId, perfil);
+  const columnas = {
+    ...filaDesdePerfil(organizationId, perfil),
+    adjuntos: opciones.adjuntos ?? adjuntosPorDefecto(perfil),
+  };
   await db
     .insert(schema.privacyProfile)
     .values({ id: newId("privacyProfile"), ...columnas })

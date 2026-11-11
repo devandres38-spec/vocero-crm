@@ -61,6 +61,8 @@ jobs:
       # La receta exigente del arnés: 5 mensajes seguidos deben ir en UN
       # despacho con solo 1,5 s de ventana (AC2). En producción son 6 s.
       AGENT_COALESCE_MS: "1500"
+      # 070 — El primer reintento del olvido, en 1,5 s y no en 1 min.
+      OLVIDO_REINTENTO_MS: "1500"
       MEDIA_DIR: ./.dev-media
       BRAIN_DISPATCH_URL: http://127.0.0.1:3261/vocero/dispatch
       NEXT_TELEMETRY_DISABLED: "1"
@@ -123,14 +125,29 @@ jobs:
           tail -40 .tmp-dev-e2e.log; exit 1
 
       - name: e2e-despacho (AGENT_COALESCE_MS=1500)
-        run: node scripts/e2e-despacho.mjs 2>&1 | tee .tmp-e2e-despacho.log
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-despacho.mjs 2>&1 | tee .tmp-e2e-despacho.log
+
+      # 070 — Consentimiento con botones, «No acepto» que borra, adjuntos por
+      # negocio y la reconciliación del olvido. Corre aunque el anterior falle.
+      - name: e2e-consentimiento
+        if: ${{ !cancelled() }}
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-consentimiento.mjs 2>&1 | tee .tmp-e2e-consentimiento.log
 
       - name: resumen
         if: ${{ !cancelled() }}
         run: |
-          echo "checks OK: $(grep -cE '^\s+OK ' .tmp-e2e-despacho.log || true)"
-          grep -E '^\s+(FAIL|FALLA)' .tmp-e2e-despacho.log || echo "sin fallas"
-          grep -E '^==' .tmp-e2e-despacho.log | tail -3 || true
+          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log; do
+            [ -f "$log" ] || continue
+            echo "== $log: checks OK $(grep -cE '^\s+OK ' "$log" || true)"
+            grep -E '^\s+(FAIL|FALLA)' "$log" || echo "sin fallas"
+            tail -1 "$log"
+          done
 
       - name: log de la app si algo falló
         if: ${{ failure() }}

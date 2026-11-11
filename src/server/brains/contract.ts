@@ -39,8 +39,10 @@ export type MensajeDelEvento = {
   location?: UbicacionDelEvento;
   /** 031 — Solo si `type` es `contacts`: los nombres de las tarjetas. */
   contacts?: { name: string }[];
-  /** 069 — Solo si el mensaje tiene marcas de privacidad. Siempre al final. */
+  /** 069 — Solo si el mensaje tiene marcas de privacidad. */
   privacyFlags?: string[];
+  /** 070 — Solo si el cliente tocó un botón: su id. Siempre al final. */
+  buttonId?: string;
 };
 
 /**
@@ -98,6 +100,8 @@ export type MensajeParaEvento = {
   } | null;
   /** 069 — `message.privacy_flags`. */
   privacyFlags?: string[] | null;
+  /** 070 — `message.button_id`. */
+  buttonId?: string | null;
 };
 
 /**
@@ -180,6 +184,8 @@ function mensajeDelEvento(m: MensajeParaEvento): MensajeDelEvento {
   }
   // 069 — Las marcas de privacidad, al final y solo si las hay.
   if (m.privacyFlags?.length) evento.privacyFlags = [...m.privacyFlags];
+  // 070 — El id del botón tocado, al final y solo si existe.
+  if (m.buttonId) evento.buttonId = m.buttonId;
   return evento;
 }
 
