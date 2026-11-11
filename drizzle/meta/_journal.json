@@ -232,6 +232,13 @@
       "when": 1794398435584,
       "tag": "0032_autenticacion_por_negocio",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794411464967,
+      "tag": "0033_rls",
+      "breakpoints": true
     }
   ]
 }

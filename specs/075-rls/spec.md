@@ -106,17 +106,16 @@ Las crea `0033` y son del rol de migraciones. Cada una lleva `SET search_path = 
 | `vocero_organizacion_existe(id)` | `boolean` | `requireBot` |
 | `vocero_hasta_dos_organizaciones()` | `text[]` (como mucho 2 ids) | `requireBot` (la regla de compatibilidad) |
 | `vocero_organizaciones()` | ids | retención, arranque, mocks |
-| `vocero_negocio_por_canal(tipo, clave)` | id o `NULL`; `tipo` es uno de `phone_number_id`, `waba_id`, `ig_user_id`, `page_id`, `zernio_account` | webhooks |
+| `vocero_negocio_por_canal(tipo, clave)` | id o `NULL`; `tipo` es uno de `phone_number_id`, `waba_id`, `ig_user_id`, `page_id`, `zernio:instagram`, `zernio:messenger`, `zernio:tiktok` | webhooks |
 | `vocero_despachos_vencidos(ahora, limite, excluir text[])` | `(id, organization_id)` | worker del despacho |
-| `vocero_proximo_despacho()` | `timestamp` | la cita del worker |
 | `vocero_eventos_pendientes(ahora, limite)` | `(id, organization_id)` | barrido de webhooks |
-| `vocero_negocios_con_eventos_viejos(ahora)` | ids | purga de webhooks (se borra dentro de cada negocio) |
+| `vocero_negocios_con_eventos_viejos(corte_procesado, corte_agotado)` | ids | purga de webhooks (se borra dentro de cada negocio) |
 | `vocero_conteo_webhooks()` | `(pendientes, agotados)` | `/api/health` |
-| `vocero_olvidos_pendientes(ahora, limite)` | `(id, organization_id)` | olvidos |
-| `vocero_avisos_pendientes(ahora, limite)` | `(id, organization_id)` | avisos por Telegram |
+| `vocero_negocios_con_olvidos(ahora)` | ids de negocio | olvidos (se reintentan dentro de cada negocio) |
+| `vocero_negocios_con_avisos()` | ids de negocio | avisos por Telegram (se envían dentro de cada negocio) |
 | `vocero_slugs_ocupados(base)` | `text[]` | `crearNegocio` |
 
-Todas las escrituras ocurren dentro de `conNegocio`; ninguna función escribe. La lista exacta se ajusta al programar si un worker necesita otra; cada función nueva cumple las mismas reglas y pasa por los mismos guardarraíles.
+Todas las escrituras ocurren dentro de `conNegocio`; ninguna función escribe. Al programar (T2) se vio que no hay consulta de «próxima cita» (`programarTanda` vive en memoria), así que esa función sobraba; y olvidos y avisos solo necesitan saber qué negocios tienen trabajo, porque su código de hoy ya lo hace bien dentro de cada uno. La lista exacta se ajusta al programar si un worker necesita otra; cada función nueva cumple las mismas reglas y pasa por los mismos guardarraíles.
 
 **D6 Despliegue**
 - **`DATABASE_MIGRATIONS_URL` (dueño)** la usa `migrate.mjs`, y **`DATABASE_URL` (usuario de la app)** la usa el servidor.
