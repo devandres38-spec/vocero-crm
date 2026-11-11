@@ -136,10 +136,11 @@ async function main() {
     ok("un negocio que no existe → 401", inexistente.status === 401, String(inexistente.status));
 
     console.log("== Webhook firmado con el App Secret del negocio ==");
+  // 075 — El comando corre con el usuario de la app (APP_DATABASE_URL), bajo RLS.
     const reg = spawnSync(
       "pnpm",
       ["meta:secreto", "--", "--organizacion", A, "--canal", "whatsapp"],
-      { input: `${SECRETO_A}\n`, encoding: "utf8", env: process.env, shell: process.platform === "win32" },
+      { input: `${SECRETO_A}\n`, encoding: "utf8", env: { ...process.env, DATABASE_URL: process.env.APP_DATABASE_URL ?? process.env.DATABASE_URL }, shell: process.platform === "win32" },
     );
     const salida = `${reg.stdout ?? ""}${reg.stderr ?? ""}`;
     ok("pnpm meta:secreto registra el secreto (entrada estándar)", reg.status === 0, salida.slice(-300));

@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { conNegocio } from "@/lib/db/contexto";
@@ -52,12 +51,12 @@ export async function getSessionOrNull(): Promise<SessionContext | null> {
  * (RLS). Sin sesión, corre sin negocio: la página redirige al login, y lo que
  * no tenga sesión (la marca del login) no consulta la base.
  */
-export function paginaConSesion<P>(
-  pagina: (props: P) => Promise<ReactNode>
-): (props: P) => Promise<ReactNode> {
-  return async (props: P) => {
+export function paginaConSesion<A extends unknown[], R>(
+  pagina: (...props: A) => Promise<R>
+): (...props: A) => Promise<R> {
+  return async (...props: A) => {
     const session = await getSessionOrNull();
-    if (!session) return pagina(props);
-    return conNegocio(session.organizationId, () => pagina(props));
+    if (!session) return pagina(...props);
+    return conNegocio(session.organizationId, () => pagina(...props));
   };
 }

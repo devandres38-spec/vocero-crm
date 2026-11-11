@@ -24,8 +24,8 @@ import { ConsultaSinNegocio, contextoActual } from "./contexto";
 
 export type ModoSinContexto = "avisar" | "lanzar";
 
-/** 075 — T3 a T7: «avisar»; desde T8, «lanzar» (respuesta 1 de Andres). */
-export const MODO_SIN_CONTEXTO: ModoSinContexto = "avisar";
+/** 075 — «lanzar» siempre (respuesta 1 de Andres); «avisar» solo existió de T3 a T7. */
+export const MODO_SIN_CONTEXTO: ModoSinContexto = "lanzar";
 
 export const FIJAR_NEGOCIO = "select set_config('app.organization_id', $1, true)";
 

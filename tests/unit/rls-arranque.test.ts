@@ -1,7 +1,6 @@
 import type { Sql } from "postgres";
 import { describe, expect, it } from "vitest";
 import { decisionDeArranque, motivosParaNoArrancar } from "@/lib/db/rls-arranque";
-// @ts-expect-error — módulo .mjs de los scripts, sin tipos
 import { literal, planUsuarioApp, sentenciasUsuarioApp } from "../../scripts/lib/usuario-app.mjs";
 
 /** 075 (D2, D6) — El usuario de la base: sin privilegios, o la app no arranca en producción. */
