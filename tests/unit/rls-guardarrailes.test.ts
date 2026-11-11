@@ -25,8 +25,20 @@ const MIGRACIONES = readdirSync(path.join(RAIZ, "drizzle"))
   .filter((l) => !l.trim().startsWith("--"))
   .join("\n");
 
-/** Sin RLS a propósito (spec 075, D1): Better Auth las lee antes de saber el negocio. */
-const SIN_RLS = ["user", "session", "account", "verification"];
+/**
+ * Sin RLS a propósito. Spec 075, D1: Better Auth las lee antes de saber el
+ * negocio. Spec 076: el segundo factor (Better Auth), quién es superadmin y el
+ * registro del panel no son de ningún negocio.
+ */
+const SIN_RLS = [
+  "user",
+  "session",
+  "account",
+  "verification",
+  "two_factor",
+  "superadministrador",
+  "registro_panel",
+];
 
 const CONDICION = "NULLIF(current_setting('app.organization_id', true), '')";
 
@@ -47,8 +59,8 @@ function escapar(s: string) {
 }
 
 describe("075 — RLS: toda tabla de negocio con su política", () => {
-  it("el inventario es el esperado (42 tablas; si cambia, revisa esta prueba)", () => {
-    expect(tablas().length).toBeGreaterThanOrEqual(42);
+  it("el inventario es el esperado (45 tablas; si cambia, revisa esta prueba)", () => {
+    expect(tablas().length).toBeGreaterThanOrEqual(45);
   });
 
   it("toda tabla sin organization_id está en la lista de excepciones", () => {
@@ -99,23 +111,61 @@ describe("075 — funciones SECURITY DEFINER", () => {
     expect(sinRuta).toEqual([]);
   });
 
-  it("cada una se le quita a PUBLIC y se le da solo a vocero_app", () => {
-    const revoke = /REVOKE ALL ON FUNCTION([\s\S]*?)FROM PUBLIC;/.exec(MIGRACIONES)?.[1] ?? "";
-    const grant = /GRANT EXECUTE ON FUNCTION([\s\S]*?)TO vocero_app;/.exec(MIGRACIONES)?.[1] ?? "";
-    const faltan = definidas
-      .map((m) => m[1]!)
-      .filter((n) => !revoke.includes(`${n}(`) || !grant.includes(`${n}(`));
+  const todos = (re: RegExp) =>
+    [...MIGRACIONES.matchAll(re)].map((m) => m[1] ?? "").join("\n");
+  // `[^;]`: cada captura es UNA sentencia, sin saltar a la siguiente.
+  const revoke = todos(/REVOKE ALL ON FUNCTION([^;]*?)FROM PUBLIC;/g);
+  const grantApp = todos(/GRANT EXECUTE ON FUNCTION([^;]*?)TO vocero_app;/g);
+  const grantPanel = todos(/GRANT EXECUTE ON FUNCTION([^;]*?)TO vocero_panel;/g);
+
+  /** 076 — Las llaman otras funciones o un trigger, nunca la app. */
+  const INTERNAS = ["vocero_panel_quien", "vocero_member_sin_superadmin"];
+
+  it("cada una se le quita a PUBLIC", () => {
+    const faltan = definidas.map((m) => m[1]!).filter((n) => !revoke.includes(`${n}(`));
     expect(faltan).toEqual([]);
   });
 
-  it("ninguna escribe (solo SELECT)", () => {
+  it("las de la app, solo a vocero_app; las del panel, solo a vocero_panel (076)", () => {
+    const mal = definidas
+      .map((m) => m[1]!)
+      .filter((n) => !INTERNAS.includes(n))
+      .filter((n) => {
+        const app = grantApp.includes(`${n}(`);
+        const panel = grantPanel.includes(`${n}(`);
+        return n.startsWith("vocero_panel_") ? app || !panel : !app || panel;
+      });
+    expect(mal).toEqual([]);
+  });
+
+  it("las internas no se le dan a nadie (076)", () => {
+    const dadas = INTERNAS.filter(
+      (n) => grantApp.includes(`${n}(`) || grantPanel.includes(`${n}(`)
+    );
+    expect(dadas).toEqual([]);
+  });
+
+  /**
+   * 076 — Las únicas que escriben: el panel (pausar, restablecer, quitar,
+   * anotar) y marcar el TOTP del superadmin. Cualquier otra, solo SELECT.
+   */
+  const ESCRIBEN = [
+    "vocero_superadmin_marcar_totp",
+    "vocero_panel_pausar",
+    "vocero_panel_restablecer",
+    "vocero_panel_quitar_usuario",
+    "vocero_panel_anotar",
+  ];
+
+  it("ninguna escribe (solo SELECT), salvo las declaradas", () => {
     const escriben = definidas
       .map((m) => {
         const cuerpo = MIGRACIONES.slice(m.index!).split("$$")[1] ?? "";
         return { n: m[1], cuerpo };
       })
       .filter(({ cuerpo }) => /\b(INSERT|UPDATE|DELETE|TRUNCATE)\b/i.test(cuerpo))
-      .map(({ n }) => n);
+      .map(({ n }) => n!)
+      .filter((n) => !ESCRIBEN.includes(n));
     expect(escriben).toEqual([]);
   });
 });
