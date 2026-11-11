@@ -80,6 +80,14 @@ const bot = (path, body) =>
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/** JSON con las llaves ordenadas: Postgres (jsonb) no conserva el orden. */
+const canonico = (v) =>
+  JSON.stringify(v, (_, x) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b)))
+      : x,
+  );
+
 async function hasta(cond, ms = 15000, paso = 250) {
   const fin = Date.now() + ms;
   for (;;) {
@@ -171,6 +179,8 @@ async function preparar() {
              ${sql.json(p.sensible)}, ${p.permitidos}, ${p.huella}, false
       from organization o
       where not exists (select 1 from privacy_profile x where x.organization_id = o.id)`;
+    // El perfil con salud no guarda adjuntos (D1): este guion prueba ese camino.
+    await sql`update privacy_profile set adjuntos = false`;
     const [{ n }] =
       await sql`select count(*)::int as n from privacy_profile where adjuntos = false`;
     ok(
@@ -442,8 +452,9 @@ async function adjuntosApagados(cerebro) {
       where m.conversation_id = ${ct.id}`;
     ok(
       "media_asset guarda solo el nombre y el teléfono enmascarado",
-      JSON.stringify(a?.payload) ===
-        JSON.stringify([
+      // jsonb reordena las llaves: se compara sin orden.
+      canonico(a?.payload) ===
+        canonico([
           {
             name: { formatted_name: "Mamá", first_name: "Mamá" },
             phones: [{ phone: "[telefono]" }],

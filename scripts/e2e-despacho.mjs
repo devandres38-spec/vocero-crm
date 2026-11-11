@@ -246,6 +246,9 @@ async function perfilDePrivacidadDeLaDemo() {
              ${sql.json(p.sensible)}, ${p.permitidos}, ${p.huella}
       from organization o
       where not exists (select 1 from privacy_profile x where x.organization_id = o.id)`;
+    // 070 — Este guion prueba que los adjuntos viajan al cerebro (AC4, 031):
+    // los enciende. `e2e-consentimiento.mjs` prueba el camino apagado.
+    await sql`update privacy_profile set adjuntos = true`;
     const [{ n }] = await sql`select count(*)::int as n from privacy_profile`;
     ok("perfil de privacidad registrado (el de la demo)", n > 0, String(n));
   } finally {
