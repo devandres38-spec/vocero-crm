@@ -22,6 +22,13 @@ export const HANDOFF_LABELS: Record<string, string> = {
   ventana: "Ventana de 24h cerrada",
   hostilidad: "El cliente se puso agresivo y el agente se retiró",
   manual_reply: "Respondiste desde el teléfono — IA en pausa",
+  // 071 — Motivos de Aliantis.
+  salud: "Salud o urgencia: el agente pasó la conversación a una persona",
+  reclamo: "El cliente tiene un reclamo",
+  no_entiende: "El agente no supo responder",
+  agendar: "Quiere agendar, cambiar o cancelar una cita",
+  tope_gasto: "Se alcanzó el tope de uso del agente",
+  medios: "El cliente envió audios, fotos o archivos",
 };
 
 /** D1 — «Pasó a Interesado · por Ana», «Entró al embudo en Nuevo»… */

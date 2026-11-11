@@ -127,7 +127,7 @@
       "post": {
         "summary": "Pasar la conversación a una persona",
         "description": "Pausa la IA en esa conversación. Despídete ANTES: después, `/api/bot/messages` responde 409 `ai_paused`.",
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId"], "properties": { "conversationId": { "type": "string" }, "reason": { "type": "string", "enum": ["cliente", "modelo", "error", "ventana", "hostilidad"] } } } } } },
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId"], "properties": { "conversationId": { "type": "string" }, "reason": { "type": "string", "enum": ["cliente", "modelo", "error", "ventana", "hostilidad", "salud", "reclamo", "no_entiende", "agendar", "tope_gasto", "medios"] } } } } } },
         "responses": {
           "200": { "description": "Hecho", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Ok" } } } },
           "404": { "$ref": "#/components/responses/NoEncontrada" },
