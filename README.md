@@ -453,6 +453,27 @@ plataforma (Coolify, Render…) define las dos variables y usa para la app una
 contraseña distinta de la del dueño. Si `DATABASE_URL` es el superusuario, la
 app no arranca en producción y el registro dice por qué.
 
+### El panel de Aliantis (`/admin`)
+
+El panel de administración de la instalación (spec 076): da de alta negocios,
+los pausa y activa, restablece contraseñas de su personal y muestra la salud y
+el gasto del LLM. **Nunca muestra conversaciones ni datos de pacientes**: solo
+conteos y sumas. Su usuario, el superadministrador, no es de ningún negocio y
+se crea desde la terminal del servidor, con el dueño de la base:
+
+```bash
+# En el contenedor (Coolify: Terminal del servicio):
+node superadmin.mjs --correo tu@correo.co --nombre "Tu nombre"
+# En local:
+pnpm superadmin:alta -- --correo tu@correo.co --nombre "Tu nombre"
+```
+
+Muestra la contraseña una sola vez. Al entrar en `/login`, el panel pide
+activar el segundo factor con un QR (Google Authenticator, 1Password…) y
+muestra 10 códigos de respaldo; desde ahí, cada inicio de sesión pide el
+código. Si pierdes el teléfono y los códigos:
+`node superadmin.mjs --reiniciar-segundo-factor --correo tu@correo.co`.
+
 ### Primer arranque
 
 1. Crea tu negocio y su dueño desde la terminal del servidor (no hay registro

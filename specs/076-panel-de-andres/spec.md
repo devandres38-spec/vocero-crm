@@ -357,7 +357,7 @@ Tres capas; las dos primeras van en el CI de cada PR:
 
 1. **Superadmin y negocio a la vez:** un dueño intenta crear una cuenta de equipo con el correo de Andres → 409, como hoy (correo único); y el *trigger* lo frena aunque alguien lo intente directo por SQL con la app.
 2. **Pérdida del teléfono:**
-   - con los códigos de respaldo, entra y sigue. Cada código sirve una sola vez; el panel muestra cuántos le quedan, leídos con la cuenta de Better Auth, no desde el panel;
+   - con los códigos de respaldo, entra y sigue. Cada código sirve una sola vez. (Cambio al implementar: el panel no muestra cuántos le quedan; Better Auth los guarda cifrados y leerlos pediría abrir otra ruta. Si se le acaban, se reinicia con el comando);
    - sin ellos, `superadmin:alta --reiniciar-segundo-factor` con la URL del dueño.
 3. **Fuerza bruta del código:** límite de 3 cada 10 s y bloqueo de 15 min tras 10 fallos (Better Auth). El login sin 2FA sigue con el límite de hoy (10 cada 10 min por IP).
 4. **Sesión robada antes de activar el factor:** no sirve para `/admin` (paso 4 del *guard*), y activar el factor cierra todas.
