@@ -50,9 +50,16 @@ function ok(name, cond, extra = "") {
 
 const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 
-/** Un navegador mínimo: su frasco de cookies (el segundo factor usa dos). */
+/**
+ * Un navegador mínimo: su frasco de cookies (el segundo factor usa dos) y su
+ * propia IP. Sin ella, todos los inicios de sesión del guion saldrían de la
+ * misma y el límite por IP (10 cada 10 min) los frenaría con 429.
+ */
+let clientes = 0;
 function cliente() {
   const frasco = new Map();
+  clientes += 1;
+  const ip = `10.76.${clientes}.1`;
   async function api(path, opts = {}) {
     const res = await fetch(`${BASE}${path}`, {
       redirect: "manual",
@@ -60,6 +67,7 @@ function cliente() {
       headers: {
         "content-type": "application/json",
         origin: BASE,
+        "x-forwarded-for": ip,
         ...(frasco.size ? { cookie: [...frasco].map(([k, v]) => `${k}=${v}`).join("; ") } : {}),
         ...(opts.headers ?? {}),
       },
