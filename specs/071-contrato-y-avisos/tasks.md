@@ -12,4 +12,4 @@ Un commit por paso, cada uno con las pruebas de su módulo. PRs: `vocero-crm` (c
 - [x] T8 (3.8) Salud con el Agente apagado: encolar, entregar (`agentEnabled: false`) y `messages` con `motivo: "seguridad"`. Sabotajes 9 y 10.
 - [x] T9 (3.10) Avisos por Telegram: bandera `AVISOS`, `aviso_canal` con `pnpm avisos:grupo`, aviso al traspasar, seguimiento con freno de 30 minutos, reintentos en el worker, mock de desarrollo, `AVISOS=on` en el CI `completo`. Sabotajes: aviso con datos del contacto, seguimiento sin freno, token en el log.
 - [x] T10 `e2e-contrato-aliantis.mjs` y su guion, en `e2e.yml`.
-- [ ] T11 `docs/openapi.json`, `AGENTS.md`, enmienda del contrato del despacho, `estado.md` y `decisiones.md`. CI y `e2e.yml` en verde.
+- [x] T11 `docs/openapi.json`, `AGENTS.md`, enmienda del contrato del despacho, `estado.md` y `decisiones.md`. CI y `e2e.yml` en verde.
