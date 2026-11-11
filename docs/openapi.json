@@ -70,7 +70,7 @@
     "/api/bot/history": {
       "get": {
         "summary": "Historial de la conversación",
-        "description": "071 — Los últimos mensajes de una conversación, del más viejo al más nuevo, con el texto ya filtrado. Nunca trae notas internas. `privacyFlags`, `buttonId` y `buttons`, solo si hay; un saliente con botones tiene `type: \"text\"`.",
+        "description": "071 — Los últimos mensajes de una conversación, del más viejo al más nuevo, con el texto ya filtrado. Nunca trae notas internas. `privacyFlags`, `buttonId` y `buttons`, solo si hay; un saliente con botones tiene `type: \"text\"`. 072 — Un mensaje que pasó la retención del negocio (`retencion_dias`, 90 por defecto) trae `text: \"[mensaje borrado por antigüedad]\"`.",
         "parameters": [
           { "name": "conversationId", "in": "query", "required": true, "schema": { "type": "string" } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 } }
