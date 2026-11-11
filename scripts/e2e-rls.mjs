@@ -330,7 +330,12 @@ async function envoltorio() {
     } catch (err) {
       error = err;
     }
-    ok("sin contexto: ConsultaSinNegocio", error instanceof ConsultaSinNegocio, String(error));
+    // Drizzle envuelve el error del cliente: el nuestro viaja en `cause`.
+    ok(
+      "sin contexto: ConsultaSinNegocio",
+      error instanceof ConsultaSinNegocio || error?.cause instanceof ConsultaSinNegocio,
+      String(error)
+    );
     let cruzado = null;
     try {
       await conNegocio(A, () => conNegocio(B, () => db.select().from(schema.contact)));

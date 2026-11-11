@@ -122,7 +122,7 @@ describe("075 — consultas perezosas (como las de Drizzle)", () => {
         visto = negocioActual();
         return Promise.resolve(visto).then(ok);
       },
-    };
+    } as unknown as PromiseLike<string | null>;
     await conNegocio("org_a", () => perezosa);
     expect(visto).toBe("org_a");
     await trabajoDeFondo("x", () => conNegocio("org_b", () => perezosa));
