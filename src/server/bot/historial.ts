@@ -6,8 +6,8 @@ import { scoped } from "@/lib/db/tenant";
 /**
  * 071 (D4; D10 de la 067, §5) — El historial de una conversación para el
  * cerebro, que no guarda su propia copia: una sola retención y un solo
- * borrado. El texto es el guardado (ya filtrado). Nunca trae notas internas
- * (`conversation_note`) ni nada de otra conversación u organización.
+ * borrado. El texto es el guardado (ya filtrado). Nunca trae las notas del
+ * equipo ni nada de otra conversación u organización.
  */
 
 type Db = ReturnType<typeof getDb>;

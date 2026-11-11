@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gt, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 
@@ -59,9 +59,9 @@ export async function saludSinRespuesta(
         delHilo,
         eq(schema.message.direction, "in"),
         sql`'salud' = any(${schema.message.privacyFlags})`,
-        ultimoDelAgente
-          ? sql`${schema.message.createdAt} > ${ultimoDelAgente.createdAt}`
-          : undefined,
+        // `gt` y no SQL crudo: así la fecha se serializa por la columna (un
+        // `Date` suelto en `sql` no lo acepta el driver).
+        ultimoDelAgente ? gt(schema.message.createdAt, ultimoDelAgente.createdAt) : undefined,
       ),
     )
     .limit(1);
