@@ -70,6 +70,7 @@ Va **solo** porque borra datos por fecha: un error de signo, de organización o 
 - `src/server/retencion/aplicar.ts` (nuevo): `aplicarRetencion(ahora)`, `retencionDe(org)`, `vaciarNegocio(org, corte)`.
 - `tests/unit/fixtures/base-grabadora.ts`: `execute` (el candado por negocio).
 - `src/server/privacy/repositorio.ts`: leer y guardar `retencion_dias`.
+- `src/server/bot/ficha.ts`: `vaciarFichasInactivas` (la ficha solo se escribe por su puerta: guardarraíl `ficha-guard.test.ts`).
 - `scripts/privacidad-sembrar.ts`: `--retencion <dias>`.
 - `src/server/webhooks/worker.ts`: la llamada cada 24 horas.
 - `src/app/api/dev/retencion/route.ts` (nuevo, solo con mocks, 404 en producción): corre una pasada con un `ahora` dado, para el E2E.
