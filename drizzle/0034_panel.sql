@@ -55,7 +55,7 @@ BEGIN
 END
 $$;
 --> statement-breakpoint
-GRANT vocero_panel TO vocero_app WITH INHERIT FALSE, SET TRUE;
+GRANT vocero_panel TO vocero_app WITH INHERIT TRUE, SET TRUE;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA "public" TO vocero_panel;
 --> statement-breakpoint
