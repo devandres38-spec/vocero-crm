@@ -177,7 +177,27 @@ export function evaluateEnv(source: Record<string, string | undefined>): EnvEval
     seen.add(key);
     results.push(checkVar(key, value, undefined, false));
   }
+  results.push(...variablesRetiradas(source));
   return { results, env: parsed.success ? parsed.data : null };
+}
+
+/**
+ * Variables que ya no hacen nada pero pueden quedar en un `.env` viejo. Se
+ * avisa para que nadie crea que siguen abriendo algo.
+ */
+export const VARIABLES_RETIRADAS: Record<string, string> = {
+  ALLOW_SIGNUP: "ya no abre el registro (074): los negocios se crean con pnpm negocio:alta",
+};
+
+export function variablesRetiradas(source: Record<string, string | undefined>): CheckResult[] {
+  return Object.entries(VARIABLES_RETIRADAS)
+    .filter(([key]) => (source[key] ?? "") !== "")
+    .map(([key, detail]) => ({
+      status: "warn" as const,
+      label: key,
+      detail,
+      fix: `quita ${key} del .env y de la plataforma de despliegue`,
+    }));
 }
 
 /** Variables que no lee la app pero sí docker-compose.yml (Ruta B). */

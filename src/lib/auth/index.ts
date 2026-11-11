@@ -6,11 +6,8 @@ import { organization } from "better-auth/plugins";
 import { getDb, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
-import {
-  onUserCreated,
-  resolveActiveOrganizationId,
-} from "@/server/auth/on-signup";
-import { isPublicSignupAllowed } from "@/server/auth/registration";
+import { resolveActiveOrganizationId } from "@/server/auth/on-signup";
+import { bloqueoDeRuta } from "@/server/auth/registration";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -62,7 +59,11 @@ function createAuth() {
       requireEmailVerification: false,
       minPasswordLength: 8,
     },
-    plugins: [organization({ creatorRole: "owner" })],
+    // 074 — Nadie crea negocios por el plugin: solo `crearNegocio` (Andres).
+    // Sus rutas, además, quedan en 404 en el gancho de abajo.
+    plugins: [
+      organization({ creatorRole: "owner", allowUserToCreateOrganization: false }),
+    ],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // Rate limit por IP en login/registro (FR-062): 10 / 10 min → 429.
@@ -75,25 +76,15 @@ function createAuth() {
             });
           }
         }
-        // Registro público cerrado tras la primera organización (FR-060).
-        if (ctx.path === "/sign-up/email") {
-          if (!isInternalSignup() && !(await isPublicSignupAllowed())) {
-            throw new APIError("FORBIDDEN", {
-              message:
-                "El registro está cerrado: esta instancia ya tiene su organización",
-            });
-          }
+        // 074 — Registro público cerrado siempre y las rutas del plugin
+        // `organization` en 404 (`registration.ts`).
+        const bloqueo = bloqueoDeRuta(ctx.path, isInternalSignup());
+        if (bloqueo) {
+          throw new APIError(bloqueo.status, { message: bloqueo.message });
         }
       }),
     },
     databaseHooks: {
-      user: {
-        create: {
-          after: async (user) => {
-            await onUserCreated(user.id, user.name);
-          },
-        },
-      },
       session: {
         create: {
           before: async (session) => {

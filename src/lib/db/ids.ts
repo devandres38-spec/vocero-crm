@@ -47,6 +47,9 @@ const prefixes = {
   consent: "cns",
   // 071 — avisos de traspaso por Telegram
   avisoTraspaso: "avs",
+  // 074 — el dueño que crea `crearNegocio` (Better Auth acepta cualquier id)
+  user: "usr",
+  account: "acc",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

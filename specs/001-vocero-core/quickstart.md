@@ -14,8 +14,15 @@ pnpm db:migrate                                            # aplicar migraciones
 pnpm dev                                                   # http://localhost:3000
 ```
 
-Primer uso: registrarse (crea la organización) → botón "Cargar datos de demostración"
-(o `pnpm seed:demo`).
+Primer uso (074, sin registro público): crea el negocio y su dueño con
+`pnpm negocio:alta -- --nombre "Mi negocio" --dueno-correo tu@correo.co --dueno-nombre "Tu nombre"`
+(muestra la contraseña una sola vez), entra con ese correo → botón "Cargar datos de
+demostración" (o `pnpm seed:demo -- --organizacion <id>`).
+
+Los arneses `scripts/e2e-*.mjs` que no corren en `e2e.yml` se registraban en una
+instalación vacía: ahora necesitan el operador creado antes, con
+`node --env-file=.env scripts/e2e-operador.mjs` (el de `e2e@vocero.test`) o con
+`pnpm negocio:alta` y su propio correo.
 
 ## Modo de pruebas interno (self-test)
 

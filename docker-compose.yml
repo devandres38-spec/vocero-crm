@@ -60,7 +60,6 @@ services:
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-}
       OPENROUTER_JUDGE_MODEL: ${OPENROUTER_JUDGE_MODEL:-}
-      ALLOW_SIGNUP: ${ALLOW_SIGNUP:-}
       AGENT_COALESCE_MS: ${AGENT_COALESCE_MS:-6000}
       # Opcionales: vacías = apagadas (guía de cada una en .env.example).
       CHANNELS: ${CHANNELS:-}

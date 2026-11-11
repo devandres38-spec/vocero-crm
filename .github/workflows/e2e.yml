@@ -127,6 +127,12 @@ jobs:
           done
           tail -40 .tmp-dev-e2e.log; exit 1
 
+      # 074 — El registro público está cerrado: el operador de los arneses se
+      # crea con `pnpm negocio:alta`, como todo negocio, y se le fija la
+      # contraseña con la que los arneses entran.
+      - name: el negocio del operador, con pnpm negocio:alta
+        run: node scripts/e2e-operador.mjs
+
       - name: e2e-despacho (AGENT_COALESCE_MS=1500)
         run: |
           # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
@@ -170,10 +176,19 @@ jobs:
           set -o pipefail
           node scripts/e2e-multinegocio.mjs 2>&1 | tee .tmp-e2e-multinegocio.log
 
+      # 074 — Alta solo por Andres: registro en 403, rutas del plugin
+      # organization en 404, `pnpm negocio:alta` y un correo, un negocio.
+      - name: e2e-alta
+        if: ${{ !cancelled() }}
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-alta.mjs 2>&1 | tee .tmp-e2e-alta.log
+
       - name: resumen
         if: ${{ !cancelled() }}
         run: |
-          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log .tmp-e2e-multinegocio.log; do
+          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log .tmp-e2e-multinegocio.log .tmp-e2e-alta.log; do
             [ -f "$log" ] || continue
             echo "== $log: checks OK $(grep -cE '^\s+OK ' "$log" || true)"
             grep -E '^\s+(FAIL|FALLA)' "$log" || echo "sin fallas"

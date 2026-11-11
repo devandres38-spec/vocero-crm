@@ -444,8 +444,9 @@ solas al arrancar.
 
 ### Primer arranque
 
-1. Entra y **regístrate**: el primer registro crea tu organización y cierra el
-   registro público.
+1. Crea tu negocio y su dueño desde la terminal del servidor (no hay registro
+   público): `pnpm negocio:alta -- --nombre "Mi negocio" --dueno-correo tu@correo.co --dueno-nombre "Tu nombre"`.
+   Muestra la contraseña una sola vez; entra con ese correo y esa contraseña.
 2. Lo primero que ves es la **Guía de inicio**: configura tu agente, vincula
    tu proveedor de IA, conecta tu número de WhatsApp y, opcional, **conecta tu
    agente** (Nea u otro; su dirección va en las variables de entorno, el paso

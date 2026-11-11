@@ -1,9 +1,15 @@
 /**
- * CLI del seed demo: `pnpm seed:demo` (local) o `node seed-demo.mjs` dentro
- * del contenedor. Acepta --force para recargar aunque haya datos.
+ * CLI del seed demo: `pnpm seed:demo -- --organizacion <id>` (local) o
+ * `node seed-demo.mjs --organizacion <id>` dentro del contenedor. Acepta
+ * --force para recargar aunque haya datos.
+ *
+ * 074 — El negocio va explícito: con varios negocios, «la primera
+ * organización de la tabla» podía ser la de un cliente.
  * Se bundlea con esbuild (alias @ → ./src).
  */
 import { readFileSync } from "node:fs";
+import { parseArgs } from "node:util";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { PG_CONNECTION_OPTIONS } from "@/lib/db";
@@ -31,17 +37,29 @@ if (!url) {
 const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
 const db = drizzle(sql, { schema });
 
-const orgs = await db.select().from(schema.organization).limit(1);
-const org = orgs[0];
+const argumentos = process.argv.slice(2);
+if (argumentos[0] === "--") argumentos.shift();
+const { values } = parseArgs({
+  args: argumentos,
+  options: { organizacion: { type: "string" }, force: { type: "boolean" } },
+});
+if (!values.organizacion) {
+  console.error("Uso: pnpm seed:demo -- --organizacion <id> [--force]");
+  await sql.end();
+  process.exit(1);
+}
+const [org] = await db
+  .select()
+  .from(schema.organization)
+  .where(eq(schema.organization.id, values.organizacion))
+  .limit(1);
 if (!org) {
-  console.error(
-    "[seed] No hay organización: regístrate primero en la app y vuelve a correr el seed"
-  );
+  console.error(`[seed] No existe la organización ${values.organizacion}.`);
   await sql.end();
   process.exit(1);
 }
 
-const force = process.argv.includes("--force");
+const force = values.force === true;
 if (!force && !(await isDomainEmpty(db, org.id))) {
   console.error(
     "[seed] La organización ya tiene datos. Usa --force para recargar la demo."

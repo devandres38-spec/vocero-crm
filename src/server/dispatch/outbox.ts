@@ -1,5 +1,5 @@
 import { registrarTraspaso } from "@/server/avisos/avisos";
-import { and, eq, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { getEnv } from "@/lib/env";
@@ -192,23 +192,33 @@ function esViolacionDeUnicidad(err: unknown): boolean {
  */
 export async function tomarPendientes(
   limite = 10,
-  ahora: Date = new Date()
+  ahora: Date = new Date(),
+  /**
+   * 074 (4.4) — Negocios que ya tomaron su parte de esta tanda: se buscan
+   * despachos de OTROS. Si no hay, el worker vuelve a llamar sin la lista.
+   */
+  excluir: readonly string[] = []
 ): Promise<FilaDespacho[]> {
   const db = getDb();
   const candidatos = await db
     .select()
     .from(schema.dispatch)
     .where(
-      or(
-        and(
-          eq(schema.dispatch.status, "pendiente"),
-          lte(schema.dispatch.notBefore, ahora)
+      and(
+        or(
+          and(
+            eq(schema.dispatch.status, "pendiente"),
+            lte(schema.dispatch.notBefore, ahora)
+          ),
+          // Lease vencido: el worker que la tomó murió a mitad.
+          and(
+            eq(schema.dispatch.status, "en_vuelo"),
+            lte(schema.dispatch.leasedUntil, ahora)
+          )
         ),
-        // Lease vencido: el worker que la tomó murió a mitad.
-        and(
-          eq(schema.dispatch.status, "en_vuelo"),
-          lte(schema.dispatch.leasedUntil, ahora)
-        )
+        excluir.length > 0
+          ? notInArray(schema.dispatch.organizationId, [...excluir])
+          : undefined
       )
     )
     .orderBy(schema.dispatch.notBefore)

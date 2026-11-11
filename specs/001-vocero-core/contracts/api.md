@@ -30,7 +30,7 @@ Todas autenticadas por sesión Better Auth y scoped a la organización del usuar
 | `GET/POST /api/settings/webhook` | URL completa del webhook + estado firma / registrar el webhook en Meta con la conexión guardada (409 sin conexión, 422/503 con el motivo de Meta) |
 | `GET/POST /api/settings/team` | miembros / crear cuenta (owner only) |
 | `POST /api/seed/demo` | cargar demo (solo BD vacía de dominio; idempotente) |
-| `POST /api/auth/[...all]` | Better Auth (registro gated por 1ª org / `ALLOW_SIGNUP`) |
+| `POST /api/auth/[...all]` | Better Auth. 074: registro público cerrado siempre (las cuentas las crea `pnpm negocio:alta` o el dueño en Equipo) y `/organization/*` en 404 |
 
 Rate limiting in-process por IP en endpoints de auth (login/registro): ventana
 deslizante, 10 intentos / 10 min → 429.
