@@ -216,6 +216,18 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     await descartarDespacho(fila, "sin mensajes por despachar");
     return;
   }
+  /**
+   * 071 (3.8) — Con el Agente apagado solo viaja un despacho que traiga algo
+   * marcado con salud. El interruptor se lee al entregar: pudo apagarse
+   * durante la ventana de agrupado.
+   */
+  if (
+    evento.conversation.agentEnabled === false &&
+    !evento.messages.some((m) => m.privacyFlags?.includes("salud"))
+  ) {
+    await descartarDespacho(fila, "el agente está apagado");
+    return;
+  }
 
   const resultado = await entregar(evento, config);
   // El lease pudo vencer mientras se esperaba al cerebro y otro pudo retomar

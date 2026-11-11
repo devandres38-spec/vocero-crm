@@ -6,6 +6,7 @@ import { SendError, sendText } from "@/server/inbox/send";
 import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
 import { bodySchema } from "@/server/bot/mensaje-del-bot";
 import { marcarReservaFallida, reservarEnvio } from "@/server/bot/envio-idempotente";
+import { agenteEncendido, saludSinRespuesta } from "@/server/bot/seguridad";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,16 @@ export async function POST(req: Request) {
   // cerebro manda el texto sin ellos). También en el Laboratorio.
   if (body.data.buttons && conv.channel !== "whatsapp") {
     return apiError(409, "canal_sin_botones", "Este canal no admite botones");
+  }
+  // 071 (3.8) — Con el Agente apagado, en una conversación real, solo pasa un
+  // mensaje de seguridad por cada entrante de salud. El Laboratorio no.
+  if (!conv.isTest && !(await agenteEncendido(organizationId))) {
+    const seguridad =
+      body.data.motivo === "seguridad" &&
+      (await saludSinRespuesta(organizationId, body.data.conversationId));
+    if (!seguridad) {
+      return apiError(409, "agente_apagado", "El agente está apagado en este negocio");
+    }
   }
   if (conv.isTest) {
     const guardada = await guardarRespuestaDePrueba({

@@ -584,7 +584,11 @@ export async function ingestInboundMessage(input: {
 
   // 036 — Quien contesta es el cerebro conectado; sin él, una persona. El
   // 025: `message.id` es lo que el despacho le debe al cerebro.
-  if (despachoActivo()) await despacharAlCerebro(conversation.id, organizationId, message.id);
+  if (despachoActivo()) {
+    await despacharAlCerebro(conversation.id, organizationId, message.id, {
+      salud: marcas.includes("salud"),
+    });
+  }
 }
 
 /**

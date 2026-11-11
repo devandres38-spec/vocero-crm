@@ -72,6 +72,11 @@ export type EventoDespacho = {
      * tratarla como un cliente (lista de permitidos, seguimiento).
      */
     test?: true;
+    /**
+     * 071 (3.8) — Solo con el Agente apagado, y siempre `false`: el despacho
+     * va porque un entrante trae la marca `salud`. Siempre al final.
+     */
+    agentEnabled?: false;
   };
   contact: {
     id: string;
@@ -121,6 +126,8 @@ export function armarEvento(datos: {
     windowExpiresAt: Date | null;
     /** 033 */
     test?: boolean;
+    /** 071 (3.8) */
+    agentEnabled?: boolean;
   };
   contact: { id: string; displayName: string; identity: string };
   messages: MensajeParaEvento[];
@@ -145,6 +152,8 @@ export function armarEvento(datos: {
       windowExpiresAt: datos.conversation.windowExpiresAt?.toISOString() ?? null,
       // 033 — Solo cuando aplica, al final: el cuerpo gemelo no cambia.
       ...(datos.conversation.test ? { test: true as const } : {}),
+      // 071 (3.8) — Solo cuando el Agente está apagado, al final.
+      ...(datos.conversation.agentEnabled === false ? { agentEnabled: false as const } : {}),
     },
     contact: {
       id: datos.contact.id,
