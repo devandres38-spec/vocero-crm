@@ -12,4 +12,4 @@ Un bloque: dos PRs (`vocero-crm` y `aliantis-brain`) y `estado.md` y `decisiones
 - [x] T8 `olvido_pendiente`: la ruta de eliminar y el reintento en el worker; pruebas de reloj.
 - [x] T9 Cerebro: `olvidarConversacion` con `conservarPendientes` y el cierre tras «No acepto» en `process-turn.ts`; pruebas.
 - [x] T10 `e2e-consentimiento.mjs` y su guion, en `e2e.yml`.
-- [ ] T11 `docs/openapi.json`, `AGENTS.md`, enmienda del contrato del despacho, `estado.md` y `decisiones.md`. CI y `e2e.yml` en verde.
+- [x] T11 `docs/openapi.json`, `AGENTS.md`, enmienda del contrato del despacho, `estado.md` y `decisiones.md`. CI y `e2e.yml` en verde.
