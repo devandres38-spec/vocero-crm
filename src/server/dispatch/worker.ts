@@ -1,3 +1,4 @@
+import { enviarAvisosPendientes } from "@/server/avisos/avisos";
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { leerConfigDespacho } from "@/server/brains/config";
@@ -147,6 +148,12 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
       await reintentarOlvidos();
     } catch (err) {
       console.error("[olvido] el reintento falló:", err instanceof Error ? err.message : err);
+    }
+    // 071 (3.10) — Los avisos de traspaso por Telegram.
+    try {
+      await enviarAvisosPendientes();
+    } catch (err) {
+      console.error("[avisos] la pasada falló:", err instanceof Error ? err.message : err);
     }
     return count;
   } catch (err) {

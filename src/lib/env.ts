@@ -38,6 +38,12 @@ export const envSchema = z.object({
   // 015: motor de agenda. Apagado por defecto — sin el, toda la superficie de
   // agenda responde 404 y la UI no la menciona. Ej.: AGENDA=on
   AGENDA: z.string().optional(),
+  // 071: avisos de traspaso por Telegram. Apagados por defecto. Ej.: AVISOS=on
+  // El token es el del bot de Aliantis; el grupo de cada negocio se registra
+  // con `pnpm avisos:grupo`. TELEGRAM_API_BASE_URL solo para el self-test.
+  AVISOS: z.string().optional(),
+  TELEGRAM_BOT_TOKEN: z.string().optional(),
+  TELEGRAM_API_BASE_URL: z.string().url().optional(),
   // 016: atribucion de anuncios y reporte a la Conversions API de Meta.
   // Apagada por defecto: sin ella no se captura de que anuncio vino una
   // conversacion, no se le reporta nada a Meta y la superficie da 404.

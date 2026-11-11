@@ -1,3 +1,4 @@
+import { registrarTraspaso } from "@/server/avisos/avisos";
 import { and, eq, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
@@ -377,10 +378,18 @@ export async function pasarAHumano(
         isNull(schema.conversation.handoffAt)
       )
     )
-    .returning({ id: schema.conversation.id });
+    .returning({ id: schema.conversation.id, isTest: schema.conversation.isTest });
   if (!rows[0]) return;
   publish(organizationId, {
     type: "conversation.updated",
     data: { conversation: { id: conversationId, handoffReason: "error" } },
+  });
+  // 071 (3.10): el equipo se entera por Telegram (si el negocio tiene avisos).
+  await registrarTraspaso({
+    organizationId,
+    conversationId,
+    handoffAt: ahora,
+    reason: "error",
+    esPrueba: rows[0].isTest,
   });
 }
