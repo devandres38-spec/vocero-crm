@@ -11,6 +11,9 @@ import { z } from "zod";
 export const envSchema = z.object({
   APP_BASE_URL: z.string().url(),
   DATABASE_URL: z.string().min(1),
+  // 075 — El dueño de las tablas, solo para las migraciones (migrate.mjs). La
+  // app usa DATABASE_URL, un usuario sin privilegios que migrate.mjs crea.
+  DATABASE_MIGRATIONS_URL: z.string().min(1).optional(),
   BETTER_AUTH_SECRET: z.string().min(16),
   ENCRYPTION_KEY: z
     .string()

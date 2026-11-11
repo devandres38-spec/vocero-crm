@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { getEnv } from "@/lib/env";
+import { clienteConRls } from "./cliente-rls";
 import * as schema from "./schema";
 
 /**
@@ -51,10 +52,35 @@ export function getSql() {
 }
 
 let cachedDb: ReturnType<typeof drizzle<typeof schema>> | null = null;
+let cachedCuentas: ReturnType<typeof drizzle<typeof schema>> | null = null;
 
+/**
+ * 075 — La base de la app: cada consulta corre en el negocio del contexto
+ * (`conNegocio`), fijado dentro de su transacción (`cliente-rls.ts`).
+ */
 export function getDb() {
-  if (!cachedDb) cachedDb = drizzle(getSql(), { schema });
+  if (!cachedDb) cachedDb = drizzle(clienteConRls(getSql()), { schema });
   return cachedDb;
+}
+
+/**
+ * 075 — Solo para Better Auth (`src/lib/auth/index.ts`): sus tablas (`user`,
+ * `session`, `account`, `verification`) no tienen RLS y se leen antes de
+ * saber el negocio. Sin envoltorio: si tocara una tabla de negocio, el RLS no
+ * le dejaría ver nada.
+ */
+export function dbDeCuentas() {
+  if (!cachedCuentas) cachedCuentas = drizzle(getSql(), { schema });
+  return cachedCuentas;
+}
+
+/**
+ * 075 — La conexión de un comando (`scripts/`): la misma regla que la app
+ * (respuesta 7 de Andres). El comando corre su trabajo en `conNegocio`.
+ */
+export function crearConexion(url: string) {
+  const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
+  return { sql, db: drizzle(clienteConRls(sql), { schema }) };
 }
 
 export { schema };

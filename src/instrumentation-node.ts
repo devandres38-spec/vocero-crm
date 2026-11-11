@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
+import { getDb, getSql, schema } from "@/lib/db";
+import { ARREGLO_RLS, decisionDeArranque, motivosParaNoArrancar } from "@/lib/db/rls-arranque";
 import { mediaDirStatus } from "@/server/media-dir";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { iniciarWorker, tanda } from "@/server/dispatch/worker";
@@ -18,6 +19,28 @@ import { barrido, iniciarBarrido } from "@/server/webhooks/worker";
  * expone como `mediaWritable` (#82): este resultado queda cacheado y el
  * healthcheck lo reutiliza en vez de volver a escribir.
  */
+/**
+ * 075 (D15) — ¿El usuario de la base se salta el RLS (superusuario, BYPASSRLS,
+ * dueño de las tablas) o hay una tabla de negocio sin RLS? En producción, la
+ * app no arranca; fuera de ella, avisa. Nunca imprime la URL.
+ */
+export async function checkRls(): Promise<void> {
+  let motivos: string[] | "sin_revisar";
+  try {
+    motivos = await motivosParaNoArrancar(getSql());
+  } catch {
+    motivos = "sin_revisar";
+  }
+  const decision = decisionDeArranque(motivos, process.env.NODE_ENV);
+  if (decision === "arrancar") return;
+  const porque = motivos === "sin_revisar" ? "no se pudo revisar el rol de la base" : motivos.join("; ");
+  if (decision === "no_arrancar") {
+    console.error(`[boot] RLS: la app no arranca: ${porque}. ${ARREGLO_RLS}`);
+    process.exit(1);
+  }
+  console.warn(`[boot] RLS (aviso, fuera de producción): ${porque}. ${ARREGLO_RLS}`);
+}
+
 export async function checkMediaDir(): Promise<void> {
   const media = await mediaDirStatus();
   // Sin entorno válido no hay nada que sondear: lo reporta, con detalle, el

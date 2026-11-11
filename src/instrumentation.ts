@@ -6,12 +6,15 @@
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     const {
+      checkRls,
       checkMediaDir,
       cleanupOrphanRuns,
       encryptLegacySecrets,
       resumeDispatch,
       resumeWebhooks,
     } = await import("./instrumentation-node");
+    // 075 — Primero: en producción, un usuario de base que se salta el RLS no arranca.
+    await checkRls();
     await checkMediaDir();
     await cleanupOrphanRuns();
     await encryptLegacySecrets();
