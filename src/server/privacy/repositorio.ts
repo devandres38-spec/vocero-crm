@@ -97,6 +97,18 @@ export async function perfilDePrivacidad(
  * 070 (D1) — Si se guardan los archivos de los pacientes: apagado si el
  * perfil filtra salud, encendido si no, salvo que Andres lo fuerce.
  */
+/**
+ * 072 (D1) — Días de retención: el mismo rango y valor por defecto que
+ * `retencion_dias` del cerebro (`client-config.ts`).
+ */
+export const RETENCION_MINIMA = 7;
+export const RETENCION_MAXIMA = 3650;
+export const RETENCION_POR_DEFECTO = 90;
+
+export function retencionValida(dias: number): boolean {
+  return Number.isInteger(dias) && dias >= RETENCION_MINIMA && dias <= RETENCION_MAXIMA;
+}
+
 export function adjuntosPorDefecto(perfil: PerfilPrivacidad): boolean {
   return perfil.sensible === null;
 }
@@ -109,7 +121,7 @@ export async function guardarPerfil(
   db: Db,
   organizationId: string,
   perfil: PerfilPrivacidad,
-  opciones: { adjuntos?: boolean } = {}
+  opciones: { adjuntos?: boolean; retencionDias?: number } = {}
 ): Promise<{ huellaAnterior: string | null }> {
   const [anterior] = await db
     .select({ fingerprint: schema.privacyProfile.fingerprint })
@@ -119,6 +131,11 @@ export async function guardarPerfil(
   const columnas = {
     ...filaDesdePerfil(organizationId, perfil),
     adjuntos: opciones.adjuntos ?? adjuntosPorDefecto(perfil),
+    // 072: sin `--retencion`, un perfil nuevo toma 90 (el default de la
+    // columna) y uno que se vuelve a sembrar conserva sus días.
+    ...(opciones.retencionDias === undefined
+      ? {}
+      : { retencionDias: opciones.retencionDias }),
   };
   await db
     .insert(schema.privacyProfile)

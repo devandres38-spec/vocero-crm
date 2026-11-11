@@ -50,9 +50,13 @@ export function baseFalsa(inicial: {
           const i = perfiles.findIndex(
             (p) => p.organizationId === valores.organizationId
           );
+          // Como Postgres: al insertar, los defaults de la columna; al
+          // reemplazar, se queda lo que el `set` no trae (072: retencion_dias).
           const fila = {
+            retencionDias: 90,
             createdAt: new Date(),
             updatedAt: new Date(),
+            ...(i >= 0 ? perfiles[i] : {}),
             ...valores,
           } as FilaPerfil;
           if (i >= 0) perfiles[i] = { ...fila, id: perfiles[i]!.id };

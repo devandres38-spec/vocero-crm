@@ -1,7 +1,14 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { perfilPrivacidadSchema } from "./perfil";
-import { adjuntosPorDefecto, guardarPerfil } from "./repositorio";
+import {
+  adjuntosPorDefecto,
+  guardarPerfil,
+  RETENCION_MAXIMA,
+  RETENCION_MINIMA,
+  RETENCION_POR_DEFECTO,
+  retencionValida,
+} from "./repositorio";
 
 /**
  * 068 — Registrar el perfil de privacidad de un negocio (D2, D4, D5). Lo usa
@@ -22,6 +29,8 @@ export type ResultadoSembrar =
       huellaAnterior: string | null;
       /** 070 (D1): si se guardan los archivos de los pacientes. */
       adjuntos: boolean;
+      /** 072 (D1): los días de retención que quedaron guardados. */
+      retencionDias: number;
     }
   | { ok: false; error: string };
 
@@ -33,8 +42,16 @@ export async function sembrarPerfil(
     sinFiltroSalud: boolean;
     /** 070 (D1): fuerza los adjuntos; sin él, el valor por defecto del perfil. */
     adjuntos?: boolean;
+    /** 072 (D1): días de retención; sin él, 90 o los que ya tenía. */
+    retencionDias?: number;
   }
 ): Promise<ResultadoSembrar> {
+  if (entrada.retencionDias !== undefined && !retencionValida(entrada.retencionDias)) {
+    return {
+      ok: false,
+      error: `--retencion debe ser un número entero de días entre ${RETENCION_MINIMA} y ${RETENCION_MAXIMA}.`,
+    };
+  }
   let crudo: unknown;
   try {
     crudo = JSON.parse(entrada.contenido);
@@ -80,7 +97,15 @@ export async function sembrarPerfil(
   const adjuntos = entrada.adjuntos ?? adjuntosPorDefecto(perfil);
   const { huellaAnterior } = await guardarPerfil(db, entrada.organizationId, perfil, {
     adjuntos,
+    ...(entrada.retencionDias === undefined
+      ? {}
+      : { retencionDias: entrada.retencionDias }),
   });
+  const [guardado] = await db
+    .select({ retencionDias: schema.privacyProfile.retencionDias })
+    .from(schema.privacyProfile)
+    .where(eq(schema.privacyProfile.organizationId, entrada.organizationId))
+    .limit(1);
   return {
     ok: true,
     perfil: perfil.perfil,
@@ -90,5 +115,6 @@ export async function sembrarPerfil(
     huella: perfil.huella,
     huellaAnterior,
     adjuntos,
+    retencionDias: guardado?.retencionDias ?? RETENCION_POR_DEFECTO,
   };
 }
