@@ -339,10 +339,10 @@ CREATE POLICY "aviso_traspaso_por_negocio" ON "aviso_traspaso"
 -- Cada una: search_path fijo, sin EXECUTE para PUBLIC y solo para vocero_app.
 -- ============================================================
 CREATE OR REPLACE FUNCTION vocero_membresia(p_user_id text)
-RETURNS TABLE (organization_id text, role text)
+RETURNS TABLE (organization_id text, role text, email text)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp
 AS $$
-  SELECT m.organization_id, m.role FROM member m
+  SELECT m.organization_id, m.role, (SELECT u.email FROM "user" u WHERE u.id = m.user_id) FROM member m
   WHERE m.user_id = p_user_id
   ORDER BY m.created_at, m.id
   LIMIT 1
