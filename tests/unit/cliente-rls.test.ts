@@ -114,6 +114,22 @@ describe("075 — el negocio en cada transacción", () => {
   });
 });
 
+describe("075 — consultas perezosas (como las de Drizzle)", () => {
+  it("una consulta que se ejecuta al esperarla corre DENTRO del negocio", async () => {
+    let visto: string | null = "sin ejecutar";
+    const perezosa = {
+      then(ok: (v: string | null) => unknown) {
+        visto = negocioActual();
+        return Promise.resolve(visto).then(ok);
+      },
+    };
+    await conNegocio("org_a", () => perezosa);
+    expect(visto).toBe("org_a");
+    await trabajoDeFondo("x", () => conNegocio("org_b", () => perezosa));
+    expect(visto).toBe("org_b");
+  });
+});
+
 describe("075 — sin contexto", () => {
   it("modo lanzar: ConsultaSinNegocio y nada llega a la base", async () => {
     await expect(Promise.resolve(lanzar.unsafe("select * from message", []))).rejects.toBeInstanceOf(

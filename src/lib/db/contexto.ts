@@ -70,7 +70,7 @@ export function negocioActual(): string | null {
   return c?.tipo === "negocio" ? c.organizationId : null;
 }
 
-export function conNegocio<T>(organizationId: string, fn: () => Promise<T>): Promise<T> {
+export function conNegocio<T>(organizationId: string, fn: () => PromiseLike<T>): Promise<T> {
   validarNegocio(organizationId);
   const actual = contextoActual();
   const desde =
@@ -78,16 +78,26 @@ export function conNegocio<T>(organizationId: string, fn: () => Promise<T>): Pro
   if (desde !== null && desde !== organizationId) {
     return Promise.reject(new NegocioCruzado());
   }
-  return almacen().run({ tipo: "negocio", organizationId }, fn);
+  return almacen().run({ tipo: "negocio", organizationId }, () => dentro(fn));
 }
 
-export function comoSistema<T>(motivo: string, fn: () => Promise<T>): Promise<T> {
+export function comoSistema<T>(motivo: string, fn: () => PromiseLike<T>): Promise<T> {
   const actual = contextoActual();
   const desde =
     actual?.tipo === "negocio" ? actual.organizationId : actual?.tipo === "sistema" ? actual.desde : null;
-  return almacen().run({ tipo: "sistema", motivo, desde }, fn);
+  return almacen().run({ tipo: "sistema", motivo, desde }, () => dentro(fn));
 }
 
-export function trabajoDeFondo<T>(motivo: string, fn: () => Promise<T>): Promise<T> {
-  return almacen().run({ tipo: "sistema", motivo, desde: null }, fn);
+export function trabajoDeFondo<T>(motivo: string, fn: () => PromiseLike<T>): Promise<T> {
+  return almacen().run({ tipo: "sistema", motivo, desde: null }, () => dentro(fn));
+}
+
+/**
+ * Espera el resultado DENTRO del contexto. Las consultas de Drizzle son
+ * perezosas: `conNegocio(org, () => db.select()…)` devuelve la consulta sin
+ * ejecutar, y si se esperara fuera correría sin negocio (lo encontró
+ * `e2e-rls` contra Postgres real).
+ */
+async function dentro<T>(fn: () => PromiseLike<T>): Promise<T> {
+  return await fn();
 }
