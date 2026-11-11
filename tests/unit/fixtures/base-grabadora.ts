@@ -8,13 +8,13 @@ import type { SQL } from "drizzle-orm";
  * encolan por tabla. Sirve para afirmar qué se borra y con qué filtro.
  */
 export type Operacion = {
-  op: "select" | "insert" | "update" | "delete";
+  op: "select" | "insert" | "update" | "delete" | "execute";
   tabla: unknown;
   valores?: unknown;
   where?: { sql: string; params: unknown[] };
 };
 
-export function baseGrabadora() {
+export function baseGrabadora(opciones: { candado?: () => boolean } = {}) {
   const ops: Operacion[] = [];
   const respuestas = new Map<unknown, unknown[][]>();
   const responder = (tabla: unknown, filas: unknown[]) => {
@@ -70,6 +70,11 @@ export function baseGrabadora() {
     update: (tabla: unknown) => cadena({ op: "update", tabla }),
     delete: (tabla: unknown) => cadena({ op: "delete", tabla }),
     transaction: async <T>(fn: (tx: unknown) => Promise<T>) => fn(db),
+    // 072 — SQL crudo (el candado por negocio): se graba y responde `ok`.
+    execute: async (q: SQL) => {
+      ops.push({ op: "execute", tabla: null, where: new PgDialect().sqlToQuery(q) });
+      return [{ ok: opciones.candado ? opciones.candado() : true }];
+    },
   };
   return { db, ops, responder };
 }

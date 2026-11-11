@@ -53,7 +53,7 @@ Va **solo** porque borra datos por fecha: un error de signo, de organización o 
   - `llm_calls` y `tenant_configs` se conservan (sin texto; cuentan para el gasto).
 - **D6. Cómo corre en el cerebro.** Migración `0006` con `cerebro.organizaciones_con_configuracion()` (`SECURITY DEFINER`, devuelve solo ids, como 0002 y 0004). Cola nueva `retencion` (`exclusive`), programada con `boss.schedule('retencion', '0 3 * * *', …, { tz: 'America/Bogota' })`. Cada negocio, dentro de `withOrganization` (con RLS), lee su última configuración y borra.
 - **D8. `loss_note` por el filtro al escribir** (hallazgo de este bloque, aprobado): la nota de pérdida del pipeline (`PATCH /api/pipeline/leads/[id]` → `leads/stage-history.ts`) se guardaba sin filtrar; el 3.6 la dejó fuera. Pasa por `filtrarTextoLibre` como las demás notas.
-- **D7. El texto fijo** `RETENTION_TEXT = "[mensaje borrado por antigüedad]"` vive junto a `HEALTH_OMITTED_TEXT` en `privacy-filter.ts`. `GET /api/bot/history` lo entrega tal cual: el cerebro no lo confunde con texto del paciente porque no pide historial más viejo que su propia retención.
+- **D7. El texto fijo** `RETENTION_TEXT = "[mensaje borrado por antigüedad]"` vive en `src/server/retencion/aplicar.ts` (no en `privacy-filter.ts`, que es copia del cerebro y no se edita a mano). `GET /api/bot/history` lo entrega tal cual: el cerebro no lo confunde con texto del paciente porque no pide historial más viejo que su propia retención.
 
 ## Modelo de datos
 
@@ -68,7 +68,7 @@ Va **solo** porque borra datos por fecha: un error de signo, de organización o 
 **Vocero**
 - `drizzle/0031_retencion.sql`, `src/lib/db/schema.ts`.
 - `src/server/retencion/aplicar.ts` (nuevo): `aplicarRetencion(ahora)`, `retencionDe(org)`, `vaciarNegocio(org, corte)`.
-- `src/server/privacy/privacy-filter.ts`: `RETENTION_TEXT`.
+- `tests/unit/fixtures/base-grabadora.ts`: `execute` (el candado por negocio).
 - `src/server/privacy/repositorio.ts`: leer y guardar `retencion_dias`.
 - `scripts/privacidad-sembrar.ts`: `--retencion <dias>`.
 - `src/server/webhooks/worker.ts`: la llamada cada 24 horas.
