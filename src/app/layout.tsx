@@ -5,8 +5,7 @@ import { faviconHref } from "@/lib/favicon";
 import { appIconHref, NAV_INK, shortAppName } from "@/lib/pwa";
 import { RegistrarServiceWorker } from "@/components/pwa";
 import { atributosHtml, cssDePropio, cssDeTemas } from "@/lib/temas";
-import { aparienciaActual } from "@/server/apariencia";
-import { getBranding } from "@/server/branding";
+import { aparienciaDeLaPeticion, marcaDeLaPeticion } from "@/server/marca-de-la-peticion";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import "./globals.css";
@@ -66,7 +65,7 @@ const plexMono = localFont({
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const branding = await getBranding().catch(() => DEFAULT_BRANDING);
+  const branding = (await marcaDeLaPeticion().catch(() => null))?.branding ?? DEFAULT_BRANDING;
   const producto = productName([...enabledChannels()]);
   return {
     title: `${branding.name} — ${producto}`,
@@ -90,10 +89,10 @@ export const viewport: Viewport = { themeColor: NAV_INK };
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const branding = await getBranding().catch(() => DEFAULT_BRANDING);
+  const branding = (await marcaDeLaPeticion().catch(() => null))?.branding ?? DEFAULT_BRANDING;
   // 062 · D6 — La apariencia (tema, letra, tamaño y densidad) se resuelve en
   // el servidor: el primer pintado ya la trae, sin parpadeo.
-  const { apariencia } = await aparienciaActual().catch(() => ({
+  const { apariencia } = await aparienciaDeLaPeticion().catch(() => ({
     apariencia: { tema: "menta", letra: "urbanist", tamano: "normal", densidad: "normal" } as const,
   }));
   return (

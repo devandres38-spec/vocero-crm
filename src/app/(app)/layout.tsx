@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { getSessionOrNull, paginaConSesion } from "@/lib/auth/session";
 import { aparienciaActual } from "@/server/apariencia";
 import { getBranding } from "@/server/branding";
 import { AppShell } from "@/components/app-shell";
@@ -12,7 +12,7 @@ import { navKicker } from "@/lib/channels";
 import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
 
-export default async function AppLayout({
+async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSessionOrNull();
@@ -49,3 +49,6 @@ export default async function AppLayout({
     </AppShell>
   );
 }
+
+// 075 — Dentro del negocio de la sesión (RLS).
+export default paginaConSesion(AppLayout);

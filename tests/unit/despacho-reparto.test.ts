@@ -9,13 +9,25 @@ type Fila = { id: string; organizationId: string };
 const h = vi.hoisted(() => ({
   cola: [] as { id: string; organizationId: string }[],
   procesadas: [] as string[],
+  enNegocio: [] as (string | null)[],
   grab: null as unknown,
 }));
 
+// 075 — El negocio del siguiente sale de la función de solo ids (con el
+// reparto); el despacho se toma DENTRO de ese negocio: el más viejo del suyo.
+vi.mock("@/server/db-sistema", () => ({
+  despachosVencidos: async (_ahora: Date, _limite: number, excluir: readonly string[]) => {
+    const f = h.cola.find((x) => !excluir.includes(x.organizationId));
+    return f ? [{ id: f.id, organizationId: f.organizationId }] : [];
+  },
+  negociosConOlvidos: async () => [],
+  negociosConAvisos: async () => [],
+}));
 vi.mock("@/server/dispatch/outbox", async (orig) => ({
   ...(await orig<typeof import("@/server/dispatch/outbox")>()),
-  tomarPendientes: async (_limite: number, _ahora: Date, excluir: readonly string[] = []) => {
-    const i = h.cola.findIndex((f) => !excluir.includes(f.organizationId));
+  tomarPendientes: async () => {
+    h.enNegocio.push(negocioActual());
+    const i = h.cola.findIndex((f) => f.organizationId === negocioActual());
     return i < 0 ? [] : h.cola.splice(i, 1);
   },
   descartarDespacho: async (fila: Fila) => {
@@ -30,6 +42,7 @@ vi.mock("@/server/avisos/avisos", () => ({
 }));
 vi.mock("@/server/dispatch/olvidos", () => ({ reintentarOlvidos: async () => undefined }));
 
+import { conNegocio, negocioActual } from "@/lib/db/contexto";
 import { negociosServidos, POR_NEGOCIO_EN_TANDA, tanda } from "@/server/dispatch/worker";
 
 const filas = (org: string, n: number) =>
@@ -38,6 +51,7 @@ const filas = (org: string, n: number) =>
 beforeEach(() => {
   h.cola = [];
   h.procesadas = [];
+  h.enNegocio = [];
 });
 
 describe("074 — la tanda reparte por negocio", () => {
@@ -68,6 +82,18 @@ describe("074 — la tanda reparte por negocio", () => {
     // La cola simulada saca por orden; lo que queda de A sale en su orden.
     for (const id of original) if (!h.cola.some((f) => f.id === id)) orden.push(id);
     expect(orden.filter((id) => id.startsWith("A"))).toEqual(["A_0", "A_1", "A_2"]);
+  });
+
+  it("075 — cada despacho se toma dentro de SU negocio", async () => {
+    h.cola = [...filas("A", 2), ...filas("B", 2)];
+    await tanda();
+    expect(h.enNegocio).toEqual(["A", "A", "B", "B"]);
+  });
+
+  it("075 — disparada desde dentro de un negocio (temporizador heredado): procesa los demás", async () => {
+    h.cola = [...filas("A", 1), ...filas("B", 1)];
+    await conNegocio("A", () => tanda());
+    expect(h.enNegocio).toEqual(["A", "B"]);
   });
 
   it("negociosServidos", () => {

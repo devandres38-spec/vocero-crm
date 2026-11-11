@@ -1,13 +1,13 @@
 import { BrandingClient } from "@/components/settings/branding-client";
 import { FaviconCard } from "@/components/settings/favicon-card";
 import { getBranding } from "@/server/branding";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { getSessionOrNull, paginaConSesion } from "@/lib/auth/session";
 import { enabledChannels } from "@/server/channels/enabled";
 import { navKicker } from "@/lib/channels";
 
 export const dynamic = "force-dynamic";
 
-export default async function BrandingSettingsPage() {
+async function BrandingSettingsPage() {
   // La marca se lee en el servidor para que la tarjeta del icono ya pinte la
   // vista previa correcta en el primer render, sin un parpadeo del generado al
   // subido mientras un fetch del cliente va y vuelve.
@@ -26,3 +26,6 @@ export default async function BrandingSettingsPage() {
     </div>
   );
 }
+
+// 075 — Dentro del negocio de la sesión (RLS).
+export default paginaConSesion(BrandingSettingsPage);

@@ -1,3 +1,4 @@
+import { trabajoDeFondo } from "@/lib/db/contexto";
 import { z } from "zod";
 import { parseBody } from "@/lib/api";
 import { mockGuard } from "@/lib/dev-guard";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  * que mande el arnés), sin esperar las 24 horas del worker. Devuelve solo
  * conteos por negocio. 404 en producción.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const guard = mockGuard();
   if (guard) return guard;
   const body = await parseBody(
@@ -24,3 +25,6 @@ export async function POST(req: Request) {
   if (!negocios) return Response.json({ enCurso: true }, { status: 409 });
   return Response.json({ negocios });
 }
+
+// 075 — Mock de desarrollo: proceso de fondo que entra a cada negocio que toca.
+export const POST = (req: Request) => trabajoDeFondo("dev-mock", () => postSinNegocio(req));

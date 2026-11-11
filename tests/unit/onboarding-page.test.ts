@@ -9,7 +9,11 @@ const getSessionOrNull = vi.hoisted(() => vi.fn());
 const guideStatus = vi.hoisted(() => vi.fn());
 const guideFirst = vi.hoisted(() => vi.fn());
 
-vi.mock("@/lib/auth/session", () => ({ getSessionOrNull }));
+vi.mock("@/lib/auth/session", () => ({
+  getSessionOrNull,
+  // 075 — De paso: aquí se prueba la página, no el negocio de la sesión.
+  paginaConSesion: <P,>(p: (props: P) => unknown) => p,
+}));
 vi.mock("@/server/onboarding/guide", () => ({ guideStatus, guideFirst }));
 vi.mock("@/components/onboarding/onboarding-client", () => ({
   OnboardingClient: () => null,

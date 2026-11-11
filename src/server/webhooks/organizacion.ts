@@ -1,13 +1,8 @@
 import type { WebhookPayload } from "@/server/inbox/webhook";
-import {
-  getCredentialsByPhoneNumberId,
-  getCredentialsByWabaId,
-} from "@/server/whatsapp/credentials";
-import { getInstagramCredentialsByIgUserId } from "@/server/instagram/credentials";
-import { getMessengerCredentialsByPageId } from "@/server/messenger/credentials";
 import { normalizeMetaPagePayload } from "@/server/messenger/ingest";
 import { zernioTargetChannel } from "@/server/zernio/dispatch";
-import { findZernioConnection } from "@/server/zernio/conexiones";
+import { negocioDeCuentaZernio } from "@/server/zernio/conexiones";
+import { negocioPorCanal, type TipoDeCanal } from "@/server/db-sistema";
 import type { ZernioEvent } from "@/server/zernio";
 import type { FuenteWebhook } from "./eventos";
 
@@ -29,16 +24,27 @@ export type Buscadores = {
   porCuentaZernio: (evt: ZernioEvent) => Promise<{ organizationId: string } | null>;
 };
 
+/**
+ * 075 — Antes de saber el negocio no se pueden leer las credenciales (tienen
+ * RLS): el negocio sale de `vocero_negocio_por_canal`, que solo devuelve su id.
+ */
+function porClave(tipo: TipoDeCanal) {
+  return async (clave: string) => {
+    const organizationId = await negocioPorCanal(tipo, clave);
+    return organizationId ? { organizationId } : null;
+  };
+}
+
 const buscadoresReales: Buscadores = {
-  porPhoneNumberId: getCredentialsByPhoneNumberId,
-  porWabaId: getCredentialsByWabaId,
-  porIgUserId: getInstagramCredentialsByIgUserId,
-  porPageId: getMessengerCredentialsByPageId,
+  porPhoneNumberId: porClave("phone_number_id"),
+  porWabaId: porClave("waba_id"),
+  porIgUserId: porClave("ig_user_id"),
+  porPageId: porClave("page_id"),
   porCuentaZernio: async (evt) => {
     const canal = zernioTargetChannel(evt);
     if (!canal) return null;
-    const found = await findZernioConnection(canal, evt.account);
-    return found ? { organizationId: found.connection.organizationId } : null;
+    const organizationId = await negocioDeCuentaZernio(canal, evt.account);
+    return organizationId ? { organizationId } : null;
   },
 };
 

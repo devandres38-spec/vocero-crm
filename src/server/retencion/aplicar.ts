@@ -1,3 +1,5 @@
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
+import { todasLasOrganizaciones } from "@/server/db-sistema";
 import {
   and,
   eq,
@@ -70,21 +72,20 @@ export async function negociosConRetencion(): Promise<
   { organizationId: string; dias: number }[]
 > {
   // Mantenimiento de toda la instancia (como `purgar` de webhooks): recorre
-  // cada negocio y después trabaja SOLO dentro de él.
-  const filas = await getDb()
-    .select({
-      organizationId: schema.organization.id,
-      dias: schema.privacyProfile.retencionDias,
-    })
-    .from(schema.organization)
-    .leftJoin(
-      schema.privacyProfile,
-      eq(schema.privacyProfile.organizationId, schema.organization.id),
+  // cada negocio y después trabaja SOLO dentro de él. 075 — Los negocios salen
+  // de la función de solo ids, y los días se leen dentro de cada uno (RLS).
+  const salida: { organizationId: string; dias: number }[] = [];
+  for (const organizationId of await todasLasOrganizaciones()) {
+    const [perfil] = await conNegocio(organizationId, () =>
+      getDb()
+        .select({ dias: schema.privacyProfile.retencionDias })
+        .from(schema.privacyProfile)
+        .where(eq(schema.privacyProfile.organizationId, organizationId))
+        .limit(1),
     );
-  return filas.map((f) => ({
-    organizationId: f.organizationId,
-    dias: f.dias ?? RETENCION_POR_DEFECTO,
-  }));
+    salida.push({ organizationId, dias: perfil?.dias ?? RETENCION_POR_DEFECTO });
+  }
+  return salida;
 }
 
 /** El candado de un negocio, solo por esta transacción. `false`: otra instancia lo tiene. */
@@ -372,11 +373,16 @@ export async function aplicarRetencion(
 ): Promise<ResumenNegocio[] | null> {
   if (g.__voceroRetencionCorriendo) return null;
   g.__voceroRetencionCorriendo = true;
+  // 075 — Proceso de fondo: empieza de cero y entra a cada negocio.
+  return trabajoDeFondo("retencion", () => pasadaDeRetencion(ahora));
+}
+
+async function pasadaDeRetencion(ahora: Date): Promise<ResumenNegocio[]> {
   try {
     const resumenes: ResumenNegocio[] = [];
     for (const { organizationId, dias } of await negociosConRetencion()) {
       try {
-        const r = await vaciarNegocio(organizationId, dias, ahora);
+        const r = await conNegocio(organizationId, () => vaciarNegocio(organizationId, dias, ahora));
         resumenes.push(r);
         const total =
           r.mensajes +

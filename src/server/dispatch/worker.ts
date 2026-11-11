@@ -1,3 +1,5 @@
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
+import { despachosVencidos, negociosConAvisos, negociosConOlvidos } from "@/server/db-sistema";
 import { enviarAvisosPendientes } from "@/server/avisos/avisos";
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
@@ -141,19 +143,36 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
   if (e.corriendo) return 0;
   e.corriendo = true;
   try {
-    let count = 0;
-    const porNegocio = new Map<string, number>();
-    for (; count < POR_TANDA; count++) {
-      // De una en una, y con la hora de AHORA: las que esperan en la cola no
-      // envejecen detrás de un POST lento con el lease ya corriendo.
-      const cuando = count === 0 ? ahora : new Date();
-      // 074 — Primero de los negocios que no han tomado su parte; si no
-      // queda ninguno de ellos, de cualquiera.
-      const servidos = negociosServidos(porNegocio);
-      let [fila] = await tomarPendientes(1, cuando, servidos);
-      if (!fila && servidos.length > 0) [fila] = await tomarPendientes(1, cuando);
-      if (!fila) break;
-      porNegocio.set(fila.organizationId, (porNegocio.get(fila.organizationId) ?? 0) + 1);
+    // 075 — Proceso de fondo: empieza de cero (un temporizador creado dentro
+    // de un negocio no le pasa ese negocio) y procesa cada despacho en el suyo.
+    return await trabajoDeFondo("despacho", () => pasadaDelDespacho(ahora));
+  } catch (err) {
+    console.error("[despacho] la tanda falló:", err);
+    return 0;
+  } finally {
+    e.corriendo = false;
+  }
+}
+
+async function pasadaDelDespacho(ahora: Date): Promise<number> {
+  let count = 0;
+  const porNegocio = new Map<string, number>();
+  for (let intento = 0; intento < POR_TANDA; intento++) {
+    // De una en una, y con la hora de AHORA: las que esperan en la cola no
+    // envejecen detrás de un POST lento con el lease ya corriendo.
+    const cuando = intento === 0 ? ahora : new Date();
+    // 074 — Primero de los negocios que no han tomado su parte; si no
+    // queda ninguno de ellos, de cualquiera.
+    // 075 — El negocio del próximo despacho sale de la función de solo ids
+    // (con el reparto); el despacho se toma y se procesa DENTRO de él.
+    const servidos = negociosServidos(porNegocio);
+    let [siguiente] = await despachosVencidos(cuando, 1, servidos);
+    if (!siguiente && servidos.length > 0) [siguiente] = await despachosVencidos(cuando, 1, []);
+    if (!siguiente) break;
+    const org = siguiente.organizationId;
+    const tomado = await conNegocio(org, async () => {
+      const [fila] = await tomarPendientes(1, cuando);
+      if (!fila) return false;
       const latido = setInterval(() => {
         void renovarLease(fila).catch(() =>
           console.error("[despacho] no se pudo renovar el lease")
@@ -165,26 +184,31 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
       } finally {
         clearInterval(latido);
       }
-    }
-    // 070 (D7) — Los avisos de olvido que el cerebro no confirmó.
-    try {
-      await reintentarOlvidos();
-    } catch (err) {
-      console.error("[olvido] el reintento falló:", err instanceof Error ? err.message : err);
-    }
-    // 071 (3.10) — Los avisos de traspaso por Telegram.
-    try {
-      await enviarAvisosPendientes();
-    } catch (err) {
-      console.error("[avisos] la pasada falló:", err instanceof Error ? err.message : err);
-    }
-    return count;
-  } catch (err) {
-    console.error("[despacho] la tanda falló:", err);
-    return 0;
-  } finally {
-    e.corriendo = false;
+      return true;
+    });
+    // Otro proceso se lo llevó entre la consulta y el reclamo: se cuenta
+    // igual, para no quedarse dando vueltas sobre el mismo negocio.
+    porNegocio.set(org, (porNegocio.get(org) ?? 0) + 1);
+    if (tomado) count++;
   }
+  // 070 (D7) — Los avisos de olvido que el cerebro no confirmó, por negocio (075).
+  try {
+    const ahoraOlvidos = new Date();
+    for (const org of await negociosConOlvidos(ahoraOlvidos)) {
+      await conNegocio(org, () => reintentarOlvidos(ahoraOlvidos));
+    }
+  } catch (err) {
+    console.error("[olvido] el reintento falló:", err instanceof Error ? err.message : err);
+  }
+  // 071 (3.10) — Los avisos de traspaso por Telegram, por negocio (075).
+  try {
+    for (const org of await negociosConAvisos()) {
+      await conNegocio(org, () => enviarAvisosPendientes());
+    }
+  } catch (err) {
+    console.error("[avisos] la pasada falló:", err instanceof Error ? err.message : err);
+  }
+  return count;
 }
 
 async function procesar(fila: FilaDespacho): Promise<void> {

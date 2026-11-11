@@ -21,10 +21,11 @@ const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
 try {
   const [ya] = await sql`select id from "user" where email = ${CORREO}`;
   if (!ya) {
+  // 075 — El comando corre con el usuario de la app (APP_DATABASE_URL), bajo RLS.
     const r = spawnSync(
       "pnpm",
       ["negocio:alta", "--", "--nombre", "Negocio E2E", "--dueno-correo", CORREO, "--dueno-nombre", "Operador E2E"],
-      { encoding: "utf8", env: process.env, shell: process.platform === "win32" }
+      { encoding: "utf8", env: { ...process.env, DATABASE_URL: process.env.APP_DATABASE_URL ?? process.env.DATABASE_URL }, shell: process.platform === "win32" }
     );
     const salida = `${r.stdout ?? ""}${r.stderr ?? ""}`;
     if (r.status !== 0 || !salida.includes("Negocio creado")) {

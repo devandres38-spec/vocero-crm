@@ -1,5 +1,6 @@
 import { apiError } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { historialDe, historialSchema } from "@/server/bot/historial";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  *
  * 200 `{ conversationId, messages }` · 404 `not_found` · 422 `invalid_body`.
  */
-export async function GET(req: Request) {
+async function getSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -38,3 +39,6 @@ export async function GET(req: Request) {
     return apiError(404, "not_found", "Conversación no encontrada");
   return Response.json({ conversationId: query.data.conversationId, messages });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const GET = rutaDelCerebro(getSinNegocio);

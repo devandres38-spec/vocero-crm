@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { publish } from "@/server/events/bus";
 import { toHandoffReason } from "@/server/bot/handoff";
 
@@ -26,7 +27,7 @@ const bodySchema = z.object({
  * Es la misma pausa que el toggle de la bandeja, y publica el mismo evento,
  * así que la app lo ve en vivo sin refrescar.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -80,3 +81,6 @@ export async function POST(req: Request) {
   }
   return Response.json({ ok: true });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

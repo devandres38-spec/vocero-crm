@@ -93,3 +93,53 @@ jobs:
       - name: build
         if: ${{ !cancelled() }}
         run: pnpm build
+
+  # 075 (D15 de Aliantis) — El RLS contra un Postgres de verdad, con el usuario
+  # restringido de la app, en cada push: las unitarias simulan la base y no lo
+  # pueden probar. Rápido: sin Next, solo migrar y el arnés.
+  rls:
+    name: RLS contra Postgres
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: vocero_rls
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+
+    env:
+      # El dueño de las tablas (migra y siembra) y el usuario de la app, que
+      # migrate.mjs crea sin privilegios, como en producción.
+      OWNER_URL: postgresql://postgres:postgres@localhost:5432/vocero_rls
+      APP_URL: postgresql://vocero_rls_app:clave-de-prueba-rls@localhost:5432/vocero_rls
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: migrar como dueño y crear el usuario de la app (dos veces, idempotente)
+        run: |
+          for i in 1 2; do
+            DATABASE_MIGRATIONS_URL="$OWNER_URL" DATABASE_URL="$APP_URL" MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
+          done
+
+      - name: compilar el envoltorio de src/lib/db
+        run: pnpm exec esbuild scripts/lib/rls-envoltorio.ts --bundle --platform=node --format=esm --outfile=.tmp-rls-envoltorio.mjs --alias:@=./src --packages=external
+
+      - name: e2e-rls
+        run: node scripts/e2e-rls.mjs

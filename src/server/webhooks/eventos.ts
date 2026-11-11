@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, count, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { conteoDeWebhooks } from "@/server/db-sistema";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { perfilVigente } from "@/server/privacy/repositorio";
@@ -110,39 +111,6 @@ export async function tomarEvento(
     .limit(1);
   if (!fila) return null;
   return reclamar(fila, ahora);
-}
-
-/**
- * Toma hasta `limite` eventos listos: pendientes cuya hora llegó, o en proceso
- * con la reserva vencida (el proceso que los tenía murió a mitad).
- */
-export async function tomarPendientes(
-  limite = 10,
-  ahora: Date = new Date()
-): Promise<FilaEvento[]> {
-  const candidatos = await getDb()
-    .select()
-    .from(schema.webhookEvent)
-    .where(
-      or(
-        and(
-          eq(schema.webhookEvent.status, "pendiente"),
-          lte(schema.webhookEvent.notBefore, ahora)
-        ),
-        and(
-          eq(schema.webhookEvent.status, "en_proceso"),
-          lte(schema.webhookEvent.leasedUntil, ahora)
-        )
-      )
-    )
-    .orderBy(schema.webhookEvent.notBefore)
-    .limit(limite);
-  const tomados: FilaEvento[] = [];
-  for (const fila of candidatos) {
-    const t = await reclamar(fila, ahora);
-    if (t) tomados.push(t);
-  }
-  return tomados;
 }
 
 /**
@@ -298,19 +266,22 @@ export async function estadoDeEntregas(organizationId: string): Promise<EstadoEn
 
 /** Para `/api/health`: de toda la instancia, sin datos. */
 export async function conteoGlobal(): Promise<{ pendientes: number; agotados: number }> {
-  const filas = await getDb()
-    .select({ status: schema.webhookEvent.status, n: count() })
-    .from(schema.webhookEvent)
-    .where(inArray(schema.webhookEvent.status, ["pendiente", "en_proceso", "agotado"]))
-    .groupBy(schema.webhookEvent.status);
-  const n = (s: string) => Number(filas.find((f) => f.status === s)?.n ?? 0);
-  return { pendientes: n("pendiente") + n("en_proceso"), agotados: n("agotado") };
+  // 075 — Entre todos los negocios: por la función de solo números (RLS).
+  return conteoDeWebhooks();
 }
 
 export const RETENCION_PROCESADO_MS = 7 * 24 * 3_600_000;
 export const RETENCION_AGOTADO_MS = 30 * 24 * 3_600_000;
 
-/** Borra lo que ya no hace falta: el cuerpo trae datos del cliente (D7). */
+/** 075 — Los cortes de la purga, para saber qué negocios tienen algo que borrar. */
+export function cortesDePurga(ahora: Date): { procesado: Date; agotado: Date } {
+  return {
+    procesado: new Date(ahora.getTime() - RETENCION_PROCESADO_MS),
+    agotado: new Date(ahora.getTime() - RETENCION_AGOTADO_MS),
+  };
+}
+
+/** Borra lo que ya no hace falta: el cuerpo trae datos del cliente (D7). Dentro de un negocio (075). */
 export async function purgar(ahora: Date = new Date()): Promise<number> {
   const filas = await getDb()
     .delete(schema.webhookEvent)

@@ -124,7 +124,8 @@ describe("recibirEvento: lo que hace la ruta tras validar", () => {
     );
     expect(after).toHaveBeenCalledTimes(1);
     await after.mock.calls[0]![0]();
-    expect(procesarEvento).toHaveBeenCalledWith("whe_1");
+    // 075 — Con su negocio: el procesamiento de fondo corre dentro de él.
+    expect(procesarEvento).toHaveBeenCalledWith("whe_1", "org_a");
   });
 
   it("si no se pudo guardar, 503 y no procesa nada: reintenta quien mandó", async () => {

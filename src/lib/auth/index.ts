@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins";
-import { getDb, schema } from "@/lib/db";
+import { dbDeCuentas, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { resolveActiveOrganizationId } from "@/server/auth/on-signup";
@@ -42,7 +42,8 @@ function createAuth() {
   return betterAuth({
     baseURL: env.APP_BASE_URL,
     secret: env.BETTER_AUTH_SECRET,
-    database: drizzleAdapter(getDb(), {
+    // 075 — Sus tablas no tienen RLS: van por la base de cuentas, sin negocio.
+    database: drizzleAdapter(dbDeCuentas(), {
       provider: "pg",
       schema: {
         user: schema.user,

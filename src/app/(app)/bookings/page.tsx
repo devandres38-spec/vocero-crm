@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { BookingsClient } from "@/components/bookings/bookings-client";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { getSessionOrNull, paginaConSesion } from "@/lib/auth/session";
 import { clampListTo, isCalendarView, isIsoDate } from "@/lib/time/calendar";
 import { todayInTz } from "@/lib/time/slots";
 import { agendaEnabled } from "@/server/agenda/flag";
@@ -18,7 +18,7 @@ type Params = { vista?: string; fecha?: string; desde?: string; hasta?: string }
  * "Hoy" se decide aquí, en la zona del NEGOCIO: el navegador de quien mira
  * puede estar en otra.
  */
-export default async function BookingsPage({
+async function BookingsPage({
   searchParams,
 }: {
   searchParams: Promise<Params>;
@@ -53,3 +53,6 @@ export default async function BookingsPage({
     />
   );
 }
+
+// 075 — Dentro del negocio de la sesión (RLS).
+export default paginaConSesion(BookingsPage);

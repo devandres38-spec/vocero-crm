@@ -108,6 +108,19 @@ function avisarLlaveCruda(): void {
  * válida → 401 con freno por IP. Comparación en tiempo constante.
  */
 export async function requireBot(req: Request): Promise<BotAuth | Response> {
+  // 075 — Una sola vez por petición: `rutaDelCerebro` autentica antes de
+  // entrar al negocio, y la ruta vuelve a llamar aquí. Sin esto contaría dos
+  // veces en el presupuesto.
+  const previa = autenticadas.get(req);
+  if (previa) return previa;
+  const resultado = await autenticar(req);
+  autenticadas.set(req, resultado);
+  return resultado;
+}
+
+const autenticadas = new WeakMap<Request, BotAuth | Response>();
+
+async function autenticar(req: Request): Promise<BotAuth | Response> {
   const secreto = process.env.BOT_API_KEY;
   const llave = llaveDe(req);
   if (!secreto || !isBotKeyConfigured() || !llave) return rechazar(req);

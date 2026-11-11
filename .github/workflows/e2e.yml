@@ -48,7 +48,10 @@ jobs:
       PGPASSWORD: postgres
       PORT: "3260"
       APP_BASE_URL: http://localhost:3260
+      # Los arneses leen la base como dueño (son el oráculo). 075 — La app y
+      # los comandos, con el usuario restringido, que migrate.mjs crea.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vocero_e2e
+      APP_DATABASE_URL: postgresql://vocero_e2e_app:clave-de-prueba-e2e@localhost:5432/vocero_e2e
       WA_MOCK_ENABLED: "true"
       META_GRAPH_BASE_URL: http://localhost:3260/api/dev/wa-mock/graph
       OPENROUTER_BASE_URL: http://localhost:3260/api/dev/ai-mock
@@ -103,24 +106,28 @@ jobs:
           echo "main llega hasta: $(ls /tmp/main/drizzle/*.sql | tail -1)"
           DATABASE_URL=$U MIGRATIONS_DIR=/tmp/main/drizzle node scripts/migrate.mjs
           psql -h localhost -U postgres -d vocero_mig -v ON_ERROR_STOP=1 -qc "
-            insert into organization (id,name,created_at) values ('org_1','N',now());
-            insert into contact (id,organization_id,name,wa_identity) values ('ct_1','org_1','Ana','573001112233');
-            insert into conversation (id,organization_id,contact_id) values ('cv_1','org_1','ct_1');
+            insert into organization (id,name,created_at) values ('org_1','N',now()),('org_2','M',now());
+            insert into contact (id,organization_id,name,wa_identity) values ('ct_1','org_1','Ana','573001112233'),('ct_2','org_2','Beto','573004445566');
+            insert into conversation (id,organization_id,contact_id) values ('cv_1','org_1','ct_1'),('cv_2','org_2','ct_2');
             insert into message (id,organization_id,conversation_id,direction,type,text)
-              values ('msg_1','org_1','cv_1','in','text','hola'),('msg_2','org_1','cv_1','out','text','buenas');"
+              values ('msg_1','org_1','cv_1','in','text','hola'),('msg_2','org_1','cv_1','out','text','buenas'),
+                     ('msg_3','org_2','cv_2','in','text','qué tal');"
           echo "esta rama llega hasta: $(ls drizzle/*.sql | tail -1)"
           DATABASE_URL=$U MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
-          n=$(psql -h localhost -U postgres -d vocero_mig -tAc "select count(*) from message where id in ('msg_1','msg_2')")
-          [ "$n" = "2" ] || { echo "::error::la migración perdió filas ($n de 2)"; exit 1; }
+          n=$(psql -h localhost -U postgres -d vocero_mig -tAc "select count(*) from message where id in ('msg_1','msg_2','msg_3')")
+          [ "$n" = "3" ] || { echo "::error::la migración perdió filas ($n de 3)"; exit 1; }
           DATABASE_URL=$U MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
           echo "migración sobre datos: ok, filas intactas, idempotente"
 
+      # 075 — Como dueño; de paso crea el usuario restringido de la app.
       - name: migrar la base del E2E
-        run: MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
+        run: DATABASE_MIGRATIONS_URL="$DATABASE_URL" DATABASE_URL="$APP_DATABASE_URL" MIGRATIONS_DIR="$PWD/drizzle" node scripts/migrate.mjs
 
       - name: levantar Vocero (next dev)
         run: |
-          nohup node node_modules/next/dist/bin/next dev -p 3260 > .tmp-dev-e2e.log 2>&1 &
+          # 075 — La app con el usuario restringido: todo el E2E corre bajo RLS.
+          DATABASE_URL="$APP_DATABASE_URL" DATABASE_MIGRATIONS_URL="$DATABASE_URL" \
+            nohup node node_modules/next/dist/bin/next dev -p 3260 > .tmp-dev-e2e.log 2>&1 &
           for i in $(seq 1 90); do
             [ "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:3260/api/health)" = "200" ] && { echo "app arriba en ~$((i*2)) s"; exit 0; }
             sleep 2
@@ -184,6 +191,16 @@ jobs:
           # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
           set -o pipefail
           node scripts/e2e-alta.mjs 2>&1 | tee .tmp-e2e-alta.log
+
+      # 075 — Una consulta sin negocio (o un cruce) en cualquier punto, aunque
+      # sea de un proceso de fondo que ningún arnés mira, rompe el E2E.
+      - name: ninguna consulta sin negocio en el registro de la app
+        if: ${{ !cancelled() }}
+        run: |
+          if grep -nE "ConsultaSinNegocio|NegocioCruzado|consulta sin negocio" .tmp-dev-e2e.log; then
+            echo "::error::hay consultas fuera de su negocio (arriba)"; exit 1
+          fi
+          echo "sin consultas fuera de su negocio"
 
       - name: resumen
         if: ${{ !cancelled() }}

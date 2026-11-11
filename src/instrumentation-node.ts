@@ -1,5 +1,8 @@
 import { eq } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
+import { getDb, getSql, schema } from "@/lib/db";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
+import { ARREGLO_RLS, decisionDeArranque, motivosParaNoArrancar } from "@/lib/db/rls-arranque";
+import { todasLasOrganizaciones } from "@/server/db-sistema";
 import { mediaDirStatus } from "@/server/media-dir";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { iniciarWorker, tanda } from "@/server/dispatch/worker";
@@ -18,6 +21,28 @@ import { barrido, iniciarBarrido } from "@/server/webhooks/worker";
  * expone como `mediaWritable` (#82): este resultado queda cacheado y el
  * healthcheck lo reutiliza en vez de volver a escribir.
  */
+/**
+ * 075 (D15) — ¿El usuario de la base se salta el RLS (superusuario, BYPASSRLS,
+ * dueño de las tablas) o hay una tabla de negocio sin RLS? En producción, la
+ * app no arranca; fuera de ella, avisa. Nunca imprime la URL.
+ */
+export async function checkRls(): Promise<void> {
+  let motivos: string[] | "sin_revisar";
+  try {
+    motivos = await motivosParaNoArrancar(getSql());
+  } catch {
+    motivos = "sin_revisar";
+  }
+  const decision = decisionDeArranque(motivos, process.env.NODE_ENV);
+  if (decision === "arrancar") return;
+  const porque = motivos === "sin_revisar" ? "no se pudo revisar el rol de la base" : motivos.join("; ");
+  if (decision === "no_arrancar") {
+    console.error(`[boot] RLS: la app no arranca: ${porque}. ${ARREGLO_RLS}`);
+    process.exit(1);
+  }
+  console.warn(`[boot] RLS (aviso, fuera de producción): ${porque}. ${ARREGLO_RLS}`);
+}
+
 export async function checkMediaDir(): Promise<void> {
   const media = await mediaDirStatus();
   // Sin entorno válido no hay nada que sondear: lo reporta, con detalle, el
@@ -44,16 +69,26 @@ export async function checkMediaDir(): Promise<void> {
  */
 export async function cleanupOrphanRuns(): Promise<void> {
   try {
-    const db = getDb();
-    const updated = await db
-      .update(schema.agentTestRun)
-      .set({
-        status: "failed",
-        error: "Interrumpida por un reinicio del servidor",
-        finishedAt: new Date(),
-      })
-      .where(eq(schema.agentTestRun.status, "running"))
-      .returning({ id: schema.agentTestRun.id });
+    // 075 — Negocio por negocio (RLS): los ids salen de la función de solo ids.
+    const updated = await trabajoDeFondo("arranque", async () => {
+      const todas: { id: string }[] = [];
+      for (const org of await todasLasOrganizaciones()) {
+        todas.push(
+          ...(await conNegocio(org, () =>
+            getDb()
+              .update(schema.agentTestRun)
+              .set({
+                status: "failed",
+                error: "Interrumpida por un reinicio del servidor",
+                finishedAt: new Date(),
+              })
+              .where(eq(schema.agentTestRun.status, "running"))
+              .returning({ id: schema.agentTestRun.id })
+          ))
+        );
+      }
+      return todas;
+    });
     if (updated.length > 0) {
       console.log(
         `[boot] ${updated.length} corrida(s) del Laboratorio huérfana(s) marcada(s) como fallida(s)`
@@ -74,7 +109,14 @@ export async function cleanupOrphanRuns(): Promise<void> {
  */
 export async function encryptLegacySecrets(): Promise<void> {
   try {
-    const cifrados = await cifrarSecretosEnClaro();
+    // 075 — Negocio por negocio (RLS).
+    const cifrados = await trabajoDeFondo("arranque", async () => {
+      let n = 0;
+      for (const org of await todasLasOrganizaciones()) {
+        n += await conNegocio(org, () => cifrarSecretosEnClaro());
+      }
+      return n;
+    });
     if (cifrados > 0) {
       console.log(`[boot] ${cifrados} secreto(s) de firma de Zernio cifrado(s) en reposo`);
     }

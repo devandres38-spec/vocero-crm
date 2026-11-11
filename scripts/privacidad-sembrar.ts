@@ -16,9 +16,8 @@
  */
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { PG_CONNECTION_OPTIONS } from "@/lib/db";
+import { crearConexion } from "@/lib/db";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import * as schema from "@/lib/db/schema";
 import { sembrarPerfil } from "@/server/privacy/sembrar";
 
@@ -83,29 +82,33 @@ if (!url) {
   process.exit(1);
 }
 
-const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
-const db = drizzle(sql, { schema });
+const { sql, db } = crearConexion(url);
 try {
-  const r = await sembrarPerfil(db, {
-    organizationId,
-    contenido,
-    sinFiltroSalud: values["sin-filtro-salud"] ?? false,
-    ...(adjuntos === undefined ? {} : { adjuntos }),
-    ...(retencionDias === undefined ? {} : { retencionDias }),
-  });
-  if (!r.ok) {
-    console.error(`[privacidad] Rechazado, la base no cambió.\n${r.error}`);
-    process.exitCode = 1;
-  } else {
-    console.log(
-      `[privacidad] ${organizationId}: perfil ${r.perfil} v${r.versionPerfil}, ${r.pais}, ` +
-        `${r.conSalud ? "con filtro de salud" : "SIN filtro de salud"}, ` +
-        `${r.adjuntos ? "guarda adjuntos" : "NO guarda adjuntos"}, ` +
-        `borra el contenido a los ${r.retencionDias} días (el mismo número va en retencion_dias del cerebro).\n` +
-        `  huella anterior: ${r.huellaAnterior ?? "(no tenía)"}\n` +
-        `  huella nueva:    ${r.huella}`
-    );
-  }
+  // 075 — Con el usuario de la app, dentro del negocio (RLS).
+  await trabajoDeFondo("privacidad-sembrar", () =>
+    conNegocio(organizationId, async () => {
+      const r = await sembrarPerfil(db, {
+        organizationId,
+        contenido,
+        sinFiltroSalud: values["sin-filtro-salud"] ?? false,
+        ...(adjuntos === undefined ? {} : { adjuntos }),
+        ...(retencionDias === undefined ? {} : { retencionDias }),
+      });
+      if (!r.ok) {
+        console.error(`[privacidad] Rechazado, la base no cambió.\n${r.error}`);
+        process.exitCode = 1;
+      } else {
+        console.log(
+          `[privacidad] ${organizationId}: perfil ${r.perfil} v${r.versionPerfil}, ${r.pais}, ` +
+            `${r.conSalud ? "con filtro de salud" : "SIN filtro de salud"}, ` +
+            `${r.adjuntos ? "guarda adjuntos" : "NO guarda adjuntos"}, ` +
+            `borra el contenido a los ${r.retencionDias} días (el mismo número va en retencion_dias del cerebro).\n` +
+            `  huella anterior: ${r.huellaAnterior ?? "(no tenía)"}\n` +
+            `  huella nueva:    ${r.huella}`
+        );
+      }
+    })
+  );
 } catch (err) {
   console.error(
     "[privacidad] No se pudo registrar:",

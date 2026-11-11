@@ -1,5 +1,5 @@
 import { readMediaFile } from "@/server/whatsapp/media";
-import { getBrandingContext } from "@/server/branding";
+import { marcaDeLaPeticion } from "@/server/marca-de-la-peticion";
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { FAVICON_ASSET, generatedFaviconSvg } from "@/lib/favicon";
 
@@ -35,7 +35,7 @@ function cabeceras(mime: string, cacheable: boolean): HeadersInit {
 export async function GET(req: Request) {
   const cacheable = new URL(req.url).searchParams.has("v");
 
-  const ctx = await getBrandingContext().catch(() => null);
+  const ctx = await marcaDeLaPeticion().catch(() => null);
   const branding = ctx?.branding ?? DEFAULT_BRANDING;
 
   if (ctx?.organizationId && branding.favicon) {

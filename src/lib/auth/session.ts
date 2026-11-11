@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
+import { conNegocio } from "@/lib/db/contexto";
 import { resolveMembership } from "@/server/auth/on-signup";
 
 export type SessionContext = {
@@ -43,4 +44,19 @@ export async function getSessionOrNull(): Promise<SessionContext | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * 075 — Una página o un layout del servidor, dentro del negocio de la sesión
+ * (RLS). Sin sesión, corre sin negocio: la página redirige al login, y lo que
+ * no tenga sesión (la marca del login) no consulta la base.
+ */
+export function paginaConSesion<A extends unknown[], R>(
+  pagina: (...props: A) => Promise<R>
+): (...props: A) => Promise<R> {
+  return async (...props: A) => {
+    const session = await getSessionOrNull();
+    if (!session) return pagina(...props);
+    return conNegocio(session.organizationId, () => pagina(...props));
+  };
 }

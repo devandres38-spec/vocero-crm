@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { serializeFicha } from "@/server/bot/ficha";
 import { findContactByIdentity } from "@/server/inbox/identity";
 import { isWindowOpen, windowRemainingMs } from "@/server/inbox/window";
@@ -37,7 +38,7 @@ export const dynamic = "force-dynamic";
  * `POST /api/bot/stage` (las abiertas después de la actual, en orden). Va
  * aquí y no en el perfil porque depende de la etapa de este momento.
  */
-export async function GET(req: Request) {
+async function getSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -179,3 +180,6 @@ export async function GET(req: Request) {
     consent,
   });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const GET = rutaDelCerebro(getSinNegocio);

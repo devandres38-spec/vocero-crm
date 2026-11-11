@@ -9,7 +9,7 @@ import {
 } from "@/lib/brand";
 import { FAVICON_ASSET, faviconInitial } from "@/lib/favicon";
 import type { AppIconPurpose, AppIconSize } from "@/lib/pwa";
-import { getBrandingContext } from "@/server/branding";
+import { marcaDeLaPeticion } from "@/server/marca-de-la-peticion";
 import { readMediaFile } from "@/server/whatsapp/media";
 
 /**
@@ -32,7 +32,7 @@ export async function appIconResponse(
   size: AppIconSize,
   purpose: AppIconPurpose
 ): Promise<ImageResponse> {
-  const ctx = await getBrandingContext().catch(() => null);
+  const ctx = await marcaDeLaPeticion().catch(() => null);
   const branding = ctx?.branding ?? DEFAULT_BRANDING;
   const logo = await logoSubido(ctx?.organizationId ?? null, branding);
   return new ImageResponse(dibujo(branding, logo, size, purpose), {

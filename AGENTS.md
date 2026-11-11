@@ -25,6 +25,7 @@ de skills, scripts ni plugins de ningún asistente.
 | Framework | Next.js 15 (App Router) + React 19, TypeScript estricto (`strict` + `noUncheckedIndexedAccess`), alias `@/` → `src/` |
 | BD / ORM | PostgreSQL 16 + Drizzle ORM; migraciones SQL versionadas en `drizzle/`, aplicadas al arrancar el contenedor (`scripts/migrate.mjs`) |
 | Auth | Better Auth + plugin organization (`src/lib/auth/`); 074 — sin registro público ni rutas del plugin (`/organization/*` en 404): los negocios los crea Andres con `pnpm negocio:alta` |
+| RLS (075, D15) | Toda tabla con `organization_id` y `organization` tienen RLS (`drizzle/0033_rls.sql`). Cada consulta corre en un negocio: `conNegocio(org, fn)` (`src/lib/db/contexto.ts`) y el cliente bajo Drizzle (`cliente-rls.ts`) fija `set_config('app.organization_id', org, true)` dentro de su transacción. Sin negocio, `ConsultaSinNegocio`. Puntos de entrada: `withAuth`, `paginaConSesion`, `rutaDelCerebro`, `webhookEntrante`, `trabajoDeFondo` (workers, arranque, comandos). Lo que pasa antes de saber el negocio o sobre varios usa las funciones de solo ids (`src/server/db-sistema.ts`). Better Auth va por `dbDeCuentas()` (sus 4 tablas, sin RLS). Guardarraíles: `rls-guardarrailes`, `rls-rutas`; contra Postgres real: job «RLS contra Postgres» (`scripts/e2e-rls.mjs`) |
 | Validación | Zod en todo input externo (`parseBody` en `src/lib/api.ts`) |
 | Tiempo real | SSE en `GET /api/events` sobre un bus in-process (`src/server/events/bus.ts`); sin WebSockets ni colas: el trabajo en segundo plano corre dentro del proceso |
 | UI | Tailwind CSS con tokens en `src/app/globals.css`, tema claro/oscuro, white-label por organización |
@@ -58,7 +59,8 @@ Variables obligatorias (`src/lib/env.ts` las valida en el primer uso; cada una t
 | Variable | Para qué |
 |---|---|
 | `APP_BASE_URL` | URL pública; de ella sale la URL del webhook |
-| `DATABASE_URL` | Postgres. La conexión fija `TimeZone=UTC`: es el invariante de tiempo del proyecto |
+| `DATABASE_URL` | Postgres. La conexión fija `TimeZone=UTC`: es el invariante de tiempo del proyecto. 075 — En producción, un usuario SIN privilegios (miembro de `vocero_app`, lo crea `migrate.mjs`); con superusuario, `BYPASSRLS` o dueño de tablas, la app no arranca |
+| `DATABASE_MIGRATIONS_URL` | 075 — El dueño de las tablas, solo para `migrate.mjs`. Sin ella, todo con `DATABASE_URL` (desarrollo) |
 | `BETTER_AUTH_SECRET` | Firma de sesiones (mínimo 16 caracteres) |
 | `ENCRYPTION_KEY` | Exactamente 32 bytes en base64: cifra el token de WhatsApp |
 | `META_WEBHOOK_VERIFY_TOKEN` | Verify token y segmento secreto de `/api/webhooks/wa/<token>` |

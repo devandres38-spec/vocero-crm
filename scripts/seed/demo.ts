@@ -10,9 +10,8 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { PG_CONNECTION_OPTIONS } from "@/lib/db";
+import { crearConexion } from "@/lib/db";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import * as schema from "@/lib/db/schema";
 import { seedDemo, isDomainEmpty } from "@/server/seed/demo";
 import { sembrarPerfilDemo } from "@/server/privacy/demo";
@@ -34,8 +33,6 @@ if (!url) {
   process.exit(1);
 }
 
-const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
-const db = drizzle(sql, { schema });
 
 const argumentos = process.argv.slice(2);
 if (argumentos[0] === "--") argumentos.shift();
@@ -48,38 +45,44 @@ if (!values.organizacion) {
   await sql.end();
   process.exit(1);
 }
-const [org] = await db
-  .select()
-  .from(schema.organization)
-  .where(eq(schema.organization.id, values.organizacion))
-  .limit(1);
-if (!org) {
-  console.error(`[seed] No existe la organización ${values.organizacion}.`);
-  await sql.end();
-  process.exit(1);
-}
+const { sql, db } = crearConexion(url);
+// 075 — Con el usuario de la app, dentro del negocio (RLS).
+await trabajoDeFondo("seed", () =>
+  conNegocio(values.organizacion!, async () => {
+    const [org] = await db
+      .select()
+      .from(schema.organization)
+      .where(eq(schema.organization.id, values.organizacion))
+      .limit(1);
+    if (!org) {
+      console.error(`[seed] No existe la organización ${values.organizacion}.`);
+      await sql.end();
+      process.exit(1);
+    }
 
-const force = values.force === true;
-if (!force && !(await isDomainEmpty(db, org.id))) {
-  console.error(
-    "[seed] La organización ya tiene datos. Usa --force para recargar la demo."
-  );
-  await sql.end();
-  process.exit(1);
-}
+    const force = values.force === true;
+    if (!force && !(await isDomainEmpty(db, org.id))) {
+      console.error(
+        "[seed] La organización ya tiene datos. Usa --force para recargar la demo."
+      );
+      await sql.end();
+      process.exit(1);
+    }
 
-const result = await seedDemo(db, org.id);
-console.log(
-  `[seed] Ferretería El Martillo cargada: ${result.contacts} contactos, ${result.kbEntries} entradas de KB, 1 corrida de ejemplo`
+    const result = await seedDemo(db, org.id);
+    console.log(
+      `[seed] Ferretería El Martillo cargada: ${result.contacts} contactos, ${result.kbEntries} entradas de KB, 1 corrida de ejemplo`
+    );
+    // 068 — El perfil de privacidad de la demo, solo si no tiene uno.
+    const privacidad = await sembrarPerfilDemo(db, org.id);
+    console.log(
+      !privacidad.ok
+        ? `[seed] Perfil de privacidad NO registrado: ${privacidad.error}`
+        : "yaTenia" in privacidad
+          ? "[seed] Perfil de privacidad: ya tenía uno, no se toca"
+          : `[seed] Perfil de privacidad: ${privacidad.perfil} v${privacidad.versionPerfil}, huella ${privacidad.huella}`
+    );
+    await sql.end();
+    process.exit(0);
+  })
 );
-// 068 — El perfil de privacidad de la demo, solo si no tiene uno.
-const privacidad = await sembrarPerfilDemo(db, org.id);
-console.log(
-  !privacidad.ok
-    ? `[seed] Perfil de privacidad NO registrado: ${privacidad.error}`
-    : "yaTenia" in privacidad
-      ? "[seed] Perfil de privacidad: ya tenía uno, no se toca"
-      : `[seed] Perfil de privacidad: ${privacidad.perfil} v${privacidad.versionPerfil}, huella ${privacidad.huella}`
-);
-await sql.end();
-process.exit(0);

@@ -1,8 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
-import { eq, like, or, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
+import { conNegocio } from "@/lib/db/contexto";
 import { newId } from "@/lib/db/ids";
 
 /**
@@ -107,7 +108,10 @@ export async function crearNegocio(
   // El hash (lento a propósito) va antes de abrir la transacción.
   const hash = await (deps.hash ?? hashPassword)(contrasena);
 
-  return db.transaction(async (tx) => {
+  // 075 — El negocio nuevo se fija ANTES de insertarlo: así las políticas
+  // (WITH CHECK) dejan escribir su fila, su dueño, sus etapas y su perfil.
+  const organizationId = newId("organization");
+  return conNegocio(organizationId, () => db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${CANDADO_ALTA})`);
 
     const [existente] = await tx
@@ -123,18 +127,13 @@ export async function crearNegocio(
     }
 
     const base = slugDe(nombre);
-    const usados = await tx
-      .select({ slug: schema.organization.slug })
-      .from(schema.organization)
-      .where(
-        or(eq(schema.organization.slug, base), like(schema.organization.slug, `${base}-%`))
-      );
-    const slug = slugLibre(
-      base,
-      usados.map((u) => u.slug).filter((s): s is string => Boolean(s))
-    );
+    // 075 — Los slugs de los demás negocios no se ven (RLS): los da la
+    // función de solo ids.
+    const [ocupados] = (await tx.execute(
+      sql`select vocero_slugs_ocupados(${base}::text) as slugs`
+    )) as unknown as { slugs: string[] | null }[];
+    const slug = slugLibre(base, ocupados?.slugs ?? []);
 
-    const organizationId = newId("organization");
     const userId = newId("user");
     await tx.insert(schema.organization).values({ id: organizationId, name: nombre, slug });
     await tx.insert(schema.user).values({
@@ -171,5 +170,5 @@ export async function crearNegocio(
     });
 
     return { organizationId, userId, slug, nombre, correo, contrasena };
-  });
+  }));
 }

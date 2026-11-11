@@ -1,3 +1,4 @@
+import { conNegocio } from "@/lib/db/contexto";
 import { isValidSignature } from "@/server/inbox/webhook";
 import { appSecretDe, type CanalMeta } from "@/server/whatsapp/app-secret";
 import { firmaObligatoria } from "./obligatoria";
@@ -38,7 +39,8 @@ export type DepsFirma = {
 
 const depsReales: DepsFirma = {
   organizaciones: organizacionesDeLaEntrega,
-  secretoDe: (org, canal) => appSecretDe(org, canal),
+  // 075 — `meta_app` tiene RLS: se lee dentro del negocio de la entrega.
+  secretoDe: (org, canal) => conNegocio(org, () => appSecretDe(org, canal)),
   obligatoria: firmaObligatoria,
 };
 

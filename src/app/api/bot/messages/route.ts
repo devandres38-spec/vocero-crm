@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { SendError, sendText } from "@/server/inbox/send";
 import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
 import { bodySchema } from "@/server/bot/mensaje-del-bot";
@@ -24,7 +25,7 @@ export const dynamic = "force-dynamic";
  * sandbox_violation · message_limit (022: el canal no admite más mensajes
  * hasta que el cliente escriba; hoy, el tope de TikTok).
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -147,3 +148,6 @@ export async function POST(req: Request) {
     throw err;
   }
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

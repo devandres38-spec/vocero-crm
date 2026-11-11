@@ -1,5 +1,6 @@
 import { apiError } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
 import { downloadGraphMedia, MediaFetchError } from "@/server/whatsapp/media";
 
@@ -15,7 +16,7 @@ const MAX_MEDIA_BYTES = 16 * 1024 * 1024;
  * El token de WhatsApp NO sale del CRM: el bot pide aquí, jamás a Meta.
  * Flujo Graph delegado al helper compartido (008): src/server/whatsapp/media.
  */
-export async function GET(
+async function getSinNegocio(
   req: Request,
   ctx: { params: Promise<{ mediaId: string }> }
 ) {
@@ -59,3 +60,6 @@ export async function GET(
     return apiError(502, "media_download_failed", "No se pudo descargar el adjunto");
   }
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const GET = rutaDelCerebro(getSinNegocio);

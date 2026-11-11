@@ -1,3 +1,4 @@
+import { conNegocio } from "@/lib/db/contexto";
 import { createHmac } from "node:crypto";
 import { getEnv } from "@/lib/env";
 import { nextN } from "@/server/dev/wa-mock-state";
@@ -24,7 +25,8 @@ export async function deliverToWebhook(payload: unknown): Promise<Response> {
   // Sin secreto registrado, el de la instancia si existe (dev).
   const org = await resolverOrganizacion("whatsapp", payload).catch(() => null);
   const secreto =
-    (org ? await appSecretDe(org, "whatsapp").catch(() => null) : null) ??
+    // 075 — `meta_app` tiene RLS: el secreto se lee dentro de su negocio.
+    (org ? await conNegocio(org, () => appSecretDe(org, "whatsapp")).catch(() => null) : null) ??
     env.META_APP_SECRET ??
     null;
   if (secreto) {

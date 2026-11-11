@@ -57,10 +57,11 @@ function cliente() {
 }
 
 function alta(correo, nombre = `Negocio alta ${RUN}`) {
+  // 075 — El comando corre con el usuario de la app (APP_DATABASE_URL), bajo RLS.
   const r = spawnSync(
     "pnpm",
     ["negocio:alta", "--", "--nombre", nombre, "--dueno-correo", correo, "--dueno-nombre", "Dueña E2E"],
-    { encoding: "utf8", env: process.env, shell: process.platform === "win32" }
+    { encoding: "utf8", env: { ...process.env, DATABASE_URL: process.env.APP_DATABASE_URL ?? process.env.DATABASE_URL }, shell: process.platform === "win32" }
   );
   const salida = `${r.stdout ?? ""}${r.stderr ?? ""}`;
   return {

@@ -1,3 +1,4 @@
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { filtrarTexto } from "@/server/privacy/filtrar";
 import { perfilDePrivacidad } from "@/server/privacy/repositorio";
@@ -81,9 +82,14 @@ export async function startRun(organizationId: string): Promise<string> {
   );
 
   // Fire-and-forget in-process: el POST regresa ya; el progreso va por SSE.
-  void executeRun(runId, organizationId).catch(async (err) => {
+  // 075 — De fondo (sigue después de responder), explícitamente en su negocio.
+  void trabajoDeFondo("laboratorio", () =>
+    conNegocio(organizationId, () => executeRun(runId, organizationId))
+  ).catch(async (err) => {
     console.error("[lab] corrida falló:", err);
-    await failRun(runId, organizationId, String(err));
+    await trabajoDeFondo("laboratorio", () =>
+      conNegocio(organizationId, () => failRun(runId, organizationId, String(err)))
+    );
   });
 
   return runId;

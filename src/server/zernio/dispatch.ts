@@ -1,3 +1,4 @@
+import { conNegocio } from "@/lib/db/contexto";
 import { isChannelEnabled } from "@/server/channels/enabled";
 import { processZernioEvent } from "@/server/instagram/ingest";
 import { processZernioMessengerEvent } from "@/server/messenger/ingest";
@@ -10,6 +11,7 @@ import {
 } from "@/server/zernio";
 import {
   findZernioConnection,
+  negocioDeCuentaZernio,
   healZernioAccountRef,
   storedZernioSecrets,
 } from "@/server/zernio/conexiones";
@@ -70,6 +72,20 @@ export async function isAuthenticZernioDelivery(
   const evt = parseZernioEvent(rawBody);
   const channel = zernioTargetChannel(evt);
   if (!evt || !channel) return true;
+  // 075 — Primero el negocio (función de solo ids) y la verificación DENTRO
+  // de él: en modo sistema el RLS escondería la conexión y una entrega falsa
+  // pasaría como «de una cuenta que nadie conectó».
+  const organizationId = await negocioDeCuentaZernio(channel, evt.account);
+  if (!organizationId) return true;
+  return conNegocio(organizationId, () => verificarEnElNegocio(rawBody, signature, channel, evt));
+}
+
+async function verificarEnElNegocio(
+  rawBody: string,
+  signature: string | null,
+  channel: NonNullable<ReturnType<typeof zernioTargetChannel>>,
+  evt: NonNullable<ReturnType<typeof parseZernioEvent>>
+): Promise<boolean> {
   const found = await findZernioConnection(channel, evt.account);
   if (!found) return true;
 
