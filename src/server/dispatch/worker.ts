@@ -42,6 +42,22 @@ import { reintentarOlvidos } from "@/server/dispatch/olvidos";
 const INTERVALO_MS = 2000;
 const POR_TANDA = 10;
 /**
+ * 074 (4.4) — Reparto justo: en una tanda, un negocio toma como máximo esto
+ * mientras OTRO tenga despachos esperando. Sin el reparto, la cola iba por
+ * orden de llegada y la ráfaga de un negocio (una campaña, spam a su número)
+ * dejaba a todos los demás detrás. Si solo uno tiene cola, sigue tomando
+ * hasta `POR_TANDA`: no se pierde capacidad.
+ */
+export const POR_NEGOCIO_EN_TANDA = 2;
+
+/** Los negocios que ya tomaron su parte de la tanda. */
+export function negociosServidos(
+  tomados: ReadonlyMap<string, number>,
+  porNegocio = POR_NEGOCIO_EN_TANDA
+): string[] {
+  return [...tomados].filter(([, n]) => n >= porNegocio).map(([org]) => org);
+}
+/**
  * Margen sobre la hora de la cita. `tomarPendientes` filtra por
  * `not_before <= ahora`: despertar clavado en el borde puede llegar un
  * milisegundo antes, no ver la fila y dejársela al barrido.
@@ -126,11 +142,18 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
   e.corriendo = true;
   try {
     let count = 0;
+    const porNegocio = new Map<string, number>();
     for (; count < POR_TANDA; count++) {
       // De una en una, y con la hora de AHORA: las que esperan en la cola no
       // envejecen detrás de un POST lento con el lease ya corriendo.
-      const [fila] = await tomarPendientes(1, count === 0 ? ahora : new Date());
+      const cuando = count === 0 ? ahora : new Date();
+      // 074 — Primero de los negocios que no han tomado su parte; si no
+      // queda ninguno de ellos, de cualquiera.
+      const servidos = negociosServidos(porNegocio);
+      let [fila] = await tomarPendientes(1, cuando, servidos);
+      if (!fila && servidos.length > 0) [fila] = await tomarPendientes(1, cuando);
       if (!fila) break;
+      porNegocio.set(fila.organizationId, (porNegocio.get(fila.organizationId) ?? 0) + 1);
       const latido = setInterval(() => {
         void renovarLease(fila).catch(() =>
           console.error("[despacho] no se pudo renovar el lease")
