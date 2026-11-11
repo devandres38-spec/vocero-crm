@@ -285,7 +285,7 @@
   },
   "components": {
     "securitySchemes": {
-      "botKey": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "`BOT_API_KEY` del CRM. Es también la llave con que el CRM firma el despacho." },
+      "botKey": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "073 — La credencial derivada del negocio: `base64url_sin_relleno(HMAC-SHA256(BOT_API_KEY, \"vocero:cerebro:v1:\" + org_id))`, con la cabecera `X-Vocero-Organization: <org id>`. La credencial de otro negocio, o la `BOT_API_KEY` cruda con cabecera, da 401; un negocio que no existe, 401. Sin la cabecera, la `BOT_API_KEY` cruda solo vale si la instalación tiene un negocio (compatibilidad); con dos o más, `409 organizacion_requerida`. La `BOT_API_KEY` es también la llave con que el CRM firma el despacho. Presupuesto: 1200 llamadas por minuto por negocio." },
       "botBearer": { "type": "http", "scheme": "bearer", "description": "036 — La misma `BOT_API_KEY`, como `Authorization: Bearer`: es lo que manda el SDK de OpenAI que apunta su `base_url` a `/api/bot/llm`. Vale en todas las rutas de `/api/bot/*`." }
     },
     "responses": {

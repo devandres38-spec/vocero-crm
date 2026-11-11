@@ -1,6 +1,6 @@
 # 073 — Autenticación por negocio: llave derivada y App Secret por negocio (bloque F, pasos 4.1 y 4.2)
 
-**Estado:** decisiones aprobadas por Andres (10-nov-2026); se programa cuando diga «sigue». Decisiones base: D13 (llave derivada por organización, cabecera y tope por negocio) y D14 (App Secret por negocio, cifrado; firma obligatoria en producción) de Aliantis; brechas N1 y N2 del relevo. El contrato de `/api/bot/*` ya está fijado en `specs/067-contrato-aliantis/contracts/bot-api-v2.md`, sección 1: esta spec lo implementa, no lo cambia.
+**Estado:** aprobada por Andres (10-nov-2026); programada con su «sigue» (11-nov-2026). Decisiones base: D13 (llave derivada por organización, cabecera y tope por negocio) y D14 (App Secret por negocio, cifrado; firma obligatoria en producción) de Aliantis; brechas N1 y N2 del relevo. El contrato de `/api/bot/*` ya está fijado en `specs/067-contrato-aliantis/contracts/bot-api-v2.md`, sección 1: esta spec lo implementa, no lo cambia.
 
 ## Lo verificado en el código (10-nov-2026)
 
@@ -83,17 +83,18 @@
 ## Archivos
 
 - `src/server/brains/credencial.ts` (nuevo): `credencialDerivada`.
-- `src/server/bot/auth.ts`: `requireBot`, presupuesto por negocio; se van `requireBotKey` y `resolveInstanceOrg`.
+- `src/server/bot/auth.ts`: `requireBot`, presupuesto por negocio; se van `requireBotKey` y `resolveInstanceOrg`. `src/server/bot/organizaciones.ts` (nuevo): las dos consultas de organización, aparte para simularlas en las pruebas de cada ruta.
 - `src/server/bot/status.ts`: «quién responde» por negocio.
 - Las 16 rutas de `src/app/api/bot/`.
 - `src/lib/db/schema.ts`, `drizzle/0032_…`.
 - `src/server/whatsapp/app-secret.ts` (nuevo): guardar y leer el secreto de un negocio.
 - `scripts/meta-secreto.ts` (nuevo) y `package.json` (`meta:secreto`).
-- `src/server/inbox/webhook.ts`: `verificarFirma(cuerpo, cabecera, secreto, { obligatoria })`.
+- `src/server/webhooks/firma.ts` (nuevo): `verificarFirmaMeta(canal, payload, cuerpo, cabecera)`; `src/server/webhooks/obligatoria.ts` (nuevo): `firmaObligatoria()`, aparte para que Zernio lo use sin ciclo de importaciones; `src/server/webhooks/organizacion.ts`: `organizacionesDeLaEntrega` (todas las de una entrega). `isValidSignature` no cambia.
+- `src/server/zernio/dispatch.ts`: la regla de producción (D7b).
 - `src/app/api/webhooks/{wa,ig,messenger}/[webhookToken]/route.ts` y `src/server/webhooks/recibir.ts` (acepta la organización resuelta).
 - `src/app/api/settings/webhook/route.ts` y su pantalla.
 - `src/server/dev/wa-mock-inbound.ts`.
-- `scripts/lib/cerebro-falso.mjs` y los `bot()` de los arneses: credencial derivada.
+- `scripts/lib/credencial.mjs` (nuevo), `scripts/lib/cerebro-falso.mjs` y los `bot()` de los arneses de `e2e.yml`: credencial derivada.
 - `scripts/e2e-multinegocio.mjs` (nuevo), `tests/e2e/us-multinegocio.md`, `.github/workflows/e2e.yml`.
 - Pruebas: `tests/unit/bot-auth-negocio.test.ts`, `tests/unit/webhook-firma-negocio.test.ts`, el guardarraíl de rutas y las pruebas existentes que simulaban `resolveInstanceOrg` (4 archivos) o `bot/auth` (6).
 - `docs/openapi.json` (seguridad), `AGENTS.md`, `.env.example` (la `META_APP_SECRET` ya no protege los webhooks).
@@ -134,7 +135,6 @@
   - dos negocios con su credencial;
   - cruce de credenciales → 401;
   - llave cruda con dos negocios → 409;
-  - presupuesto independiente;
   - un webhook firmado por cada negocio llega a su bandeja;
   - uno firmado con el secreto equivocado → 401 y nada en `webhook_event` ni en `message`.
 
