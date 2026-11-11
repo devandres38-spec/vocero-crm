@@ -14,9 +14,8 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { PG_CONNECTION_OPTIONS } from "@/lib/db";
+import { crearConexion } from "@/lib/db";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import * as schema from "@/lib/db/schema";
 import {
   appSecretValido,
@@ -132,24 +131,28 @@ if (!appSecretValido(secreto)) {
   process.exit(1);
 }
 
-const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
-const db = drizzle(sql, { schema });
+const { sql, db } = crearConexion(url);
 try {
-  const [org] = await db
-    .select({ id: schema.organization.id, name: schema.organization.name })
-    .from(schema.organization)
-    .where(eq(schema.organization.id, organizationId))
-    .limit(1);
-  if (!org) {
-    console.error(`[meta] No existe la organización ${organizationId}.`);
-    process.exitCode = 1;
-  } else {
-    await guardarAppSecret(db, { organizationId, canales, secreto, appId });
-    console.log(
-      `[meta] ${org.name}: App Secret …${ultimos4(secreto)} registrado para ${canales.join(", ")}.` +
-        " Sus webhooks se verifican con él desde ya.",
-    );
-  }
+  // 075 — Con el usuario de la app, dentro del negocio (RLS).
+  await trabajoDeFondo("meta-secreto", () =>
+    conNegocio(organizationId, async () => {
+      const [org] = await db
+        .select({ id: schema.organization.id, name: schema.organization.name })
+        .from(schema.organization)
+        .where(eq(schema.organization.id, organizationId))
+        .limit(1);
+      if (!org) {
+        console.error(`[meta] No existe la organización ${organizationId}.`);
+        process.exitCode = 1;
+      } else {
+        await guardarAppSecret(db, { organizationId, canales, secreto, appId });
+        console.log(
+          `[meta] ${org.name}: App Secret …${ultimos4(secreto)} registrado para ${canales.join(", ")}.` +
+            " Sus webhooks se verifican con él desde ya.",
+        );
+      }
+    })
+  );
 } catch (err) {
   console.error(
     "[meta] No se pudo registrar:",

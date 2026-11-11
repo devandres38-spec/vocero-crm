@@ -10,9 +10,8 @@
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { PG_CONNECTION_OPTIONS } from "@/lib/db";
+import { crearConexion } from "@/lib/db";
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import * as schema from "@/lib/db/schema";
 
 const USO =
@@ -56,29 +55,33 @@ if (!url) {
   process.exit(1);
 }
 
-const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
-const db = drizzle(sql, { schema });
+const { sql, db } = crearConexion(url);
 try {
-  const [org] = await db
-    .select({ id: schema.organization.id, name: schema.organization.name })
-    .from(schema.organization)
-    .where(eq(schema.organization.id, organizationId))
-    .limit(1);
-  if (!org) {
-    console.error(`[avisos] No existe la organización ${organizationId}.`);
-    process.exitCode = 1;
-  } else {
-    await db
-      .insert(schema.avisoCanal)
-      .values({ organizationId, telegramChatId: chat })
-      .onConflictDoUpdate({
-        target: schema.avisoCanal.organizationId,
-        set: { telegramChatId: chat, updatedAt: new Date() },
-      });
-    console.log(
-      `[avisos] ${org.name}: los avisos de traspaso irán al grupo ${chat}.`,
-    );
-  }
+  // 075 — Con el usuario de la app, dentro del negocio (RLS).
+  await trabajoDeFondo("avisos-grupo", () =>
+    conNegocio(organizationId, async () => {
+      const [org] = await db
+        .select({ id: schema.organization.id, name: schema.organization.name })
+        .from(schema.organization)
+        .where(eq(schema.organization.id, organizationId))
+        .limit(1);
+      if (!org) {
+        console.error(`[avisos] No existe la organización ${organizationId}.`);
+        process.exitCode = 1;
+      } else {
+        await db
+          .insert(schema.avisoCanal)
+          .values({ organizationId, telegramChatId: chat })
+          .onConflictDoUpdate({
+            target: schema.avisoCanal.organizationId,
+            set: { telegramChatId: chat, updatedAt: new Date() },
+          });
+        console.log(
+          `[avisos] ${org.name}: los avisos de traspaso irán al grupo ${chat}.`,
+        );
+      }
+    })
+  );
 } catch (err) {
   console.error(
     "[avisos] No se pudo registrar:",

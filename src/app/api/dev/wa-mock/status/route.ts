@@ -1,9 +1,11 @@
+import { conNegocio, trabajoDeFondo } from "@/lib/db/contexto";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { mockGuard } from "@/lib/dev-guard";
 import { apiError, parseBody } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
+import { todasLasOrganizaciones } from "@/server/db-sistema";
 import {
   buildStatusPayload,
   deliverToWebhook,
@@ -19,7 +21,7 @@ const bodySchema = z.object({
   errorMessage: z.string().optional(),
 });
 
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const guard = mockGuard();
   if (guard) return guard;
 
@@ -27,15 +29,25 @@ export async function POST(req: Request) {
   if (!body.ok) return body.response;
 
   // Resolver el número desde el mensaje (el payload real lleva metadata).
-  const db = getDb();
-  const rows = await db
-    .select({ organizationId: schema.message.organizationId })
-    .from(schema.message)
-    .where(eq(schema.message.waMessageId, body.data.waMessageId))
-    .limit(1);
-  if (!rows[0]) return apiError(404, "not_found", "Mensaje no encontrado");
+  // 075 — Solo desarrollo: se busca el mensaje negocio por negocio (RLS).
+  let organizationId: string | null = null;
+  for (const org of await todasLasOrganizaciones()) {
+    const [fila] = await conNegocio(org, () =>
+      getDb()
+        .select({ organizationId: schema.message.organizationId })
+        .from(schema.message)
+        .where(eq(schema.message.waMessageId, body.data.waMessageId))
+        .limit(1)
+    );
+    if (fila) {
+      organizationId = fila.organizationId;
+      break;
+    }
+  }
+  if (!organizationId) return apiError(404, "not_found", "Mensaje no encontrado");
+  const org = organizationId;
 
-  const creds = await getCredentialsByOrg(rows[0].organizationId);
+  const creds = await conNegocio(org, () => getCredentialsByOrg(org));
   if (!creds) return apiError(409, "not_connected", "Sin número conectado");
 
   const payload = buildStatusPayload({
@@ -51,3 +63,6 @@ export async function POST(req: Request) {
     ? Response.json({ delivered: true })
     : apiError(502, "webhook_error", `El webhook respondió ${res.status}`);
 }
+
+// 075 — Mock de desarrollo: proceso de fondo que entra a cada negocio que toca.
+export const POST = (req: Request) => trabajoDeFondo("dev-mock", () => postSinNegocio(req));

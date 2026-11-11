@@ -15,10 +15,8 @@
  */
 import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import { PG_CONNECTION_OPTIONS } from "@/lib/db";
-import * as schema from "@/lib/db/schema";
+import { crearConexion } from "@/lib/db";
+import { trabajoDeFondo } from "@/lib/db/contexto";
 import { AltaError, crearNegocio } from "@/server/auth/alta";
 
 const USO =
@@ -64,14 +62,14 @@ if (!url) {
   process.exit(1);
 }
 
-const sql = postgres(url, { max: 1, ...PG_CONNECTION_OPTIONS });
-const db = drizzle(sql, { schema });
+const { sql, db } = crearConexion(url);
 try {
-  const n = await crearNegocio(db, {
+  // 075 — Con el usuario de la app; crearNegocio entra al negocio nuevo.
+  const n = await trabajoDeFondo("alta", () => crearNegocio(db, {
     nombre: values.nombre,
     correo: values["dueno-correo"],
     duenoNombre: values["dueno-nombre"],
-  });
+  }));
   console.log(
     [
       `[alta] Negocio creado: ${n.nombre}`,

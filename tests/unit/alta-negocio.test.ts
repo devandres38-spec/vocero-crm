@@ -1,6 +1,7 @@
 import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { describe, expect, it } from "vitest";
 import { schema } from "@/lib/db";
+import { negocioActual } from "@/lib/db/contexto";
 import {
   AltaError,
   CANDADO_ALTA,
@@ -57,6 +58,21 @@ describe("074 — crearNegocio", () => {
     expect(n.contrasena).toBe("contrasena-de-prueba-24c");
   });
 
+  it("075 — la transacción corre dentro del negocio NUEVO (así el WITH CHECK deja insertarlo)", async () => {
+    const fuera = baseGrabadora();
+    const dentro = baseGrabadora();
+    let negocio: string | null = null;
+    const db = {
+      ...fuera.db,
+      transaction: async <T,>(fn: (tx: unknown) => Promise<T>) => {
+        negocio = negocioActual();
+        return fn(dentro.db);
+      },
+    };
+    const n = await crearNegocio(db as never, DATOS, rapido);
+    expect(negocio).toBe(n.organizationId);
+  });
+
   it("toma el candado de las altas antes de mirar el correo", async () => {
     const { db, dentro } = bases();
     await crearNegocio(db, DATOS, rapido);
@@ -92,7 +108,15 @@ describe("074 — crearNegocio", () => {
 
   it("slug ocupado: el siguiente libre", async () => {
     const { db, dentro } = bases();
-    dentro.responder(schema.organization, [{ slug: "clinica-sonrisa" }, { slug: "clinica-sonrisa-2" }]);
+    // 075 — Los ocupados salen de vocero_slugs_ocupados (los demás negocios no se ven).
+    const ejecutar = dentro.db.execute;
+    dentro.db.execute = (async (q: Parameters<typeof ejecutar>[0]) => {
+      const r = await ejecutar(q);
+      const ultimo = dentro.ops[dentro.ops.length - 1]!;
+      return /vocero_slugs_ocupados/.test(ultimo.where!.sql)
+        ? [{ slugs: ["clinica-sonrisa", "clinica-sonrisa-2"] }]
+        : r;
+    }) as typeof ejecutar;
     const n = await crearNegocio(db, DATOS, rapido);
     expect(n.slug).toBe("clinica-sonrisa-3");
   });

@@ -31,13 +31,8 @@ const SIN_ENVOLTORIO: Record<string, string> = {
   "src/app/api/branding/app-icon/route.ts": "appIconResponse usa marcaDeLaPeticion",
 };
 
-/** 075 — Se fijan en T5 (webhooks) y T7 (mocks); esta lista se vacía en T7. */
-const PENDIENTES = new Set<string>([
-  "src/app/api/dev/retencion/route.ts",
-  "src/app/api/dev/wa-mock/echo/route.ts",
-  "src/app/api/dev/wa-mock/inbound/route.ts",
-  "src/app/api/dev/wa-mock/status/route.ts",
-]);
+/** 075 — Vacía desde T7: todo punto de entrada fija su negocio. */
+const PENDIENTES = new Set<string>([]);
 
 describe("075 — rutas y páginas dentro de un negocio", () => {
   it("toda ruta de /api que toca la base o el servidor pasa por un envoltorio", () => {
