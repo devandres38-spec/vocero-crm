@@ -50,7 +50,11 @@ services:
     restart: unless-stopped
     environment:
       APP_BASE_URL: ${APP_BASE_URL}
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vocero
+      # 075 (RLS) — La app entra con un usuario SIN privilegios (vocero_web),
+      # que migrate.mjs crea al arrancar; las migraciones, con el dueño. Con
+      # el superusuario en DATABASE_URL, la app no arranca en producción.
+      DATABASE_URL: postgresql://vocero_web:${POSTGRES_PASSWORD}@postgres:5432/vocero
+      DATABASE_MIGRATIONS_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/vocero
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       META_WEBHOOK_VERIFY_TOKEN: ${META_WEBHOOK_VERIFY_TOKEN}

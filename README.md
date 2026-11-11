@@ -442,6 +442,17 @@ en el archivo (Render sincroniza el Blueprint; Fly, `fly deploy`; Railway
 construye desde el código: `git pull` y `railway up`). Las migraciones corren
 solas al arrancar.
 
+### Base de datos: dos usuarios (RLS)
+
+Cada negocio solo ve lo suyo también en la base (RLS, spec 075). Por eso la
+app entra con un usuario **sin privilegios** (`DATABASE_URL`) y las
+migraciones con el dueño de las tablas (`DATABASE_MIGRATIONS_URL`).
+`migrate.mjs` crea el usuario de la app al arrancar, con la contraseña de su
+URL (12 caracteres o más). `docker-compose.yml` ya arma las dos; en otra
+plataforma (Coolify, Render…) define las dos variables y usa para la app una
+contraseña distinta de la del dueño. Si `DATABASE_URL` es el superusuario, la
+app no arranca en producción y el registro dice por qué.
+
 ### Primer arranque
 
 1. Crea tu negocio y su dueño desde la terminal del servidor (no hay registro
