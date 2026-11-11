@@ -19,6 +19,7 @@ export const POST = rutaDelPanel(
       return Response.json(
         {
           organizationId: n.organizationId,
+          userId: n.userId,
           slug: n.slug,
           nombre: n.nombre,
           correo: n.correo,

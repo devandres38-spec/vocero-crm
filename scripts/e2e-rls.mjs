@@ -423,6 +423,147 @@ async function funcionesDeSoloIds() {
   ok("vocero_conteo_webhooks devuelve una fila de números", c === 1);
 }
 
+/** 076 — Corre `fn` con el rol del panel (como `comoPanel`), en una transacción que se deshace. */
+async function comoPanelCrudo(superadmin, fn) {
+  let resultado;
+  try {
+    await app.begin(async (tx) => {
+      await tx`select set_config('app.superadmin_id', ${superadmin ?? ""}, true), set_config('role', 'vocero_panel', true)`;
+      resultado = await fn(tx);
+      throw new Error("__deshacer__");
+    });
+  } catch (err) {
+    if (err?.message !== "__deshacer__") throw err;
+  }
+  return resultado;
+}
+
+async function codigoPanel(superadmin, fn) {
+  try {
+    await comoPanelCrudo(superadmin, fn);
+    return null;
+  } catch (err) {
+    return err?.code ?? String(err?.message ?? err);
+  }
+}
+
+const SUPER = "usr_rls_super";
+
+async function panel(tablas) {
+  console.log("== Panel de Andres (076): el rol vocero_panel, sin tablas ==");
+  await dueno`delete from "user" where id = ${SUPER}`;
+  await dueno`insert into "user" (id, name, email, two_factor_enabled) values (${SUPER}, 'Super', 'super@rls.test', true)`;
+  await dueno`insert into superadministrador (user_id, totp_activado_en) values (${SUPER}, now() at time zone 'UTC')`;
+
+  const todas = [
+    ...tablas,
+    "user",
+    "account",
+    "session",
+    "verification",
+    "two_factor",
+    "registro_panel",
+    "superadministrador",
+  ];
+  const abiertas = [];
+  for (const t of todas) {
+    const c = await codigoPanel(SUPER, (tx) => tx.unsafe(`select 1 from "${t}" limit 1`));
+    if (c !== "42501") abiertas.push(`${t}: ${c}`);
+  }
+  ok(
+    `con el rol vocero_panel, ninguna de las ${todas.length} tablas se puede leer (permission denied)`,
+    abiertas.length === 0,
+    abiertas.join(" | ")
+  );
+
+  const [herencia] = await app`
+    select pg_has_role(current_user, 'vocero_panel', 'USAGE') as hereda,
+           pg_has_role(current_user, 'vocero_panel', 'SET') as entra`;
+  ok("la app entra al rol del panel pero no hereda sus permisos", herencia?.entra === true && herencia?.hereda === false, JSON.stringify(herencia));
+  ok(
+    "sin SET ROLE, la app no ejecuta vocero_panel_*",
+    (await codigoDe(null, (tx) => tx`select * from vocero_panel_negocios()`)) === "42501"
+  );
+  ok(
+    "con el rol pero sin superadmin: la función se niega",
+    (await codigoPanel(null, (tx) => tx`select * from vocero_panel_negocios()`)) === "42501"
+  );
+  ok(
+    "con un usuario que no es superadmin: la función se niega",
+    (await codigoPanel("usr_rls_a", (tx) => tx`select * from vocero_panel_salud()`)) === "42501"
+  );
+
+  const negocios = await comoPanelCrudo(SUPER, (tx) => tx`select * from vocero_panel_negocios()`);
+  const fa = negocios.find((n) => n.id === A);
+  const [{ c: convA }] = await dueno`select count(*)::int as c from conversation where organization_id = ${A} and not is_test`;
+  ok(
+    "vocero_panel_negocios: los dos negocios, con conteos de verdad",
+    negocios.some((n) => n.id === B) && fa && Number(fa.conversaciones) === convA && Number(fa.usuarios) >= 1,
+    JSON.stringify({ fa, convA })
+  );
+  const [salud] = await comoPanelCrudo(SUPER, (tx) => tx`select * from vocero_panel_salud()`);
+  ok("vocero_panel_salud: una fila de números", salud && Number(salud.negocios) >= 2, JSON.stringify(salud));
+
+  const pausa = await comoPanelCrudo(SUPER, async (tx) => {
+    const [p] = await tx`select vocero_panel_pausar(${A}, true) as en`;
+    const [n] = (await tx`select * from vocero_panel_negocios()`).filter((x) => x.id === A);
+    const reg = await tx`select * from vocero_panel_registro(10)`;
+    return { en: p?.en, pausado: n?.pausado_en, accion: reg[0]?.accion, quien: reg[0] };
+  });
+  ok("pausar marca el negocio y queda en el registro", pausa.en && pausa.pausado && pausa.accion === "pausar", JSON.stringify(pausa));
+
+  ok(
+    "no se puede quitar al último dueño",
+    (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_quitar_usuario(${A}, 'usr_rls_a')`)) === "23514"
+  );
+  ok(
+    "no se restablece la contraseña de alguien de otro negocio",
+    (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_restablecer(${B}, 'usr_rls_a', 'h')`)) === "P0002"
+  );
+
+  let trigger = null;
+  try {
+    await dueno`insert into member (id, organization_id, user_id, role) values ('mem_rls_super', ${A}, ${SUPER}, 'owner')`;
+  } catch (err) {
+    trigger = err?.code;
+  }
+  ok("un superadmin no puede ser miembro de un negocio (trigger)", trigger === "42501", String(trigger));
+  ok(
+    "la app no puede darse el superadmin",
+    (await codigoDe(null, (tx) => tx`insert into superadministrador (user_id) values ('usr_rls_a')`)) === "42501"
+  );
+  ok(
+    "la app sí puede leer quién es superadmin (el guard)",
+    (await codigoDe(null, (tx) => tx`select 1 from superadministrador`)) === null
+  );
+  ok(
+    "la app no toca el registro del panel",
+    (await codigoDe(null, (tx) => tx`select 1 from registro_panel`)) === "42501"
+  );
+
+  // El envoltorio REAL: comoPanel fija el rol en cada transacción.
+  const ruta = pathToFileURL(path.resolve(".tmp-rls-envoltorio.mjs")).href;
+  const { clienteConRls, comoPanel, schema } = await import(ruta);
+  const { drizzle } = await import("drizzle-orm/postgres-js");
+  const { sql } = await import("drizzle-orm");
+  const cruda = postgres(APP_URL, opciones);
+  try {
+    const db = drizzle(clienteConRls(cruda), { schema });
+    let error = null;
+    try {
+      await comoPanel(SUPER, () => db.select().from(schema.message).limit(1));
+    } catch (err) {
+      error = err;
+    }
+    const codigo = error?.code ?? error?.cause?.code;
+    ok("comoPanel (el real) no lee message: permission denied", codigo === "42501", String(error));
+    const filas = await comoPanel(SUPER, () => db.execute(sql`select id from vocero_panel_negocios()`));
+    ok("comoPanel (el real) sí llama a vocero_panel_negocios", Array.from(filas).length >= 2);
+  } finally {
+    await cruda.end();
+  }
+}
+
 async function main() {
   const tablas = await catalogo();
   const sembradas = await sembrar(tablas);
@@ -430,6 +571,7 @@ async function main() {
   await pool();
   await envoltorio();
   await funcionesDeSoloIds();
+  await panel(tablas);
 }
 
 main()
@@ -439,7 +581,7 @@ main()
   })
   .finally(async () => {
     await dueno`delete from organization where id in (${A}, ${B})`.catch(() => {});
-    await dueno`delete from "user" where id in ('usr_rls_a', 'usr_rls_b')`.catch(() => {});
+    await dueno`delete from "user" where id in ('usr_rls_a', 'usr_rls_b', ${SUPER})`.catch(() => {});
     await dueno.end();
     await app.end();
     console.log(`\n${checks - fallas}/${checks} checks en verde`);
