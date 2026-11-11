@@ -21,9 +21,13 @@ vi.mock("@/lib/db", async (importOriginal) => {
   return { ...original, getDb: () => h.base.db };
 });
 vi.mock("@/server/events/bus", () => ({ publish: vi.fn() }));
+vi.mock("@/server/attribution/conversions", () => ({
+  reportStageChange: vi.fn(async () => undefined),
+}));
 
 import { schema } from "@/lib/db";
 import { upsertFicha } from "@/server/bot/ficha";
+import { moveLeadToStage } from "@/server/leads/stage-history";
 import { crearNota } from "@/server/notas";
 import { filtrarTextoLibre } from "@/server/privacy/filtrar";
 import {
@@ -118,5 +122,37 @@ describe("071 — la ficha", () => {
       (o) => o.op === "update" && o.tabla === schema.contact,
     );
     expect(JSON.stringify(update?.valores)).not.toMatch(/muela|3001234567/);
+  });
+});
+
+describe("072 (D8) — la nota de pérdida del pipeline", () => {
+  it("se guarda filtrada al mover el lead a una etapa perdida", async () => {
+    h.base.responder(schema.lead, [
+      {
+        lead: { id: "ld_1", stageId: "st_abierta", contactId: "ct_1" },
+        stage: { id: "st_abierta", kind: "open", name: "Nuevo" },
+      },
+    ]);
+    h.base.responder(schema.pipelineStage, [
+      { id: "st_perdida", kind: "lost", name: "Perdido" },
+    ]);
+    h.base.responder(schema.lead, [{ id: "ld_1", contactId: "ct_1" }]);
+    const r = await moveLeadToStage({
+      organizationId: "org_1",
+      leadId: "ld_1",
+      toStageId: "st_perdida",
+      source: "dueno",
+      lossReason: "precio",
+      lossNote: "no volvió, tiene diabetes; su cel 3001234567",
+    });
+    expect(r.ok).toBe(true);
+    const evento = h.base.ops.find(
+      (o) => o.op === "insert" && o.tabla === schema.leadStageEvent,
+    );
+    expect(evento?.valores).toMatchObject({
+      lossReason: "precio",
+      lossNote: HEALTH_OMITTED_TEXT,
+    });
+    expect(JSON.stringify(evento?.valores)).not.toMatch(/diabetes|3001234567/);
   });
 });

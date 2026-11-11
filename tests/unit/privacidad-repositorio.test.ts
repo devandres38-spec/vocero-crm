@@ -24,6 +24,7 @@ function fila(organizationId: string, perfil: PerfilPrivacidad): FilaPerfil {
     updatedAt: new Date(),
     ...filaDesdePerfil(organizationId, perfil),
     adjuntos: perfil.sensible === null,
+    retencionDias: 90,
   };
 }
 

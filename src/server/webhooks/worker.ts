@@ -7,6 +7,7 @@ import {
   type FilaEvento,
 } from "./eventos";
 import { procesarFuente } from "./procesar";
+import { aplicarRetencion, RETENCION_CADA_MS } from "@/server/retencion/aplicar";
 
 /**
  * 047 — El barrido de los eventos de webhook.
@@ -28,6 +29,8 @@ type Estado = {
   cita: NodeJS.Timeout | null;
   citaEn: number | null;
   ultimaPurga: number;
+  /** 072 — La última pasada de retención (0: todavía no, corre en el primer barrido). */
+  ultimaRetencion: number;
 };
 
 // En globalThis: en dev los módulos se evalúan más de una vez y todas las
@@ -42,6 +45,7 @@ function estado(): Estado {
       cita: null,
       citaEn: null,
       ultimaPurga: 0,
+      ultimaRetencion: 0,
     };
   }
   return g.__voceroWebhookBarrido;
@@ -104,6 +108,14 @@ export async function barrido(ahora: Date = new Date()): Promise<number> {
       e.ultimaPurga = ahora.getTime();
       const borrados = await purgar(ahora);
       if (borrados > 0) console.log(`[webhooks] ${borrados} evento(s) viejo(s) borrado(s)`);
+    }
+    // 072 — La retención por negocio, una vez al día. Corre aparte (sin
+    // await): una pasada larga no frena los webhooks. Nunca lanza.
+    if (ahora.getTime() - (e.ultimaRetencion ?? 0) >= RETENCION_CADA_MS) {
+      e.ultimaRetencion = ahora.getTime();
+      void aplicarRetencion(ahora).catch((err) =>
+        console.error("[retencion] la pasada falló:", mensaje(err))
+      );
     }
     return filas.length;
   } catch (err) {

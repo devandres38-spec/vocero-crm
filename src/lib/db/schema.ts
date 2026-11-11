@@ -476,6 +476,8 @@ export const message = pgTable(
       t.conversationId,
       t.createdAt
     ),
+    // 072 — El borrado diario busca por negocio y fecha, sin conversación.
+    index("message_org_created_idx").on(t.organizationId, t.createdAt),
     uniqueIndex("message_org_client_msg_uq")
       .on(t.organizationId, t.clientMessageId)
       .where(sql`${t.clientMessageId} is not null`),
@@ -1462,12 +1464,23 @@ export const privacyProfile = pgTable(
      * los perfiles que filtran salud, salvo que Andres lo encienda al sembrar.
      */
     adjuntos: boolean("adjuntos").notNull().default(false),
+    /**
+     * 072 (D21 de Aliantis) — Días que se guarda el contenido (texto, adjuntos,
+     * notas, ficha) antes del borrado diario. Fuera de la huella, como
+     * `adjuntos`: lo fija `privacidad:sembrar -- --retencion <dias>`. El mismo
+     * rango que `retencion_dias` del cerebro.
+     */
+    retencionDias: integer("retencion_dias").notNull().default(90),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("privacy_profile_org_uq").on(t.organizationId),
     check("privacy_profile_country_chk", sql`char_length(${t.country}) = 2`),
+    check(
+      "privacy_profile_retencion_chk",
+      sql`${t.retencionDias} between 7 and 3650`
+    ),
   ]
 );
 

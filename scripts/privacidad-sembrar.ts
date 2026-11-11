@@ -1,8 +1,12 @@
 /**
- * 068 — `pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] [--adjuntos si|no] <perfil.json>`
+ * 068 — `pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] [--adjuntos si|no] [--retencion <dias>] <perfil.json>`
  *
  * 070 (D1): `--adjuntos` decide si se guardan los archivos de los pacientes.
  * Sin él: no, si el perfil filtra salud; sí, si no lo filtra.
+ *
+ * 072 (D1): `--retencion <dias>` (7 a 3650) fija cuántos días se guarda el
+ * contenido. Sin él: 90 en un perfil nuevo; uno que ya existía conserva los
+ * suyos. Va el mismo número que `retencion_dias` en el `cliente.yaml`.
  *
  * Registra el perfil de privacidad de un negocio, exportado del cerebro con
  * `npm run privacidad:exportar -- <cliente.yaml> > perfil.json`. Solo lo corre
@@ -19,7 +23,7 @@ import * as schema from "@/lib/db/schema";
 import { sembrarPerfil } from "@/server/privacy/sembrar";
 
 const USO =
-  "Uso: pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] [--adjuntos si|no] <perfil.json>";
+  "Uso: pnpm privacidad:sembrar -- --organizacion <id> [--sin-filtro-salud] [--adjuntos si|no] [--retencion <dias>] <perfil.json>";
 
 // pnpm reenvía el «--» de `pnpm privacidad:sembrar -- …`; parseArgs lo leería
 // como el fin de las opciones.
@@ -32,6 +36,7 @@ const { values, positionals } = parseArgs({
     organizacion: { type: "string" },
     "sin-filtro-salud": { type: "boolean", default: false },
     adjuntos: { type: "string" },
+    retencion: { type: "string" },
   },
   allowPositionals: true,
 });
@@ -46,6 +51,12 @@ if (values.adjuntos !== undefined && values.adjuntos !== "si" && values.adjuntos
   process.exit(1);
 }
 const adjuntos = values.adjuntos === undefined ? undefined : values.adjuntos === "si";
+// 072: el rango lo valida `sembrarPerfil`; aquí solo que sea un número.
+if (values.retencion !== undefined && !/^[0-9]+$/.test(values.retencion)) {
+  console.error(USO);
+  process.exit(1);
+}
+const retencionDias = values.retencion === undefined ? undefined : Number(values.retencion);
 
 function loadEnvVar(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
@@ -80,6 +91,7 @@ try {
     contenido,
     sinFiltroSalud: values["sin-filtro-salud"] ?? false,
     ...(adjuntos === undefined ? {} : { adjuntos }),
+    ...(retencionDias === undefined ? {} : { retencionDias }),
   });
   if (!r.ok) {
     console.error(`[privacidad] Rechazado, la base no cambió.\n${r.error}`);
@@ -88,7 +100,8 @@ try {
     console.log(
       `[privacidad] ${organizationId}: perfil ${r.perfil} v${r.versionPerfil}, ${r.pais}, ` +
         `${r.conSalud ? "con filtro de salud" : "SIN filtro de salud"}, ` +
-        `${r.adjuntos ? "guarda adjuntos" : "NO guarda adjuntos"}.\n` +
+        `${r.adjuntos ? "guarda adjuntos" : "NO guarda adjuntos"}, ` +
+        `borra el contenido a los ${r.retencionDias} días (el mismo número va en retencion_dias del cerebro).\n` +
         `  huella anterior: ${r.huellaAnterior ?? "(no tenía)"}\n` +
         `  huella nueva:    ${r.huella}`
     );

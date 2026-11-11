@@ -218,6 +218,13 @@
       "when": 1794360884408,
       "tag": "0030_contrato_y_avisos",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794365174954,
+      "tag": "0031_retencion",
+      "breakpoints": true
     }
   ]
 }

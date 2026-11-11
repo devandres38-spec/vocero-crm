@@ -22,12 +22,19 @@ const json = (v: unknown) => JSON.stringify(v, null, 2);
 function sembrar(
   base: ReturnType<typeof baseFalsa>,
   contenido: string,
-  extra: { organizationId?: string; sinFiltroSalud?: boolean } = {}
+  extra: {
+    organizationId?: string;
+    sinFiltroSalud?: boolean;
+    retencionDias?: number;
+  } = {}
 ) {
   return sembrarPerfil(base.db as unknown as Db, {
     organizationId: extra.organizationId ?? "org_a",
     contenido,
     sinFiltroSalud: extra.sinFiltroSalud ?? false,
+    ...(extra.retencionDias === undefined
+      ? {}
+      : { retencionDias: extra.retencionDias }),
   });
 }
 
@@ -45,6 +52,8 @@ describe("068 — sembrarPerfil", () => {
       huellaAnterior: null,
       // 070 (D1): un perfil con salud no guarda adjuntos por defecto.
       adjuntos: false,
+      // 072 (D1): sin --retencion, 90 días.
+      retencionDias: 90,
     });
     expect(base.perfiles).toHaveLength(1);
     expect(base.perfiles[0]).toMatchObject({
@@ -144,5 +153,42 @@ describe("068 — sembrarPerfilDemo", () => {
     expect(r).toEqual({ ok: true, yaTenia: true });
     expect(base.escritos).toHaveLength(1);
     expect(base.perfiles[0]?.country).toBe("MX");
+  });
+
+  describe("072 — --retencion", () => {
+    it("guarda los días pedidos y los devuelve", async () => {
+      const base = baseFalsa({ organizaciones: ["org_a"] });
+      const r = await sembrar(base, json(dental), { retencionDias: 30 });
+      expect(r).toMatchObject({ ok: true, retencionDias: 30 });
+      expect(base.perfiles[0]?.retencionDias).toBe(30);
+    });
+
+    it("volver a sembrar sin --retencion conserva los días que tenía", async () => {
+      const base = baseFalsa({ organizaciones: ["org_a"] });
+      await sembrar(base, json(dental), { retencionDias: 30 });
+      const r = await sembrar(base, json(dentalMx));
+      expect(r).toMatchObject({ ok: true, retencionDias: 30 });
+      expect(base.perfiles[0]?.retencionDias).toBe(30);
+    });
+
+    it.each([6, 3651, 30.5, 0, -10])(
+      "%s días: rechazado sin tocar la base",
+      async (dias) => {
+        const base = baseFalsa({ organizaciones: ["org_a"] });
+        const r = await sembrar(base, json(dental), { retencionDias: dias });
+        expect(r.ok).toBe(false);
+        if (!r.ok) expect(r.error).toMatch(/entre 7 y 3650/);
+        expect(base.escritos).toHaveLength(0);
+      }
+    );
+
+    it("los extremos 7 y 3650 valen", async () => {
+      for (const dias of [7, 3650]) {
+        const base = baseFalsa({ organizaciones: ["org_a"] });
+        expect(
+          await sembrar(base, json(dental), { retencionDias: dias })
+        ).toMatchObject({ ok: true, retencionDias: dias });
+      }
+    });
   });
 });

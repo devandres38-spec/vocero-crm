@@ -151,10 +151,19 @@ jobs:
           set -o pipefail
           node scripts/e2e-contrato-aliantis.mjs 2>&1 | tee .tmp-e2e-contrato-aliantis.log
 
+      # 072 — Retención por negocio contra Postgres real: dos negocios (7 y 90
+      # días), qué se vacía, qué se queda y que Resultados cuenta igual.
+      - name: e2e-retencion
+        if: ${{ !cancelled() }}
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-retencion.mjs 2>&1 | tee .tmp-e2e-retencion.log
+
       - name: resumen
         if: ${{ !cancelled() }}
         run: |
-          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log; do
+          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log; do
             [ -f "$log" ] || continue
             echo "== $log: checks OK $(grep -cE '^\s+OK ' "$log" || true)"
             grep -E '^\s+(FAIL|FALLA)' "$log" || echo "sin fallas"
