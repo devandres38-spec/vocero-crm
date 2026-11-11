@@ -41,7 +41,10 @@ export default function LoginPage() {
       setError(
         err.status === 429
           ? "Demasiados intentos. Espera unos minutos."
-          : "Correo o contraseña incorrectos."
+          : err.status === 403
+            ? // 076 — El negocio lo pausó Aliantis (el mensaje viene del servidor).
+              err.message || "Este negocio está pausado. Escríbele a Aliantis."
+            : "Correo o contraseña incorrectos."
       );
       return;
     }

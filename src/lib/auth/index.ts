@@ -6,7 +6,7 @@ import { organization, twoFactor } from "better-auth/plugins";
 import { dbDeCuentas, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
-import { resolveActiveOrganizationId } from "@/server/auth/on-signup";
+import { antesDeCrearSesion } from "@/server/auth/on-signup";
 import { bloqueoDeRuta, pideConfiarDispositivo } from "@/server/auth/registration";
 
 /**
@@ -121,14 +121,8 @@ function createAuth() {
     databaseHooks: {
       session: {
         create: {
-          before: async (session) => {
-            const organizationId = await resolveActiveOrganizationId(
-              session.userId
-            );
-            return {
-              data: { ...session, activeOrganizationId: organizationId },
-            };
-          },
+          // 076 — Fija el negocio activo; un negocio pausado no entra.
+          before: antesDeCrearSesion,
         },
       },
     },

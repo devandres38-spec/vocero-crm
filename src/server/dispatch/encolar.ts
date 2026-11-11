@@ -52,9 +52,18 @@ export async function despacharAlCerebro(
       .from(schema.agentProfile)
       .where(eq(schema.agentProfile.organizationId, organizationId))
       .limit(1);
-    // 071 (3.8, D9 de Aliantis): con el Agente apagado, lo marcado con salud se
-    // despacha igual; lo demás queda para una persona.
-    if (!perfil?.enabled && !opciones.salud) return;
+    // 076 (respuesta 2 de Andres) — Un negocio pausado por Andres queda como
+    // con el Agente apagado.
+    const [negocio] = await getDb()
+      .select({ pausadoEn: schema.organization.pausadoEn })
+      .from(schema.organization)
+      .where(eq(schema.organization.id, organizationId))
+      .limit(1);
+    const agenteActivo = perfil?.enabled === true && !negocio?.pausadoEn;
+    // 071 (3.8, D9 de Aliantis): con el Agente apagado (o el negocio
+    // pausado), lo marcado con salud se despacha igual; lo demás queda para
+    // una persona. La seguridad del paciente no se pausa.
+    if (!agenteActivo && !opciones.salud) return;
 
     // 025 — El despacho anota qué entrante lo provoca: es lo que le debe al
     // cerebro, aunque después la conversación tenga una respuesta.

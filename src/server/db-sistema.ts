@@ -36,12 +36,13 @@ async function filas<T>(motivo: string, consulta: ReturnType<typeof sql>): Promi
 /** El negocio y el rol de un usuario (su primera membresía, con orden fijo). */
 export async function membresiaDe(
   userId: string
-): Promise<{ organizationId: string; role: string } | null> {
-  const [f] = await filas<{ organization_id: string; role: string }>(
+): Promise<{ organizationId: string; role: string; pausado: boolean } | null> {
+  const [f] = await filas<{ organization_id: string; role: string; pausado: boolean }>(
     "sesion",
-    sql`select organization_id, role from vocero_membresia(${userId}::text)`
+    sql`select organization_id, role, pausado from vocero_membresia(${userId}::text)`
   );
-  return f ? { organizationId: f.organization_id, role: f.role } : null;
+  // 076 — `pausado`: el negocio lo pausó Andres desde su panel.
+  return f ? { organizationId: f.organization_id, role: f.role, pausado: f.pausado === true } : null;
 }
 
 export async function organizacionExisteSistema(organizationId: string): Promise<boolean> {

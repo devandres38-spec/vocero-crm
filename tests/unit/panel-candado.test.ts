@@ -112,6 +112,13 @@ function archivos(dir: string): string[] {
 const DEL_PANEL = RAICES_DEL_PANEL.flatMap(archivos);
 const esDelPanel = (rel: string) => RAICES_DEL_PANEL.some((r) => rel.startsWith(`${r}/`));
 
+/** El código de un archivo sin comentarios: un nombre citado en un comentario no cuenta. */
+function codigo(rel: string): string {
+  return readFileSync(path.join(RAIZ, rel), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+}
+
 /** Los especificadores que importa un archivo (estáticos y dinámicos). */
 function importaciones(rel: string): string[] {
   const texto = readFileSync(path.join(RAIZ, rel), "utf8");
@@ -182,7 +189,7 @@ describe("076 — el candado del panel (D16)", () => {
   it("nadie del panel entra a un negocio, al modo sistema o a un trabajo de fondo (salvo lo declarado)", () => {
     const malos: string[] = [];
     for (const f of DEL_PANEL) {
-      const texto = readFileSync(path.join(RAIZ, f), "utf8");
+      const texto = codigo(f);
       for (const fn of ["conNegocio", "comoSistema", "trabajoDeFondo"]) {
         if (new RegExp(`\\b${fn}\\b`).test(texto) && !DECLARADOS[f]?.contexto.includes(fn)) {
           malos.push(`${f} usa ${fn}`);
@@ -195,7 +202,7 @@ describe("076 — el candado del panel (D16)", () => {
   it("solo alta.ts usa crearNegocio, y solo guard.ts nombra una tabla (superadministrador)", () => {
     const malos: string[] = [];
     for (const f of DEL_PANEL) {
-      const texto = readFileSync(path.join(RAIZ, f), "utf8");
+      const texto = codigo(f);
       if (/\bcrearNegocio\b/.test(texto) && f !== "src/server/panel/alta.ts") malos.push(`${f}: crearNegocio`);
       if (/\bschema\.\w+/.test(texto)) malos.push(`${f}: schema.*`);
     }
@@ -205,7 +212,7 @@ describe("076 — el candado del panel (D16)", () => {
   it("el SQL del panel no nombra tablas de pacientes ni de conversaciones", () => {
     const malos: string[] = [];
     for (const f of DEL_PANEL) {
-      const texto = readFileSync(path.join(RAIZ, f), "utf8");
+      const texto = codigo(f);
       for (const bloque of texto.matchAll(/sql`([\s\S]*?)`/g)) {
         for (const t of TABLAS_DE_PACIENTES) {
           if (new RegExp(`\\b(from|join|into|update)\\s+"?${t}"?\\b`, "i").test(bloque[1]!)) {
@@ -215,6 +222,13 @@ describe("076 — el candado del panel (D16)", () => {
       }
     }
     expect(malos).toEqual([]);
+  });
+
+  it("solo la ruta del alta corre fuera del rol del panel (fueraDelPanel)", () => {
+    const usan = DEL_PANEL.filter((f) => f !== "src/server/panel/ruta.ts").filter((f) =>
+      /\bfueraDelPanel\b/.test(codigo(f))
+    );
+    expect(usan).toEqual(["src/app/api/admin/negocios/route.ts"]);
   });
 
   it("datos.ts solo llama a funciones vocero_panel_* (ningún from de una tabla)", () => {

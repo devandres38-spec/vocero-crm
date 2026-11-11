@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { fechaCorta, hace, numero, ROLES } from "@/components/panel/formato";
+import { AccionesDeUsuario, PausarNegocio } from "@/components/panel/acciones-negocio";
 import { Cifra, Encabezado, Seccion } from "@/components/panel/piezas";
 import { negociosDelPanel, usuariosDelPanel } from "@/server/panel/datos";
 import { paginaDelPanel } from "@/server/panel/ruta";
@@ -22,6 +23,7 @@ async function Negocio(
   const negocio = (await negociosDelPanel()).find((n) => n.id === id);
   if (!negocio) notFound();
   const usuarios = await usuariosDelPanel(id);
+  const duenos = usuarios.filter((u) => u.rol === "owner").length;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -31,7 +33,12 @@ async function Negocio(
       <Encabezado
         titulo={negocio.nombre}
         descripcion={`Alta el ${fechaCorta(negocio.creadoEn)} · id ${negocio.id}`}
-        accion={negocio.pausadoEn ? <Badge variant="destructive">Pausado</Badge> : <Badge variant="success">Activo</Badge>}
+        accion={
+          <div className="flex flex-wrap items-center gap-3">
+            {negocio.pausadoEn ? <Badge variant="destructive">Pausado</Badge> : <Badge variant="success">Activo</Badge>}
+            <PausarNegocio id={negocio.id} nombre={negocio.nombre} pausado={negocio.pausadoEn !== null} />
+          </div>
+        }
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -59,6 +66,12 @@ async function Negocio(
                   {u.debeCambiarContrasena && " · debe cambiar su contraseña"}
                 </p>
               </div>
+              <AccionesDeUsuario
+                negocioId={negocio.id}
+                userId={u.userId}
+                correo={u.correo}
+                puedeQuitarse={!(u.rol === "owner" && duenos <= 1)}
+              />
             </li>
           ))}
         </ul>

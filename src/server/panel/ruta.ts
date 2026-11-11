@@ -37,9 +37,16 @@ export function respuestaDelGuard(estado: EstadoDelPanel): Response | null {
   }
 }
 
-/** Una ruta del panel: guard + mismo origen + `comoPanel`. */
+/**
+ * Una ruta del panel: guard + mismo origen + `comoPanel`.
+ *
+ * `{ fueraDelPanel: true }` solo para el alta (`altaDesdeElPanel`):
+ * `crearNegocio` entra al negocio nuevo, cosa que desde `comoPanel` no se
+ * puede. El guard es el mismo.
+ */
 export function rutaDelPanel<Args extends unknown[]>(
-  handler: (superadmin: Superadmin, req: Request, ...args: Args) => Promise<Response>
+  handler: (superadmin: Superadmin, req: Request, ...args: Args) => Promise<Response>,
+  opciones: { fueraDelPanel?: boolean } = {}
 ): (req: Request, ...args: Args) => Promise<Response> {
   return async (req: Request, ...args: Args) => {
     const estado = await estadoDelPanel(req.headers);
@@ -48,6 +55,7 @@ export function rutaDelPanel<Args extends unknown[]>(
     if (!mismoOrigen(req)) return apiError(403, "origen", "Origen no permitido");
     const { superadmin } = estado as Extract<EstadoDelPanel, { tipo: "ok" }>;
     try {
+      if (opciones.fueraDelPanel) return await handler(superadmin, req, ...args);
       return await comoPanel(superadmin.userId, () => handler(superadmin, req, ...args));
     } catch (err) {
       console.error("[panel] error no controlado:", err instanceof Error ? err.name : "desconocido");
