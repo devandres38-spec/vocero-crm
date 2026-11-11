@@ -25,10 +25,19 @@ export async function GET(req: Request) {
     limit: url.searchParams.get("limit") ?? undefined,
   });
   if (!query.success) {
-    return apiError(422, "invalid_body", "conversationId es obligatorio y limit va de 1 a 50");
+    return apiError(
+      422,
+      "invalid_body",
+      "conversationId es obligatorio y limit va de 1 a 50",
+    );
   }
 
-  const messages = await historialDe(organizationId, query.data.conversationId, query.data.limit);
-  if (!messages) return apiError(404, "not_found", "Conversación no encontrada");
+  const messages = await historialDe(
+    organizationId,
+    query.data.conversationId,
+    query.data.limit,
+  );
+  if (!messages)
+    return apiError(404, "not_found", "Conversación no encontrada");
   return Response.json({ conversationId: query.data.conversationId, messages });
 }

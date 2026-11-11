@@ -21,7 +21,8 @@ export const MOTIVO_DEL_AVISO: Record<string, string> = {
 };
 
 /** Referencia corta de la conversación: con ella se busca en la bandeja. */
-export const referencia = (conversationId: string) => conversationId.slice(0, 8);
+export const referencia = (conversationId: string) =>
+  conversationId.slice(0, 8);
 
 export function avisoDeTraspaso(datos: {
   negocio: string;
@@ -30,13 +31,17 @@ export function avisoDeTraspaso(datos: {
   abiertos: number;
 }): string {
   const motivo = MOTIVO_DEL_AVISO[datos.motivo] ?? "otro motivo";
-  const pendientes = datos.abiertos === 1 ? "1 pendiente" : `${datos.abiertos} pendientes`;
+  const pendientes =
+    datos.abiertos === 1 ? "1 pendiente" : `${datos.abiertos} pendientes`;
   return [
     `${datos.negocio}: nueva derivación (${motivo}).`,
     `Ref. ${referencia(datos.conversationId)} · ${pendientes}. Revisa la bandeja.`,
   ].join("\n");
 }
 
-export function avisoDeSeguimiento(datos: { negocio: string; conversationId: string }): string {
+export function avisoDeSeguimiento(datos: {
+  negocio: string;
+  conversationId: string;
+}): string {
   return `${datos.negocio}: la persona de la ref. ${referencia(datos.conversationId)} escribió otra vez.`;
 }

@@ -33,7 +33,9 @@ if (!organizationId || !chat) {
   process.exit(1);
 }
 if (!/^-?[0-9]{1,20}$/.test(chat)) {
-  console.error(`[avisos] El id del grupo debe ser un número (los grupos empiezan con -).\n${USO}`);
+  console.error(
+    `[avisos] El id del grupo debe ser un número (los grupos empiezan con -).\n${USO}`,
+  );
   process.exit(1);
 }
 
@@ -73,12 +75,14 @@ try {
         target: schema.avisoCanal.organizationId,
         set: { telegramChatId: chat, updatedAt: new Date() },
       });
-    console.log(`[avisos] ${org.name}: los avisos de traspaso irán al grupo ${chat}.`);
+    console.log(
+      `[avisos] ${org.name}: los avisos de traspaso irán al grupo ${chat}.`,
+    );
   }
 } catch (err) {
   console.error(
     "[avisos] No se pudo registrar:",
-    err instanceof Error ? err.message : "error desconocido"
+    err instanceof Error ? err.message : "error desconocido",
   );
   process.exitCode = 1;
 } finally {

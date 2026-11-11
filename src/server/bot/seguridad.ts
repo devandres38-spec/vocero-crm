@@ -12,7 +12,10 @@ import { scoped } from "@/lib/db/tenant";
 type Db = ReturnType<typeof getDb>;
 
 /** El interruptor de la pantalla Agente. Sin perfil, apagado. */
-export async function agenteEncendido(organizationId: string, db: Db = getDb()): Promise<boolean> {
+export async function agenteEncendido(
+  organizationId: string,
+  db: Db = getDb(),
+): Promise<boolean> {
   const [perfil] = await db
     .select({ enabled: schema.agentProfile.enabled })
     .from(schema.agentProfile)
@@ -29,17 +32,23 @@ export async function agenteEncendido(organizationId: string, db: Db = getDb()):
 export async function saludSinRespuesta(
   organizationId: string,
   conversationId: string,
-  db: Db = getDb()
+  db: Db = getDb(),
 ): Promise<boolean> {
   const delHilo = scoped(
     schema.message.organizationId,
     organizationId,
-    eq(schema.message.conversationId, conversationId)
+    eq(schema.message.conversationId, conversationId),
   );
   const [ultimoDelAgente] = await db
     .select({ createdAt: schema.message.createdAt })
     .from(schema.message)
-    .where(and(delHilo, eq(schema.message.direction, "out"), eq(schema.message.aiGenerated, true)))
+    .where(
+      and(
+        delHilo,
+        eq(schema.message.direction, "out"),
+        eq(schema.message.aiGenerated, true),
+      ),
+    )
     .orderBy(desc(schema.message.createdAt))
     .limit(1);
   const [salud] = await db
@@ -52,8 +61,8 @@ export async function saludSinRespuesta(
         sql`'salud' = any(${schema.message.privacyFlags})`,
         ultimoDelAgente
           ? sql`${schema.message.createdAt} > ${ultimoDelAgente.createdAt}`
-          : undefined
-      )
+          : undefined,
+      ),
     )
     .limit(1);
   return Boolean(salud);

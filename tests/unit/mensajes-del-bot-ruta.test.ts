@@ -8,7 +8,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
   orden: [] as string[],
   reserva: { tipo: "nueva", messageId: "msg_r" } as unknown,
-  conv: { aiEnabled: true, handoffAt: null, isTest: false, channel: "whatsapp" } as Record<string, unknown>,
+  conv: {
+    aiEnabled: true,
+    handoffAt: null,
+    isTest: false,
+    channel: "whatsapp",
+  } as Record<string, unknown>,
   agente: true,
   saludPendiente: true,
 }));
@@ -58,7 +63,7 @@ const pedir = (body: Record<string, unknown>) =>
     new Request("http://x/api/bot/messages", {
       method: "POST",
       body: JSON.stringify({ conversationId: "cv_1", text: "Hola", ...body }),
-    })
+    }),
   );
 
 beforeEach(() => {

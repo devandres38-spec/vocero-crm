@@ -7,7 +7,9 @@ import { baseGrabadora } from "./fixtures/base-grabadora";
  * puede contestar un mensaje de seguridad por cada entrante de salud.
  */
 const h = vi.hoisted(() => ({
-  base: null as unknown as ReturnType<typeof import("./fixtures/base-grabadora").baseGrabadora>,
+  base: null as unknown as ReturnType<
+    typeof import("./fixtures/base-grabadora").baseGrabadora
+  >,
   encolar: vi.fn(async () => ({ notBefore: new Date() })),
 }));
 vi.mock("@/lib/db", async (importOriginal) => {
@@ -15,7 +17,10 @@ vi.mock("@/lib/db", async (importOriginal) => {
   return { ...original, getDb: () => h.base.db };
 });
 vi.mock("@/server/dispatch/outbox", () => ({ encolarDespacho: h.encolar }));
-vi.mock("@/server/dispatch/worker", () => ({ iniciarWorker: vi.fn(), programarTanda: vi.fn() }));
+vi.mock("@/server/dispatch/worker", () => ({
+  iniciarWorker: vi.fn(),
+  programarTanda: vi.fn(),
+}));
 
 import { schema } from "@/lib/db";
 import { saludSinRespuesta } from "@/server/bot/seguridad";
@@ -45,7 +50,9 @@ describe("071 — encolar con el Agente apagado", () => {
   });
 
   it("con una persona atendiendo, ni con salud", async () => {
-    h.base.responder(schema.conversation, [{ aiEnabled: false, handoffAt: new Date(), isTest: false }]);
+    h.base.responder(schema.conversation, [
+      { aiEnabled: false, handoffAt: new Date(), isTest: false },
+    ]);
     await despacharAlCerebro("cv_1", "org_1", "msg_1", { salud: true });
     expect(h.encolar).not.toHaveBeenCalled();
   });
@@ -63,17 +70,23 @@ describe("071 — un mensaje de seguridad por cada entrante de salud", () => {
     const ultimo = new Date("2026-11-11T12:00:00Z");
     h.base.responder(schema.message, [{ createdAt: ultimo }]);
     h.base.responder(schema.message, []);
-    expect(await saludSinRespuesta("org_1", "cv_1", h.base.db as never)).toBe(false);
+    expect(await saludSinRespuesta("org_1", "cv_1", h.base.db as never)).toBe(
+      false,
+    );
     const [, busqueda] = h.base.ops;
     expect(busqueda?.where?.sql).toContain("'salud' = any(");
     expect(busqueda?.where?.sql).toMatch(/"created_at" > \$\d+/);
-    expect(busqueda?.where?.params).toEqual(expect.arrayContaining(["org_1", "cv_1", "in"]));
+    expect(busqueda?.where?.params).toEqual(
+      expect.arrayContaining(["org_1", "cv_1", "in"]),
+    );
   });
 
   it("sin salientes del agente, cualquier entrante con salud cuenta", async () => {
     h.base.responder(schema.message, []);
     h.base.responder(schema.message, [{ id: "msg_1" }]);
-    expect(await saludSinRespuesta("org_1", "cv_1", h.base.db as never)).toBe(true);
+    expect(await saludSinRespuesta("org_1", "cv_1", h.base.db as never)).toBe(
+      true,
+    );
   });
 });
 

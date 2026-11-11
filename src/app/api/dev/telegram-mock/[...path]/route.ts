@@ -1,5 +1,8 @@
 import { mockGuard } from "@/lib/dev-guard";
-import { resetTelegramMock, telegramMockState } from "@/server/dev/telegram-mock-state";
+import {
+  resetTelegramMock,
+  telegramMockState,
+} from "@/server/dev/telegram-mock-state";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +20,15 @@ export async function POST(req: Request, ctx: Ctx) {
   const denied = mockGuard();
   if (denied) return denied;
   const { path } = await ctx.params;
-  if (path.length !== 2 || !path[0]?.startsWith("bot") || path[1] !== "sendMessage") {
-    return Response.json({ ok: false, description: "Not Found" }, { status: 404 });
+  if (
+    path.length !== 2 ||
+    !path[0]?.startsWith("bot") ||
+    path[1] !== "sendMessage"
+  ) {
+    return Response.json(
+      { ok: false, description: "Not Found" },
+      { status: 404 },
+    );
   }
   const body = (await req.json().catch(() => null)) as {
     chat_id?: unknown;
@@ -28,11 +38,15 @@ export async function POST(req: Request, ctx: Ctx) {
   if (chatId === "-1") {
     return Response.json(
       { ok: false, description: "Bad Request: chat not found" },
-      { status: 400 }
+      { status: 400 },
     );
   }
   const avisos = telegramMockState();
-  avisos.push({ chatId, text: String(body?.text ?? ""), at: new Date().toISOString() });
+  avisos.push({
+    chatId,
+    text: String(body?.text ?? ""),
+    at: new Date().toISOString(),
+  });
   return Response.json({ ok: true, result: { message_id: avisos.length } });
 }
 

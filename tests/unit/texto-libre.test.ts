@@ -8,7 +8,9 @@ import { baseGrabadora } from "./fixtures/base-grabadora";
  */
 const h = vi.hoisted(() => ({
   politica: null as unknown,
-  base: null as unknown as ReturnType<typeof import("./fixtures/base-grabadora").baseGrabadora>,
+  base: null as unknown as ReturnType<
+    typeof import("./fixtures/base-grabadora").baseGrabadora
+  >,
 }));
 
 vi.mock("@/server/privacy/repositorio", () => ({
@@ -24,11 +26,17 @@ import { schema } from "@/lib/db";
 import { upsertFicha } from "@/server/bot/ficha";
 import { crearNota } from "@/server/notas";
 import { filtrarTextoLibre } from "@/server/privacy/filtrar";
-import { politicaDesdePerfil, type PerfilPrivacidad } from "@/server/privacy/perfil";
-import { HEALTH_OMITTED_TEXT, UNREVIEWED_TEXT } from "@/server/privacy/privacy-filter";
+import {
+  politicaDesdePerfil,
+  type PerfilPrivacidad,
+} from "@/server/privacy/perfil";
+import {
+  HEALTH_OMITTED_TEXT,
+  UNREVIEWED_TEXT,
+} from "@/server/privacy/privacy-filter";
 
 const vectores = JSON.parse(
-  readFileSync("tests/unit/fixtures/privacidad-vectores.json", "utf8")
+  readFileSync("tests/unit/fixtures/privacidad-vectores.json", "utf8"),
 ) as { perfiles: Record<string, PerfilPrivacidad> };
 const DENTAL = politicaDesdePerfil(vectores.perfiles["dental-co"]!);
 
@@ -39,17 +47,19 @@ beforeEach(() => {
 
 describe("071 — filtrarTextoLibre", () => {
   it("omite la salud y enmascara los datos personales", async () => {
-    expect(await filtrarTextoLibre("org_1", "tiene diabetes y le duele la muela")).toBe(
-      HEALTH_OMITTED_TEXT
-    );
+    expect(
+      await filtrarTextoLibre("org_1", "tiene diabetes y le duele la muela"),
+    ).toBe(HEALTH_OMITTED_TEXT);
     expect(await filtrarTextoLibre("org_1", "llamar al cel 3001234567")).toBe(
-      "llamar al cel [telefono]"
+      "llamar al cel [telefono]",
     );
   });
 
   it("sin perfil legible, el texto no se guarda", async () => {
     h.politica = null;
-    expect(await filtrarTextoLibre("org_1", "llamar mañana")).toBe(UNREVIEWED_TEXT);
+    expect(await filtrarTextoLibre("org_1", "llamar mañana")).toBe(
+      UNREVIEWED_TEXT,
+    );
   });
 
   it("null y undefined pasan tal cual", async () => {
@@ -74,9 +84,11 @@ describe("071 — la nota interna", () => {
     await crearNota(
       { organizationId: "org_1", userId: "u_1", configura: true },
       "cv_1",
-      "el paciente tiene diabetes, cel 3001234567"
+      "el paciente tiene diabetes, cel 3001234567",
     );
-    const insert = h.base.ops.find((o) => o.op === "insert" && o.tabla === schema.conversationNote);
+    const insert = h.base.ops.find(
+      (o) => o.op === "insert" && o.tabla === schema.conversationNote,
+    );
     expect(insert?.valores).toMatchObject({ texto: HEALTH_OMITTED_TEXT });
     expect(JSON.stringify(insert?.valores)).not.toContain("3001234567");
   });
@@ -88,7 +100,12 @@ describe("071 — la ficha", () => {
     const r = await upsertFicha({
       organizationId: "org_1",
       contactId: "ct_1",
-      ficha: { motivo: "le duele la muela", telefono_alt: "3001234567", presupuesto: 300, urgente: true },
+      ficha: {
+        motivo: "le duele la muela",
+        telefono_alt: "3001234567",
+        presupuesto: 300,
+        urgente: true,
+      },
     });
     expect(r?.ficha).toEqual({
       previo: "x",
@@ -97,7 +114,9 @@ describe("071 — la ficha", () => {
       presupuesto: 300,
       urgente: true,
     });
-    const update = h.base.ops.find((o) => o.op === "update" && o.tabla === schema.contact);
+    const update = h.base.ops.find(
+      (o) => o.op === "update" && o.tabla === schema.contact,
+    );
     expect(JSON.stringify(update?.valores)).not.toMatch(/muela|3001234567/);
   });
 });

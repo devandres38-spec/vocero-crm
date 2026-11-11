@@ -29,7 +29,11 @@ export async function POST(req: Request) {
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
 
-  const r = await omitirPorSalud(organizationId, body.data.conversationId, body.data.messageIds);
+  const r = await omitirPorSalud(
+    organizationId,
+    body.data.conversationId,
+    body.data.messageIds,
+  );
   if (!r.ok) return apiError(404, "not_found", "Conversación no encontrada");
   return Response.json({ omitted: r.omitted });
 }

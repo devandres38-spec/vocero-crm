@@ -13,7 +13,9 @@ export function parseAvisosFlag(raw: string | undefined): boolean {
   return ON_VALUES.has((raw ?? "").trim().toLowerCase());
 }
 
-export function avisosEncendidos(env: NodeJS.ProcessEnv = process.env): boolean {
+export function avisosEncendidos(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
   return parseAvisosFlag(env.AVISOS);
 }
 
@@ -24,6 +26,9 @@ export function configTelegram(env: NodeJS.ProcessEnv = process.env): {
   base: string;
 } {
   const token = env.TELEGRAM_BOT_TOKEN?.trim() || null;
-  const base = (env.TELEGRAM_API_BASE_URL?.trim() || TELEGRAM_API_URL).replace(/\/+$/, "");
+  const base = (env.TELEGRAM_API_BASE_URL?.trim() || TELEGRAM_API_URL).replace(
+    /\/+$/,
+    "",
+  );
   return { token, base };
 }

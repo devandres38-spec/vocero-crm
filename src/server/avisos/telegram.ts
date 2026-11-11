@@ -19,7 +19,7 @@ export class AvisoError extends Error {
         ? "Telegram rechazó el token: revisar TELEGRAM_BOT_TOKEN"
         : tipo === "grupo"
           ? "Telegram no encuentra el grupo: revisar el chat registrado y que el bot siga en él"
-          : "Telegram no respondió: se reintenta"
+          : "Telegram no respondió: se reintenta",
     );
     this.name = "AvisoError";
     this.tipo = tipo;
@@ -33,7 +33,7 @@ export class AvisoError extends Error {
 export async function enviarTelegram(
   destino: { base: string; token: string; chatId: string },
   texto: string,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
 ): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
@@ -58,7 +58,9 @@ export async function enviarTelegram(
   }
   await res.body?.cancel().catch(() => {});
   if (res.ok) return;
-  if (res.status === 401 || res.status === 404) throw new AvisoError("token", res.status);
-  if (res.status === 400 || res.status === 403) throw new AvisoError("grupo", res.status);
+  if (res.status === 401 || res.status === 404)
+    throw new AvisoError("token", res.status);
+  if (res.status === 400 || res.status === 403)
+    throw new AvisoError("grupo", res.status);
   throw new AvisoError("pasajero", res.status);
 }

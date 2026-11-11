@@ -32,7 +32,10 @@ describe("071 — historial", () => {
         aiGenerated: true,
         buttons: [{ id: "aviso_acepto", title: "Acepto" }],
       }),
-      fila("msg_2", { privacyFlags: ["salud"], text: "[mensaje con información de salud omitido]" }),
+      fila("msg_2", {
+        privacyFlags: ["salud"],
+        text: "[mensaje con información de salud omitido]",
+      }),
       fila("msg_1", { buttonId: "aviso_acepto" }),
     ]);
     const h = await historialDe("org_1", "cv_1", 20, db as never);
@@ -48,7 +51,10 @@ describe("071 — historial", () => {
       buttonId: "aviso_acepto",
     });
     expect(h?.[1]?.privacyFlags).toEqual(["salud"]);
-    expect(h?.[2]).toMatchObject({ origin: "ai", buttons: [{ id: "aviso_acepto", title: "Acepto" }] });
+    expect(h?.[2]).toMatchObject({
+      origin: "ai",
+      buttons: [{ id: "aviso_acepto", title: "Acepto" }],
+    });
     expect("privacyFlags" in (h?.[0] ?? {})).toBe(false);
   });
 
@@ -57,9 +63,13 @@ describe("071 — historial", () => {
     responder(schema.conversation, [{ id: "cv_1" }]);
     await historialDe("org_1", "cv_1", 20, db as never);
     const [conv, mensajes] = ops;
-    expect(conv?.where?.params).toEqual(expect.arrayContaining(["org_1", "cv_1"]));
+    expect(conv?.where?.params).toEqual(
+      expect.arrayContaining(["org_1", "cv_1"]),
+    );
     expect(mensajes?.tabla).toBe(schema.message);
-    expect(mensajes?.where?.params).toEqual(expect.arrayContaining(["org_1", "cv_1"]));
+    expect(mensajes?.where?.params).toEqual(
+      expect.arrayContaining(["org_1", "cv_1"]),
+    );
   });
 
   it("una conversación de otro negocio: null (404)", async () => {
@@ -75,8 +85,12 @@ describe("071 — historial", () => {
 
   it("limit de 1 a 50, 20 por defecto", () => {
     expect(historialSchema.parse({ conversationId: "cv_1" }).limit).toBe(20);
-    expect(historialSchema.safeParse({ conversationId: "cv_1", limit: "51" }).success).toBe(false);
-    expect(historialSchema.safeParse({ conversationId: "cv_1", limit: "0" }).success).toBe(false);
+    expect(
+      historialSchema.safeParse({ conversationId: "cv_1", limit: "51" })
+        .success,
+    ).toBe(false);
+    expect(
+      historialSchema.safeParse({ conversationId: "cv_1", limit: "0" }).success,
+    ).toBe(false);
   });
 });
-

@@ -33,7 +33,7 @@ export async function reservarEnvio(
     text: string;
     buttons?: { id: string; title: string }[] | null;
   },
-  opts: { db?: Db; ahora?: Date } = {}
+  opts: { db?: Db; ahora?: Date } = {},
 ): Promise<Reserva> {
   const db = opts.db ?? getDb();
   const ahora = opts.ahora ?? new Date();
@@ -60,7 +60,7 @@ export async function reservarEnvio(
 
   const delNegocio = and(
     eq(schema.message.organizationId, input.organizationId),
-    eq(schema.message.clientMessageId, input.clave)
+    eq(schema.message.clientMessageId, input.clave),
   );
   const [previo] = await db
     .select({
@@ -75,11 +75,15 @@ export async function reservarEnvio(
   // Lo tomó otro índice (un `wa_message_id` repetido no puede pasar aquí): por si acaso.
   if (!previo) return { tipo: "en_curso" };
 
-  if (previo.status !== "failed" && (previo.waMessageId || YA_SALIO.has(previo.status))) {
+  if (
+    previo.status !== "failed" &&
+    (previo.waMessageId || YA_SALIO.has(previo.status))
+  ) {
     return { tipo: "repetido", messageId: previo.id };
   }
   const vieja = new Date(ahora.getTime() - RESERVA_VIEJA_MS);
-  if (previo.status === "pending" && previo.createdAt > vieja) return { tipo: "en_curso" };
+  if (previo.status === "pending" && previo.createdAt > vieja)
+    return { tipo: "en_curso" };
 
   // Fallido, o una reserva que quedó a medias: se reserva otra vez, solo si
   // nadie la tomó entretanto.
@@ -94,13 +98,15 @@ export async function reservarEnvio(
           and(
             eq(schema.message.status, "pending"),
             isNull(schema.message.waMessageId),
-            lte(schema.message.createdAt, vieja)
-          )
-        )
-      )
+            lte(schema.message.createdAt, vieja),
+          ),
+        ),
+      ),
     )
     .returning({ id: schema.message.id });
-  return retomada ? { tipo: "reintento", messageId: retomada.id } : { tipo: "en_curso" };
+  return retomada
+    ? { tipo: "reintento", messageId: retomada.id }
+    : { tipo: "en_curso" };
 }
 
 /** Meta rechazó el envío reservado: queda `failed`, visible en el hilo y reintentable. */
@@ -108,10 +114,15 @@ export async function marcarReservaFallida(
   organizationId: string,
   messageId: string,
   error: string,
-  db: Db = getDb()
+  db: Db = getDb(),
 ): Promise<void> {
   await db
     .update(schema.message)
     .set({ status: "failed", error })
-    .where(and(eq(schema.message.organizationId, organizationId), eq(schema.message.id, messageId)));
+    .where(
+      and(
+        eq(schema.message.organizationId, organizationId),
+        eq(schema.message.id, messageId),
+      ),
+    );
 }

@@ -5,7 +5,9 @@
  */
 export type AvisoRecibido = { chatId: string; text: string; at: string };
 
-const globalForMock = globalThis as unknown as { __telegramMock?: AvisoRecibido[] };
+const globalForMock = globalThis as unknown as {
+  __telegramMock?: AvisoRecibido[];
+};
 
 export function telegramMockState(): AvisoRecibido[] {
   if (!globalForMock.__telegramMock) globalForMock.__telegramMock = [];

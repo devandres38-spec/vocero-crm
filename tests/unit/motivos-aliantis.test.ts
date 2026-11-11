@@ -21,10 +21,13 @@ const DEL_CEREBRO = [
 ] as const;
 
 describe("071 — motivos de Aliantis", () => {
-  it.each(DEL_CEREBRO)("«%s» se guarda tal cual, nunca cae en modelo", (motivo) => {
-    expect(toHandoffReason(motivo)).toBe(motivo);
-    expect(toHandoffReason(` ${motivo.toUpperCase()} `)).toBe(motivo);
-  });
+  it.each(DEL_CEREBRO)(
+    "«%s» se guarda tal cual, nunca cae en modelo",
+    (motivo) => {
+      expect(toHandoffReason(motivo)).toBe(motivo);
+      expect(toHandoffReason(` ${motivo.toUpperCase()} `)).toBe(motivo);
+    },
+  );
 
   it("cada motivo del catálogo tiene rótulo en Resultados y en el hilo", () => {
     for (const motivo of HANDOFF_REASONS) {

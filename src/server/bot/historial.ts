@@ -34,7 +34,7 @@ export async function historialDe(
   organizationId: string,
   conversationId: string,
   limit: number,
-  db: Db = getDb()
+  db: Db = getDb(),
 ): Promise<MensajeDelHistorial[] | null> {
   const [conv] = await db
     .select({ id: schema.conversation.id })
@@ -43,8 +43,8 @@ export async function historialDe(
       scoped(
         schema.conversation.organizationId,
         organizationId,
-        eq(schema.conversation.id, conversationId)
-      )
+        eq(schema.conversation.id, conversationId),
+      ),
     )
     .limit(1);
   if (!conv) return null;
@@ -68,8 +68,8 @@ export async function historialDe(
       scoped(
         schema.message.organizationId,
         organizationId,
-        eq(schema.message.conversationId, conversationId)
-      )
+        eq(schema.message.conversationId, conversationId),
+      ),
     )
     .orderBy(desc(schema.message.createdAt), desc(schema.message.id))
     .limit(limit);

@@ -385,6 +385,14 @@ export const conversation = pgTable(
         "ventana",
         "hostilidad",
         "manual_reply",
+        // 071 (D10 de Aliantis): solo tipos de TypeScript; la columna no
+        // tiene `check` en la base, así que no hay migración.
+        "salud",
+        "reclamo",
+        "no_entiende",
+        "agendar",
+        "tope_gasto",
+        "medios",
       ],
     }),
     lastInboundAt: timestamp("last_inbound_at"),

@@ -19,7 +19,7 @@ import { borrarEventosDeWebhook } from "@/server/webhooks/borrar";
 export async function omitirPorSalud(
   organizationId: string,
   conversationId: string,
-  messageIds: readonly string[]
+  messageIds: readonly string[],
 ): Promise<{ ok: true; omitted: number } | { ok: false }> {
   const db = getDb();
   const cambiados = await db.transaction(async (tx) => {
@@ -30,8 +30,8 @@ export async function omitirPorSalud(
         scoped(
           schema.conversation.organizationId,
           organizationId,
-          eq(schema.conversation.id, conversationId)
-        )
+          eq(schema.conversation.id, conversationId),
+        ),
       )
       .limit(1);
     if (!conv) return null;
@@ -51,8 +51,8 @@ export async function omitirPorSalud(
           organizationId,
           eq(schema.message.conversationId, conversationId),
           eq(schema.message.direction, "in"),
-          inArray(schema.message.id, [...new Set(messageIds)])
-        )
+          inArray(schema.message.id, [...new Set(messageIds)]),
+        ),
       );
 
     for (const m of entrantes) {
@@ -62,7 +62,12 @@ export async function omitirPorSalud(
           text: m.text === null ? null : HEALTH_OMITTED_TEXT,
           privacyFlags: unirMarcas(m.privacyFlags ?? [], ["salud"]),
         })
-        .where(and(eq(schema.message.organizationId, organizationId), eq(schema.message.id, m.id)));
+        .where(
+          and(
+            eq(schema.message.organizationId, organizationId),
+            eq(schema.message.id, m.id),
+          ),
+        );
       if (m.mediaAssetId) {
         await tx
           .update(schema.mediaAsset)
@@ -70,21 +75,24 @@ export async function omitirPorSalud(
           .where(
             and(
               eq(schema.mediaAsset.organizationId, organizationId),
-              eq(schema.mediaAsset.id, m.mediaAssetId)
-            )
+              eq(schema.mediaAsset.id, m.mediaAssetId),
+            ),
           );
       }
     }
     await borrarEventosDeWebhook(
       tx,
       organizationId,
-      entrantes.map((m) => m.waMessageId).filter((id): id is string => Boolean(id))
+      entrantes
+        .map((m) => m.waMessageId)
+        .filter((id): id is string => Boolean(id)),
     );
     return entrantes.map((m) => m.id);
   });
 
   if (cambiados === null) return { ok: false };
-  if (cambiados.length > 0) await avisarALaBandeja(organizationId, conversationId, cambiados);
+  if (cambiados.length > 0)
+    await avisarALaBandeja(organizationId, conversationId, cambiados);
   return { ok: true, omitted: cambiados.length };
 }
 
@@ -92,13 +100,22 @@ export async function omitirPorSalud(
 async function avisarALaBandeja(
   organizationId: string,
   conversationId: string,
-  ids: readonly string[]
+  ids: readonly string[],
 ): Promise<void> {
   const filas = await getDb()
     .select({ message: schema.message, asset: schema.mediaAsset })
     .from(schema.message)
-    .leftJoin(schema.mediaAsset, eq(schema.mediaAsset.id, schema.message.mediaAssetId))
-    .where(scoped(schema.message.organizationId, organizationId, inArray(schema.message.id, [...ids])));
+    .leftJoin(
+      schema.mediaAsset,
+      eq(schema.mediaAsset.id, schema.message.mediaAssetId),
+    )
+    .where(
+      scoped(
+        schema.message.organizationId,
+        organizationId,
+        inArray(schema.message.id, [...ids]),
+      ),
+    );
   for (const f of filas) {
     publish(organizationId, {
       type: "message.updated",

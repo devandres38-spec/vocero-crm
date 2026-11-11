@@ -26,7 +26,8 @@ type Db = ReturnType<typeof getDb>;
 export const SEGUIMIENTO_CADA_MIN = 30;
 export const RENDIRSE_A_LOS_MIN = 60;
 const POR_PASADA = 10;
-const minutosAntes = (ahora: Date, min: number) => new Date(ahora.getTime() - min * 60_000);
+const minutosAntes = (ahora: Date, min: number) =>
+  new Date(ahora.getTime() - min * 60_000);
 
 /** Al traspasar: anota el aviso pendiente. Nunca lanza: el traspaso ya ocurrió. */
 export async function registrarTraspaso(
@@ -37,7 +38,7 @@ export async function registrarTraspaso(
     reason: string;
     esPrueba?: boolean;
   },
-  opts: { db?: Db; env?: NodeJS.ProcessEnv } = {}
+  opts: { db?: Db; env?: NodeJS.ProcessEnv } = {},
 ): Promise<void> {
   if (!avisosEncendidos(opts.env)) return;
   if (datos.reason === "manual_reply" || datos.esPrueba) return;
@@ -55,7 +56,7 @@ export async function registrarTraspaso(
   } catch (err) {
     console.error(
       "[avisos] no se pudo anotar el aviso del traspaso:",
-      err instanceof Error ? err.message : "error desconocido"
+      err instanceof Error ? err.message : "error desconocido",
     );
   }
 }
@@ -66,14 +67,20 @@ type Destino = { negocio: string; base: string; token: string; chatId: string };
 async function destinoDe(
   db: Db,
   organizationId: string,
-  env?: NodeJS.ProcessEnv
+  env?: NodeJS.ProcessEnv,
 ): Promise<Destino | "sin_token" | "sin_grupo"> {
   const { token, base } = configTelegram(env);
   if (!token) return "sin_token";
   const [fila] = await db
-    .select({ chatId: schema.avisoCanal.telegramChatId, negocio: schema.organization.name })
+    .select({
+      chatId: schema.avisoCanal.telegramChatId,
+      negocio: schema.organization.name,
+    })
     .from(schema.avisoCanal)
-    .innerJoin(schema.organization, eq(schema.organization.id, schema.avisoCanal.organizationId))
+    .innerJoin(
+      schema.organization,
+      eq(schema.organization.id, schema.avisoCanal.organizationId),
+    )
     .where(eq(schema.avisoCanal.organizationId, organizationId))
     .limit(1);
   if (!fila) return "sin_grupo";
@@ -83,7 +90,7 @@ async function destinoDe(
 /** Una pasada del worker: envía los avisos pendientes. Devuelve cuántos salieron. */
 export async function enviarAvisosPendientes(
   ahora: Date = new Date(),
-  opts: { db?: Db; env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch } = {}
+  opts: { db?: Db; env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch } = {},
 ): Promise<number> {
   if (!avisosEncendidos(opts.env)) return 0;
   const db = opts.db ?? getDb();
@@ -106,7 +113,10 @@ export async function enviarAvisosPendientes(
           updatedAt: ahora,
         })
         .where(
-          and(eq(schema.avisoTraspaso.id, aviso.id), eq(schema.avisoTraspaso.status, "pendiente"))
+          and(
+            eq(schema.avisoTraspaso.id, aviso.id),
+            eq(schema.avisoTraspaso.status, "pendiente"),
+          ),
         );
 
     const destino = await destinoDe(db, aviso.organizationId, opts.env);
@@ -115,19 +125,19 @@ export async function enviarAvisosPendientes(
       console.warn(
         destino === "sin_token"
           ? `[avisos] AVISOS encendido sin TELEGRAM_BOT_TOKEN: aviso ${aviso.id} omitido`
-          : `[avisos] el negocio ${aviso.organizationId} no tiene grupo registrado (pnpm avisos:grupo): aviso ${aviso.id} omitido`
+          : `[avisos] el negocio ${aviso.organizationId} no tiene grupo registrado (pnpm avisos:grupo): aviso ${aviso.id} omitido`,
       );
       continue;
     }
-    const [{ abiertos }] = await db
+    const [cuenta] = await db
       .select({ abiertos: count() })
       .from(schema.conversation)
       .where(
         and(
           eq(schema.conversation.organizationId, aviso.organizationId),
           isNotNull(schema.conversation.handoffAt),
-          eq(schema.conversation.isTest, false)
-        )
+          eq(schema.conversation.isTest, false),
+        ),
       );
     try {
       await enviarTelegram(
@@ -136,18 +146,23 @@ export async function enviarAvisosPendientes(
           negocio: destino.negocio,
           motivo: aviso.reason,
           conversationId: aviso.conversationId,
-          abiertos: Math.max(1, Number(abiertos)),
+          abiertos: Math.max(1, Number(cuenta?.abiertos ?? 1)),
         }),
-        opts.fetchImpl
+        opts.fetchImpl,
       );
       await marcar("enviado");
       enviados++;
     } catch (err) {
-      const fallo = err instanceof AvisoError ? err : new AvisoError("pasajero", 0);
-      const rendirse = !fallo.reintentable || aviso.createdAt <= minutosAntes(ahora, RENDIRSE_A_LOS_MIN);
+      const fallo =
+        err instanceof AvisoError ? err : new AvisoError("pasajero", 0);
+      const rendirse =
+        !fallo.reintentable ||
+        aviso.createdAt <= minutosAntes(ahora, RENDIRSE_A_LOS_MIN);
       await marcar(rendirse ? "fallido" : "pendiente");
       // Solo ids y qué revisar: nunca el token, la URL ni el texto.
-      console.error(`[avisos] aviso ${aviso.id}: ${fallo.message} (HTTP ${fallo.status})`);
+      console.error(
+        `[avisos] aviso ${aviso.id}: ${fallo.message} (HTTP ${fallo.status})`,
+      );
     }
   }
   return enviados;
@@ -159,7 +174,12 @@ export async function enviarAvisosPendientes(
  */
 export async function avisarSeguimiento(
   datos: { organizationId: string; conversationId: string; handoffAt: Date },
-  opts: { db?: Db; env?: NodeJS.ProcessEnv; fetchImpl?: typeof fetch; ahora?: Date } = {}
+  opts: {
+    db?: Db;
+    env?: NodeJS.ProcessEnv;
+    fetchImpl?: typeof fetch;
+    ahora?: Date;
+  } = {},
 ): Promise<boolean> {
   if (!avisosEncendidos(opts.env)) return false;
   const db = opts.db ?? getDb();
@@ -177,9 +197,12 @@ export async function avisarSeguimiento(
           eq(schema.avisoTraspaso.status, "enviado"),
           or(
             isNull(schema.avisoTraspaso.lastFollowupAt),
-            lte(schema.avisoTraspaso.lastFollowupAt, minutosAntes(ahora, SEGUIMIENTO_CADA_MIN))
-          )
-        )
+            lte(
+              schema.avisoTraspaso.lastFollowupAt,
+              minutosAntes(ahora, SEGUIMIENTO_CADA_MIN),
+            ),
+          ),
+        ),
       )
       .returning({ id: schema.avisoTraspaso.id });
     if (!reclamado) return false;
@@ -187,15 +210,18 @@ export async function avisarSeguimiento(
     if (typeof destino === "string") return false;
     await enviarTelegram(
       destino,
-      avisoDeSeguimiento({ negocio: destino.negocio, conversationId: datos.conversationId }),
-      opts.fetchImpl
+      avisoDeSeguimiento({
+        negocio: destino.negocio,
+        conversationId: datos.conversationId,
+      }),
+      opts.fetchImpl,
     );
     return true;
   } catch (err) {
     console.error(
       `[avisos] seguimiento de ${datos.conversationId}: ${
         err instanceof AvisoError ? err.message : "error desconocido"
-      }`
+      }`,
     );
     return false;
   }
