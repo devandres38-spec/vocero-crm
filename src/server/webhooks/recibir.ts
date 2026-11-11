@@ -15,17 +15,24 @@ import { procesarEvento } from "./worker";
  *    pendiente y el barrido lo reintenta.
  *
  * Nunca deja pasar una excepción: la ruta siempre recibe una respuesta.
+ *
+ * 073 — Las rutas de Meta ya resolvieron la organización al verificar la firma
+ * de ese negocio (`firma.ts`): la pasan en `resuelta` y se usa esa, la misma
+ * cuyo secreto validó la entrega.
  */
 export async function recibirEvento(
   fuente: FuenteWebhook,
   payload: unknown,
   rawBody: string,
-  etiqueta: string
+  etiqueta: string,
+  resuelta?: { organizationId: string | null }
 ): Promise<Response> {
   let organizationId: string | null;
   let evento: { id: string; nuevo: boolean };
   try {
-    organizationId = await resolverOrganizacion(fuente, payload);
+    organizationId = resuelta
+      ? resuelta.organizationId
+      : await resolverOrganizacion(fuente, payload);
     if (!organizationId) {
       after(async () => {
         try {

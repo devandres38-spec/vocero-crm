@@ -30,7 +30,7 @@ type WebhookInfo = {
   url: string;
   verifyToken: string;
   isHttps: boolean;
-  signatureLayer: boolean;
+  firmas: Record<"whatsapp" | "instagram" | "messenger", string | null>;
 };
 
 /** Lo que devuelve el registro del webhook en Meta (al guardar o a demanda). */
@@ -693,18 +693,17 @@ function WebhookCard({
             )}
           </div>
         </div>
-        {webhook.signatureLayer ? (
+        {webhook.firmas.whatsapp ? (
           <p className="flex items-center gap-2 text-xs text-success">
             <ShieldCheck className="h-4 w-4" /> Verificación de firma activa
-            (META_APP_SECRET configurado): cada evento se valida con
+            (App Secret …{webhook.firmas.whatsapp}): cada evento se valida con
             x-hub-signature-256.
           </p>
         ) : (
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" /> Sin App Secret
-            configurado: el webhook queda protegido por la URL secreta (normal
-            en modo agencia). Para la capa extra de firma, agrega
-            META_APP_SECRET a la instancia.
+            <Info className="mt-0.5 h-4 w-4 shrink-0" /> Falta registrar el App
+            Secret de tu app: sin él, en producción no entran los mensajes. Lo
+            registra el equipo de Aliantis.
           </p>
         )}
       </CardContent>

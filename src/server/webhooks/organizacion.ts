@@ -84,3 +84,56 @@ export async function resolverOrganizacion(
     }
   }
 }
+
+/**
+ * 073 — TODAS las organizaciones de una entrega de Meta, para la firma por
+ * negocio: una app es de un solo cliente, así que una entrega que mezcla
+ * negocios no se acepta. Por entrada: el número (o la WABA, si no trae
+ * número), la cuenta de Instagram o la página.
+ */
+export async function organizacionesDeLaEntrega(
+  fuente: "whatsapp" | "meta_instagram" | "meta_messenger",
+  payload: unknown,
+  b: Buscadores = buscadoresReales
+): Promise<string[]> {
+  const orgs = new Set<string>();
+  const anotar = async (
+    ids: (string | null | undefined)[],
+    buscar: (id: string) => Promise<{ organizationId: string } | null>
+  ): Promise<boolean> => {
+    let alguno = false;
+    for (const id of new Set(ids.filter((x): x is string => Boolean(x)))) {
+      const found = await buscar(id);
+      if (found) {
+        orgs.add(found.organizationId);
+        alguno = true;
+      }
+    }
+    return alguno;
+  };
+  switch (fuente) {
+    case "whatsapp": {
+      for (const e of (payload as WebhookPayload).entry ?? []) {
+        const porNumero = await anotar(
+          (e.changes ?? []).map((c) => c.value?.metadata?.phone_number_id),
+          b.porPhoneNumberId
+        );
+        if (!porNumero) await anotar([e.id], b.porWabaId);
+      }
+      break;
+    }
+    case "meta_instagram":
+      await anotar(
+        ((payload as { entry?: { id?: string }[] }).entry ?? []).map((e) => e.id),
+        b.porIgUserId
+      );
+      break;
+    case "meta_messenger":
+      await anotar(
+        normalizeMetaPagePayload(payload).map((e) => e.routeKey),
+        b.porPageId
+      );
+      break;
+  }
+  return [...orgs];
+}

@@ -40,6 +40,7 @@ import {
   levantarCerebroFalso,
   urlDelDespacho,
 } from "./lib/cerebro-falso.mjs";
+import { cabecerasDelCerebro } from "./lib/credencial.mjs";
 
 const BASE = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const BOT_KEY = process.env.BOT_API_KEY ?? "";
@@ -96,8 +97,26 @@ async function api(path, opts = {}) {
   return { res, json };
 }
 
+
+/**
+ * 073 — El negocio del operador del arnés: el «cerebro» del guion contesta con
+ * la credencial derivada de ese negocio, como el cerebro real (contrato 067).
+ */
+let ORG = null;
+async function orgDelOperador(email) {
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [r] = await sql`
+      select m.organization_id as id from member m join "user" u on u.id = m.user_id
+       where u.email = ${email} limit 1`;
+    return r?.id ?? null;
+  } finally {
+    await sql.end();
+  }
+}
+
 const bot = (path, opts = {}) =>
-  api(path, { ...opts, headers: { "x-api-key": BOT_KEY, ...(opts.headers ?? {}) } });
+  api(path, { ...opts, headers: { ...cabecerasDelCerebro(BOT_KEY, ORG), ...(opts.headers ?? {}) } });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -214,6 +233,8 @@ async function preparar() {
     });
   }
   ok("registro o login del operador", su.res.ok, JSON.stringify(su.json));
+  ORG = await orgDelOperador(email);
+  ok("el negocio del operador, para la credencial derivada", Boolean(ORG), String(ORG));
 
   const conn = await api("/api/settings/whatsapp", {
     method: "PUT",
@@ -481,6 +502,15 @@ async function proxyLlm() {
   );
   const conXKey = await leer(await llamar({ "x-api-key": BOT_KEY }));
   ok("con X-API-Key → 200 también", conXKey.status === 200, String(conXKey.status));
+  // 073: la credencial derivada del negocio también entra como Bearer (el
+  // SDK de OpenAI manda la cabecera de organización fija).
+  const derivada = await leer(
+    await llamar({
+      "x-vocero-organization": ORG,
+      authorization: `Bearer ${cabecerasDelCerebro(BOT_KEY, ORG)["x-api-key"]}`,
+    }),
+  );
+  ok("con la credencial derivada del negocio como Bearer → 200", derivada.status === 200, String(derivada.status));
   const tokenEntorno = process.env.OPENROUTER_API_TOKEN ?? "";
   ok(
     "ni la llave del proveedor ni BOT_API_KEY vuelven en la respuesta",
@@ -844,7 +874,7 @@ async function adjunto(cerebro) {
   ok("y no el archivo", !llego?.crudo.includes("base64"));
   if (m?.mediaId) {
     const media = await fetch(`${BASE}/api/bot/media/${m.mediaId}`, {
-      headers: { "x-api-key": BOT_KEY },
+      headers: cabecerasDelCerebro(BOT_KEY, ORG),
     });
     const bytes = (await media.arrayBuffer()).byteLength;
     ok(

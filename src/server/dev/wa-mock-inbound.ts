@@ -1,11 +1,13 @@
 import { createHmac } from "node:crypto";
 import { getEnv } from "@/lib/env";
 import { nextN } from "@/server/dev/wa-mock-state";
+import { resolverOrganizacion } from "@/server/webhooks/organizacion";
+import { appSecretDe } from "@/server/whatsapp/app-secret";
 
 /**
  * Construye un payload real de Meta y lo entrega al webhook público por
  * loopback (127.0.0.1: mismo proceso, sin salir a la red). Se firma con el
- * META_APP_SECRET real si está configurado — así el self-test ejercita la
+ * App Secret de WhatsApp del negocio (073) — así el self-test ejercita la
  * capa 2 de verdad.
  */
 export async function deliverToWebhook(payload: unknown): Promise<Response> {
@@ -17,10 +19,16 @@ export async function deliverToWebhook(payload: unknown): Promise<Response> {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
-  if (env.META_APP_SECRET) {
-    const sig = createHmac("sha256", env.META_APP_SECRET)
-      .update(raw, "utf8")
-      .digest("hex");
+  // 073: firma con el App Secret de WhatsApp del negocio de ese número, como
+  // lo haría su app de Meta (así el self-test recorre la verificación real).
+  // Sin secreto registrado, el de la instancia si existe (dev).
+  const org = await resolverOrganizacion("whatsapp", payload).catch(() => null);
+  const secreto =
+    (org ? await appSecretDe(org, "whatsapp").catch(() => null) : null) ??
+    env.META_APP_SECRET ??
+    null;
+  if (secreto) {
+    const sig = createHmac("sha256", secreto).update(raw, "utf8").digest("hex");
     headers["x-hub-signature-256"] = `sha256=${sig}`;
   }
   return fetch(url, { method: "POST", headers, body: raw });

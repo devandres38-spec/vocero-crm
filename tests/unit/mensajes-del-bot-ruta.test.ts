@@ -19,8 +19,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@/server/bot/auth", () => ({
-  requireBotKey: () => null,
-  resolveInstanceOrg: async () => "org_1",
+  requireBot: async () => ({ organizationId: "org_1" }),
 }));
 vi.mock("@/server/bot/envio-idempotente", () => ({
   reservarEnvio: vi.fn(async () => {

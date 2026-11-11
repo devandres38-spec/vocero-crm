@@ -61,8 +61,11 @@ describe("el OpenAPI contra las rutas", () => {
   });
 
   it("los 409 de /api/bot/messages son los que la ruta devuelve", () => {
-    const fuente = readFileSync(path.join(BOT, "messages", "route.ts"), "utf8");
-    const enCodigo = [...fuente.matchAll(/apiError\(409, "([a-z_]+)"/g)].map((m) => m[1]).sort();
+    // 073: los 409 de la autenticación por negocio (`requireBot`) valen en toda ruta.
+    const fuente =
+      readFileSync(path.join(BOT, "messages", "route.ts"), "utf8") +
+      readFileSync(path.join(BOT, "..", "..", "..", "server", "bot", "auth.ts"), "utf8");
+    const enCodigo = [...fuente.matchAll(/apiError\(\s*409,\s*"([a-z_]+)"/g)].map((m) => m[1]).sort();
     const post = doc.paths["/api/bot/messages"]!.post as { "x-codigos-409": string[] };
     expect([...post["x-codigos-409"]].sort()).toEqual(enCodigo);
   });

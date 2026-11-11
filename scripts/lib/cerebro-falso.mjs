@@ -60,6 +60,7 @@
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { cabecerasDelCerebro } from "./credencial.mjs";
 
 /** Lo que dice el `/health` de esta Nea de mentira. */
 export const SALUD_FALSA = {
@@ -156,12 +157,15 @@ export async function levantarCerebroFalso({
   };
   /** Respuestas en vuelo: `esperar()` las deja terminar antes de cerrar. */
   const enVuelo = new Set();
+  /** 073 — El negocio de cada conversación (del despacho): contesta con SU credencial, como el cerebro real. */
+  const orgDe = new Map();
+  const cabeceras = (convId) => cabecerasDelCerebro(botKey, orgDe.get(convId));
 
   const alCrm = async (ruta, cuerpo, convId, tipo) => {
     try {
       const r = await fetch(`${base}${ruta}`, {
         method: "POST",
-        headers: { "content-type": "application/json", "x-api-key": botKey },
+        headers: { "content-type": "application/json", ...cabeceras(convId) },
         body: JSON.stringify(cuerpo),
       });
       const json = await r.json().catch(() => null);
@@ -173,14 +177,19 @@ export async function levantarCerebroFalso({
     }
   };
 
-  async function pensar(texto) {
+  async function pensar(texto, convId) {
     const eco = `Respuesta de prueba a «${texto.slice(0, 40)}»`;
     if (!estado.pensarPorElCrm) return eco;
     try {
       const r = await fetch(`${base}/api/bot/llm/chat/completions`, {
         method: "POST",
         // Como el SDK de OpenAI de Nea: la llave como Bearer.
-        headers: { "content-type": "application/json", authorization: `Bearer ${botKey}` },
+        headers: {
+          "content-type": "application/json",
+          ...(({ "x-api-key": k, ...resto }) => ({ ...resto, authorization: `Bearer ${k}` }))(
+            cabeceras(convId),
+          ),
+        },
         body: JSON.stringify({
           model: "mock/agente",
           messages: [
@@ -204,7 +213,7 @@ export async function levantarCerebroFalso({
     let contexto = null;
     try {
       const r = await fetch(`${base}/api/bot/context?conversationId=${encodeURIComponent(convId)}`, {
-        headers: { "x-api-key": botKey },
+        headers: cabeceras(convId),
       });
       contexto = await r.json().catch(() => null);
     } catch {}
@@ -217,6 +226,7 @@ export async function levantarCerebroFalso({
 
   async function contestar(evento) {
     const convId = evento.conversation.id;
+    if (evento.organization?.id) orgDe.set(convId, evento.organization.id);
     const ultimo = evento.messages.at(-1) ?? {};
     const texto = ultimo.text ?? ultimo.caption ?? "";
     // Como Nea con el candado de cierre: ante el relleno final, calla.
@@ -227,7 +237,7 @@ export async function levantarCerebroFalso({
       return;
     }
     if (/califica/i.test(texto)) await moverEtapa(convId, texto);
-    const respuesta = await pensar(texto);
+    const respuesta = await pensar(texto, convId);
     await alCrm("/api/bot/messages", { conversationId: convId, text: respuesta }, convId, "mensaje");
   }
 

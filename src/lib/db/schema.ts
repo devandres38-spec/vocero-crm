@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -563,6 +564,38 @@ export const metaCredentials = pgTable(
     uniqueIndex("meta_credentials_org_uq").on(t.organizationId),
     // El webhook enruta por phone_number_id: debe ser único en la instancia.
     uniqueIndex("meta_credentials_phone_uq").on(t.phoneNumberId),
+  ]
+);
+
+/**
+ * 073 (D14 de Aliantis) — El App Secret de la app de Meta de cada negocio,
+ * POR CANAL: la documentación de Meta no confirma que WhatsApp, Instagram
+ * (inicio de sesión de Instagram, con su propio secreto) y Messenger compartan
+ * app ni secreto. Con él se verifica la firma `X-Hub-Signature-256` de los
+ * webhooks de ese canal. Cifrado como el token; solo lo escribe
+ * `pnpm meta:secreto` (Andres) y nunca sale en respuestas ni registros.
+ */
+export const metaApp = pgTable(
+  "meta_app",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    canal: text("canal", { enum: ["whatsapp", "instagram", "messenger"] }).notNull(),
+    /** Informativo: el id de la app en Meta. */
+    appId: text("app_id"),
+    secretCipher: text("secret_cipher").notNull(),
+    secretIv: text("secret_iv").notNull(),
+    secretTag: text("secret_tag").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.canal] }),
+    check(
+      "meta_app_canal_chk",
+      sql`${t.canal} in ('whatsapp', 'instagram', 'messenger')`
+    ),
   ]
 );
 

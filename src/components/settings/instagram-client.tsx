@@ -41,7 +41,7 @@ type Connection = {
 type WebhookInfo = {
   instagramUrl: string | null;
   verifyToken: string;
-  signatureLayer: boolean;
+  firmas: Record<"whatsapp" | "instagram" | "messenger", string | null>;
 };
 
 const HELP: Record<Source, { title: string; items: string[] }> = {
@@ -319,9 +319,9 @@ export function InstagramClient() {
               </div>
               <p className="flex items-start gap-2 text-xs text-text-2">
                 <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {webhook.signatureLayer
-                  ? "Cada entrega se verifica con la firma del App Secret de tu app."
-                  : "Define META_APP_SECRET en la instancia para que además se verifique la firma de cada entrega."}
+                {webhook.firmas.instagram
+                  ? `Cada entrega se verifica con la firma del App Secret de tu app (…${webhook.firmas.instagram}).`
+                  : "Falta registrar el App Secret de tu app: sin él, en producción no entran los mensajes. Lo registra el equipo de Aliantis."}
               </p>
             </CardContent>
           </Card>

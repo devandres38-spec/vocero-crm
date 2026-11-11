@@ -160,10 +160,20 @@ jobs:
           set -o pipefail
           node scripts/e2e-retencion.mjs 2>&1 | tee .tmp-e2e-retencion.log
 
+      # 073 — Autenticación por negocio: dos negocios en /api/bot/* y el
+      # webhook firmado con el App Secret del negocio. El último: usa el
+      # negocio del operador y deshace lo suyo.
+      - name: e2e-multinegocio
+        if: ${{ !cancelled() }}
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-multinegocio.mjs 2>&1 | tee .tmp-e2e-multinegocio.log
+
       - name: resumen
         if: ${{ !cancelled() }}
         run: |
-          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log; do
+          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log .tmp-e2e-multinegocio.log; do
             [ -f "$log" ] || continue
             echo "== $log: checks OK $(grep -cE '^\s+OK ' "$log" || true)"
             grep -E '^\s+(FAIL|FALLA)' "$log" || echo "sin fallas"

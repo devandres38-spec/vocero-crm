@@ -43,6 +43,10 @@ vi.mock("@/lib/auth/session", () => ({
   getSessionOrNull: async () => ({ userId: "usr_1", organizationId: "org_a", role: sesion.role }),
 }));
 vi.mock("@/server/channels/enabled", () => ({ isChannelEnabled: () => false }));
+vi.mock("@/server/whatsapp/app-secret", async (orig) => ({
+  ...(await orig<typeof import("@/server/whatsapp/app-secret")>()),
+  estadoDeFirmas: async () => [],
+}));
 vi.mock("@/server/whatsapp/credentials", () => ({
   desconectarCanal: disconnect,
   getCredentialsByOrg: async () => creds.current,
@@ -228,7 +232,8 @@ describe("«Registrar en Meta» con la conexión guardada", () => {
       url: URL_FIJA,
       verifyToken: "verify-abc",
       isHttps: true,
-      signatureLayer: false,
+      // 073: la firma es por negocio y canal; aquí, sin secretos registrados.
+      firmas: { whatsapp: null, instagram: null, messenger: null },
       instagramUrl: null,
       messengerUrl: null,
     });

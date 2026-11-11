@@ -5,6 +5,14 @@ import { isChannelEnabled } from "@/server/channels/enabled";
 import { registerWebhookForNumber } from "@/server/whatsapp/connect";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
 import { webhookUrl, webhookVerifyToken } from "@/server/whatsapp/webhook-url";
+import { CANALES_META, estadoDeFirmas, type CanalMeta } from "@/server/whatsapp/app-secret";
+
+async function firmasPorCanal(organizationId: string): Promise<Record<CanalMeta, string | null>> {
+  const estado = await estadoDeFirmas(organizationId);
+  return Object.fromEntries(
+    CANALES_META.map((c) => [c, estado.find((e) => e.canal === c)?.ultimos4 ?? null])
+  ) as Record<CanalMeta, string | null>;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +27,7 @@ export const dynamic = "force-dynamic";
  * viajan las tres URLs y la pantalla de cada canal enseña la suya. Las de un
  * canal apagado van en null: no existen en esta instancia (ADR-001).
  */
-export const GET = withAuth(async () => {
+export const GET = withAuth(async (session) => {
   const env = getEnv();
   const url = webhookUrl("wa");
   return Response.json({
@@ -30,7 +38,9 @@ export const GET = withAuth(async () => {
     tiktokUrl: isChannelEnabled("tiktok") ? webhookUrl("tiktok") : null,
     verifyToken: env.META_WEBHOOK_VERIFY_TOKEN,
     isHttps: url.startsWith("https://"),
-    signatureLayer: Boolean(env.META_APP_SECRET),
+    // 073: la firma es por negocio y canal (App Secret de cada app, `pnpm
+    // meta:secreto`). Solo los últimos 4, nunca el secreto.
+    firmas: await firmasPorCanal(session.organizationId),
   });
 });
 
