@@ -109,7 +109,7 @@ Los sabotajes 3 y 4 se prueban contra la instancia real de Better Auth con una b
 - RLS: bloque H.
 - El tope diario del Laboratorio y sacar Ajustes → IA del rol del negocio: bloque L.
 - Suspender o borrar un negocio: no se pidió; queda para el panel (bloque I) si Andres lo quiere.
-- Los arneses viejos que no corren en `e2e.yml` (`e2e-roles`, `e2e-alta-manual`…) se registran en una instalación vacía. Con el registro cerrado, necesitan el operador creado antes, como los del CI; se anota en su cabecera y se arreglan cuando vuelvan a correr.
+- Los arneses viejos que no corren en `e2e.yml` (`e2e-roles`, `e2e-alta-manual`…) se registran en una instalación vacía. Con el registro cerrado, necesitan el operador creado antes, como los del CI: `node scripts/e2e-operador.mjs` (el de `e2e@vocero.test`) o un `pnpm negocio:alta` con su correo. Se dice una vez en `quickstart.md`, no en la cabecera de cada uno, y se arreglan cuando vuelvan a correr.
 
 ## Respuestas de Andres (11-nov-2026)
 
