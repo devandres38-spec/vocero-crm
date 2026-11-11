@@ -59,6 +59,8 @@ GRANT vocero_panel TO vocero_app WITH INHERIT FALSE, SET TRUE;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA "public" TO vocero_panel;
 --> statement-breakpoint
+GRANT SELECT ON "message" TO vocero_panel;
+--> statement-breakpoint
 -- La membresía de la sesión ahora dice también si el negocio está pausado.
 DROP FUNCTION IF EXISTS vocero_membresia(text);
 --> statement-breakpoint
