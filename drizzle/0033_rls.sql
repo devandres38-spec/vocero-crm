@@ -57,7 +57,7 @@ DROP POLICY IF EXISTS "contact_por_negocio" ON "contact";
 --> statement-breakpoint
 CREATE POLICY "contact_por_negocio" ON "contact"
   USING ("organization_id" = NULLIF(current_setting('app.organization_id', true), ''))
-  WITH CHECK ("organization_id" = NULLIF(current_setting('app.organization_id', true), ''));
+  WITH CHECK (true);
 --> statement-breakpoint
 ALTER TABLE "pipeline_stage" ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint
