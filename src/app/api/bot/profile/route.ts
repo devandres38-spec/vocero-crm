@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { serializeBotProfile, type BotLlm } from "@/server/bot/profile";
 import { resolveAiProvider } from "@/lib/ai/provider";
 
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
  * refleja lo que el dueño dejó en la UI al momento (el TTL vive del lado del
  * bot, que es quien sabe cada cuánto le conviene releer).
  */
-export async function GET(req: Request) {
+async function getSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -43,3 +44,6 @@ export async function GET(req: Request) {
 
   return Response.json(serializeBotProfile(profile, kb, llm));
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const GET = rutaDelCerebro(getSinNegocio);

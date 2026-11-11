@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { olvidarPorRechazo } from "@/server/inbox/olvidar";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ const bodySchema = z.object({
  * 200 `{ deleted }` (repetirlo: `deleted: 0`) · 404 `not_found` ·
  * 409 `sin_rechazo` · 422 `invalid_body`.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -39,3 +40,6 @@ export async function POST(req: Request) {
   }
   return Response.json({ deleted: r.deleted });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

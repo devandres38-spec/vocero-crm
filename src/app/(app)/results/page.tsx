@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { getSessionOrNull, paginaConSesion } from "@/lib/auth/session";
 import { todayInTz } from "@/lib/time/slots";
 import { getBranding } from "@/server/branding";
 import { agendaEnabled } from "@/server/agenda/flag";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
  * pidiera el cliente, la pantalla pintaría un instante con la moneda o el día
  * equivocados, y los atajos del rango no coincidirían con los del servidor.
  */
-export default async function ResultsPage() {
+async function ResultsPage() {
   // El layout ya manda al login sin sesión; esto es por si la página se
   // resuelve primero.
   const session = await getSessionOrNull();
@@ -34,3 +34,6 @@ export default async function ResultsPage() {
     />
   );
 }
+
+// 075 — Dentro del negocio de la sesión (RLS).
+export default paginaConSesion(ResultsPage);

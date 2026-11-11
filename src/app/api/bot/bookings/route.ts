@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
 import {
   createSessionBooking,
@@ -38,7 +39,7 @@ const rescheduleSchema = z.object({
   startUtc: z.string().min(1),
 });
 
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const gate = await guard(req);
   if ("response" in gate) return gate.response;
 
@@ -61,7 +62,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function PATCH(req: Request) {
+async function patchSinNegocio(req: Request) {
   const gate = await guard(req);
   if ("response" in gate) return gate.response;
 
@@ -93,3 +94,6 @@ async function guard(req: Request): Promise<Gate> {
   return { organizationId: auth.organizationId };
 }
 
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);
+export const PATCH = rutaDelCerebro(patchSinNegocio);

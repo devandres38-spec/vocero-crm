@@ -28,15 +28,15 @@ function leerMetadata(metadata: string | null): Record<string, unknown> {
 
 /** La del negocio, o null si nunca se eligió (vale la de Vocero). */
 export async function aparienciaDelNegocio(organizationId?: string | null): Promise<Apariencia | null> {
+  // 075 — Sin negocio: ninguna (vale la de Vocero). Antes, la de «la primera
+  // organización»: la de otro cliente.
+  if (!organizationId) return null;
   const db = getDb();
-  const rows = organizationId
-    ? await db
-        .select({ metadata: schema.organization.metadata })
-        .from(schema.organization)
-        .where(eq(schema.organization.id, organizationId))
-        .limit(1)
-    : // Sin sesión (login, layout raíz): la única organización de la instancia.
-      await db.select({ metadata: schema.organization.metadata }).from(schema.organization).limit(1);
+  const rows = await db
+    .select({ metadata: schema.organization.metadata })
+    .from(schema.organization)
+    .where(eq(schema.organization.id, organizationId))
+    .limit(1);
   const r = aparienciaSchema.safeParse(leerMetadata(rows[0]?.metadata ?? null).apariencia);
   return r.success ? r.data : null;
 }

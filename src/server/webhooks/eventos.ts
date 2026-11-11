@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, count, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { conteoDeWebhooks } from "@/server/db-sistema";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { perfilVigente } from "@/server/privacy/repositorio";
@@ -298,13 +299,8 @@ export async function estadoDeEntregas(organizationId: string): Promise<EstadoEn
 
 /** Para `/api/health`: de toda la instancia, sin datos. */
 export async function conteoGlobal(): Promise<{ pendientes: number; agotados: number }> {
-  const filas = await getDb()
-    .select({ status: schema.webhookEvent.status, n: count() })
-    .from(schema.webhookEvent)
-    .where(inArray(schema.webhookEvent.status, ["pendiente", "en_proceso", "agotado"]))
-    .groupBy(schema.webhookEvent.status);
-  const n = (s: string) => Number(filas.find((f) => f.status === s)?.n ?? 0);
-  return { pendientes: n("pendiente") + n("en_proceso"), agotados: n("agotado") };
+  // 075 — Entre todos los negocios: por la función de solo números (RLS).
+  return conteoDeWebhooks();
 }
 
 export const RETENCION_PROCESADO_MS = 7 * 24 * 3_600_000;

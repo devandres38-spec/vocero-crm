@@ -1,12 +1,12 @@
 import { InboxClient } from "@/components/inbox/inbox-client";
 import { canConfigure } from "@/lib/auth/roles";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { getSessionOrNull, paginaConSesion } from "@/lib/auth/session";
 import { CHANNEL_ORDER } from "@/lib/channels";
 import { enabledChannels } from "@/server/channels/enabled";
 
 export const dynamic = "force-dynamic";
 
-export default async function InboxPage() {
+async function InboxPage() {
   /**
    * 014 — Qué bandejas existen se decide en el servidor, no mirando los datos.
    * Si se dedujera de las conversaciones cargadas, la marca de canal aparecería
@@ -23,3 +23,6 @@ export default async function InboxPage() {
 
   return <InboxClient channels={channels} canDelete={canConfigure(session?.role)} />;
 }
+
+// 075 — Dentro del negocio de la sesión (RLS).
+export default paginaConSesion(InboxPage);

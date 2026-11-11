@@ -1,25 +1,21 @@
-import { eq } from "drizzle-orm";
-import { getDb, schema } from "@/lib/db";
+import {
+  hastaDosOrganizacionesSistema,
+  organizacionExisteSistema,
+} from "@/server/db-sistema";
 
 /**
  * 073 — Las dos consultas de organización que necesita `requireBot`. Aparte
  * para poder simularlas en las pruebas de cada ruta sin simular la base.
+ *
+ * 075 — Corren antes de saber el negocio, así que van por las funciones de
+ * solo ids de la migración 0033 (`organization` tiene RLS).
  */
 
 export async function organizacionExiste(organizationId: string): Promise<boolean> {
-  const filas = await getDb()
-    .select({ id: schema.organization.id })
-    .from(schema.organization)
-    .where(eq(schema.organization.id, organizationId))
-    .limit(1);
-  return filas.length === 1;
+  return organizacionExisteSistema(organizationId);
 }
 
 /** Hasta dos organizaciones: basta para saber si hay una sola. Sin caché: una segunda la apaga al instante. */
 export async function hastaDosOrganizaciones(): Promise<string[]> {
-  const filas = await getDb()
-    .select({ id: schema.organization.id })
-    .from(schema.organization)
-    .limit(2);
-  return filas.map((f) => f.id);
+  return hastaDosOrganizacionesSistema();
 }

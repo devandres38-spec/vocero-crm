@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { conNegocio } from "@/lib/db/contexto";
 import { requireSession, UnauthorizedError, type SessionContext } from "@/lib/auth/session";
 
 /** Respuesta de error estándar de la API interna (contrato api.md). */
@@ -28,7 +29,8 @@ export function withAuth<Args extends unknown[]>(
       throw err;
     }
     try {
-      return await handler(session, ...args);
+      // 075 — Todo lo que la ruta lea o escriba, dentro de SU negocio (RLS).
+      return await conNegocio(session.organizationId, () => handler(session, ...args));
     } catch (err) {
       console.error("[api] error no controlado:", err);
       return apiError(500, "internal", "Error interno");

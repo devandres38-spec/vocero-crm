@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { omitirPorSalud } from "@/server/inbox/omitir";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ const bodySchema = z.object({
  *
  * 200 `{ omitted }` · 404 `not_found` · 422 `invalid_body`.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -34,3 +35,6 @@ export async function POST(req: Request) {
   if (!r.ok) return apiError(404, "not_found", "Conversación no encontrada");
   return Response.json({ omitted: r.omitted });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
 import { graphRequest } from "@/lib/meta/client";
 
@@ -18,7 +19,7 @@ const bodySchema = z.object({ conversationId: z.string().min(1) });
  * falla se responde 200 {ok:false} y la conversación sigue. El indicador
  * dura hasta ~25 s o hasta que llegue la respuesta real.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -86,3 +87,6 @@ export async function POST(req: Request) {
     return Response.json({ ok: false, reason: "meta_error" });
   }
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

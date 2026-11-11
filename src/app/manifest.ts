@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { productName } from "@/lib/channels";
 import { buildManifest } from "@/lib/pwa";
-import { getBranding } from "@/server/branding";
+import { marcaDeLaPeticion } from "@/server/marca-de-la-peticion";
 import { enabledChannels } from "@/server/channels/enabled";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,6 @@ export const dynamic = "force-dynamic";
  * (`/manifest.webmanifest`). Público: el navegador lo pide sin sesión.
  */
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const branding = await getBranding().catch(() => DEFAULT_BRANDING);
+  const branding = (await marcaDeLaPeticion().catch(() => null))?.branding ?? DEFAULT_BRANDING;
   return buildManifest(branding, `${productName([...enabledChannels()])} de ${branding.name}`);
 }

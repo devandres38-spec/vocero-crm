@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { CHANNEL_ORDER, type Channel } from "@/lib/channels";
 import { getDb } from "@/lib/db";
+import { comoSistema } from "@/lib/db/contexto";
 import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { parseAgendaFlag } from "@/server/agenda/flag";
 import { parseAtribucionFlag } from "@/server/attribution/flag";
@@ -103,7 +104,7 @@ export function healthFeatures(env: FlagEnv = process.env): HealthFeatures {
 
 export async function checkHealth(): Promise<HealthResult> {
   try {
-    await getDb().execute(sql`select 1`);
+    await comoSistema("salud", () => getDb().execute(sql`select 1`));
   } catch {
     return {
       status: 503,

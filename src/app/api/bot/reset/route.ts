@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { publish } from "@/server/events/bus";
 import { moveLeadToStage } from "@/server/leads/stage-history";
 
@@ -18,7 +19,7 @@ const bodySchema = z.object({
  * historial del inbox NO se borra: es auditoría. Lo invoca el cerebro externo
  * cuando un número de su allowlist manda `/reset`.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -92,3 +93,6 @@ export async function POST(req: Request) {
   });
   return Response.json({ ok: true });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

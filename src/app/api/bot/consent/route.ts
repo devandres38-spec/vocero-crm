@@ -1,5 +1,6 @@
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import {
   consentimientoSchema,
   registrarConsentimiento,
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
  * 201 `{ id, createdAt }` · 404 `not_found` (la conversación no es del
  * negocio) · 422 `invalid_body`.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -31,3 +32,6 @@ export async function POST(req: Request) {
     { status: 201 },
   );
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

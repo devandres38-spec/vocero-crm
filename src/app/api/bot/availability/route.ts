@@ -3,6 +3,7 @@ import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { scoped } from "@/lib/db/tenant";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
 import { addDaysISO, todayInTz } from "@/lib/time/slots";
 import {
@@ -50,7 +51,7 @@ function clamp(raw: string | null, l: { min: number; max: number; def: number })
   return Math.max(l.min, Math.min(l.max, Math.round(n)));
 }
 
-export async function GET(req: Request) {
+async function getSinNegocio(req: Request) {
   // La bandera se evalúa ANTES que la llave: si esta instancia no tiene
   // agenda, el endpoint no existe — no hay nada que autenticar.
   if (!agendaEnabled()) return agendaDisabledResponse();
@@ -155,3 +156,6 @@ function fechaValida(value: string): boolean {
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const GET = rutaDelCerebro(getSinNegocio);

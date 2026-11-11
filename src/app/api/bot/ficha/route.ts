@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { upsertFicha } from "@/server/bot/ficha";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ const bodySchema = z.object({
  * Devuelve la ficha COMPLETA resultante, no solo el parche, para que el bot no
  * tenga que llevar su propia copia sincronizada.
  */
-export async function PUT(req: Request) {
+async function putSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -50,3 +51,6 @@ export async function PUT(req: Request) {
   if (!result) return apiError(404, "not_found", "Contacto no encontrado");
   return Response.json(result);
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const PUT = rutaDelCerebro(putSinNegocio);

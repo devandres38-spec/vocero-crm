@@ -1,5 +1,6 @@
 import { apiError } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { pensarPorElCerebro } from "@/server/bot/llm-proxy";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,7 @@ export const maxDuration = 300;
  * los errores de un proveedor compatible con OpenAI. Ver
  * `src/server/bot/llm-proxy.ts`.
  */
-export async function POST(req: Request, { params }: { params: Promise<{ ruta: string[] }> }) {
+async function postSinNegocio(req: Request, { params }: { params: Promise<{ ruta: string[] }> }) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -33,3 +34,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ ruta: s
   if (!r.ok) return apiError(r.status, r.code, r.message);
   return new Response(r.cuerpo, { status: r.status, headers: { "Content-Type": r.contentType } });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);

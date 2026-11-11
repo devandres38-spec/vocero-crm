@@ -145,9 +145,10 @@ describe("GET /api/health", () => {
       mediaWritable: true,
     });
     expect(typeof cuerpo.version).toBe("string");
-    // 047 — Los eventos de webhook sin entrar. Con la base de mentira no hay
-    // tabla que contar: la llave sale en null y `ok` no se mueve.
-    expect(cuerpo).toHaveProperty("webhooks", null);
+    // 047 — Los eventos de webhook sin entrar. 075 — Salen de la función de
+    // solo números (`vocero_conteo_webhooks`); con la base de mentira, sin
+    // filas, cuenta cero, y `ok` no se mueve.
+    expect(cuerpo).toHaveProperty("webhooks", { pendientes: 0, agotados: 0 });
     // Los campos de antes siguen delante: quien ya lee `ok` y `version` no
     // nota el cambio.
     expect(Object.keys(cuerpo).slice(0, 2)).toEqual(["ok", "version"]);

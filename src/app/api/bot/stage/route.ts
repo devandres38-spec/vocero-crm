@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
+import { rutaDelCerebro } from "@/server/bot/ruta";
 import { moverEtapaPorElCerebro } from "@/server/bot/stage";
 import { publish } from "@/server/events/bus";
 
@@ -21,7 +22,7 @@ const bodySchema = z.object({
  * `changed: false`. Los 409 y 422 traen en el mensaje las etapas válidas,
  * para que el modelo se corrija en el mismo turno.
  */
-export async function POST(req: Request) {
+async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
   if (auth instanceof Response) return auth;
 
@@ -43,3 +44,6 @@ export async function POST(req: Request) {
   }
   return Response.json({ ok: true, changed: res.changed, lead: res.lead });
 }
+
+// 075 — Autentica el negocio y corre la ruta dentro de él (RLS).
+export const POST = rutaDelCerebro(postSinNegocio);
