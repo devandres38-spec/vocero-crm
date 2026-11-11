@@ -56,7 +56,7 @@ export function GastoResumen({ filas }: { filas: FilaDeGasto[] | null }) {
                 </Link>
                 <span className="shrink-0 tabular-nums text-text-3">
                   {dolares(f.hoyUsd)} / {f.topeUsd === null ? "sin tope" : dolares(f.topeUsd)}
-                  {f.fallidasHoy > 0 && ` · ${numero(f.fallidasHoy)} fallidas`}
+                  {f.fallidasHoy > 0 && ` · ${numero(f.fallidasHoy)} ${f.fallidasHoy === 1 ? "fallida" : "fallidas"}`}
                 </span>
               </div>
               <BarraDeGasto porcentaje={porcentaje(f)} tono={tonoDelGasto(f.hoyUsd, f.topeUsd)} />
