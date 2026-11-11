@@ -67,6 +67,22 @@
         }
       }
     },
+    "/api/bot/history": {
+      "get": {
+        "summary": "Historial de la conversación",
+        "description": "071 — Los últimos mensajes de una conversación, del más viejo al más nuevo, con el texto ya filtrado. Nunca trae notas internas. `privacyFlags`, `buttonId` y `buttons`, solo si hay; un saliente con botones tiene `type: \"text\"`.",
+        "parameters": [
+          { "name": "conversationId", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 } }
+        ],
+        "responses": {
+          "200": { "description": "Historial", "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "messages"], "properties": { "conversationId": { "type": "string" }, "messages": { "type": "array", "items": { "type": "object", "required": ["id", "at", "direction", "type", "text", "origin", "aiGenerated"], "properties": { "id": { "type": "string" }, "at": { "type": "string", "format": "date-time" }, "direction": { "type": "string", "enum": ["in", "out"] }, "type": { "type": "string" }, "text": { "type": ["string", "null"] }, "origin": { "type": ["string", "null"] }, "aiGenerated": { "type": "boolean" }, "privacyFlags": { "type": "array", "items": { "type": "string" } }, "buttonId": { "type": "string" }, "buttons": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "title": { "type": "string" } } } } } } } } } } } },
+          "404": { "$ref": "#/components/responses/NoEncontrada" },
+          "409": { "$ref": "#/components/responses/SinOrganizacion" },
+          "422": { "$ref": "#/components/responses/Invalido" }
+        }
+      }
+    },
     "/api/bot/profile": {
       "get": {
         "summary": "Perfil del agente y conocimiento",
