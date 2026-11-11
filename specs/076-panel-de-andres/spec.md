@@ -1,6 +1,6 @@
 # 076 — El panel de Andres (bloque I, paso 4.6)
 
-**Estado:** propuesta, esperando el visto bueno de Andres. Nada programado.
+**Estado:** aprobado por Andres (11-nov-2026), con las 8 respuestas como se recomendaron (sección 14).
 **Concreta:** D16 de Aliantis («`/admin` dentro de Vocero, superadministrador fuera de todo negocio, TOTP obligatorio, solo agregados, prueba que falla si consulta conversaciones, el gasto del LLM lo lee del cerebro») y los dos pendientes del bloque G (cambiar contraseña y tope de cuentas de equipo).
 **Repos:** `vocero-crm` (casi todo), `aliantis-brain` (el puente del gasto, spec `012-gasto-para-el-panel`) y `aliantis-core` (`decisiones.md` y `estado.md`).
 **Revisado contra:** `vocero-crm` `bb4f1fa` (bloque H unido), `aliantis-brain` `98149d1` y Better Auth 1.6.23 instalado (`node_modules`, no la documentación).
@@ -412,7 +412,11 @@ Cada uno debe hacer fallar una prueba por la razón correcta. Los unitarios se c
 
 ---
 
-## 14. Preguntas para Andres (con mi recomendación)
+## 14. Preguntas para Andres (respondidas: las 8 como se recomendaron)
+
+**Matiz de Andres a la 3:** los usuarios sembrados en los E2E de hoy no deben quedar bloqueados por el cambio obligatorio. La marca solo la ponen el alta, el equipo y el restablecimiento; las siembras de los E2E que entran por páginas la dejan en `false` o cambian la contraseña por la API antes de navegar (se revisa guion por guion en T7).
+
+**Matiz de Andres a la 4:** `/admin` muestra cuántas cuentas tiene cada negocio (columna «Usuarios»).
 
 1. **Activar el TOTP:** ¿en la web con un código QR la primera vez que entras (agrega `uqr`, una librería pequeña y sin dependencias), o solo por el comando, que imprime el secreto en texto para teclearlo en la app? **Recomiendo el QR en la web:** es lo normal y evita teclear 32 caracteres. Reiniciarlo queda solo por el comando.
 2. **«Pausar» un negocio:** ¿bloquea el panel de su personal, deja el bot como apagado pero **sí** contesta lo de salud (D9), y sigue guardando mensajes, la retención y los borrados? **Recomiendo eso.** La alternativa es cortar también lo de salud; no la recomiendo, porque la seguridad del paciente no depende de un pago.

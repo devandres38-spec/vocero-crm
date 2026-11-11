@@ -9,7 +9,7 @@
 - `/admin` no existe hasta T5, y nace ya detrás del *guard* con TOTP.
 - El gasto (T8) llega al final. Mientras tanto, el resumen dice «no disponible».
 
-- [ ] T1 Spec y estas tareas, con las respuestas de Andres.
+- [x] T1 Spec y estas tareas, con las respuestas de Andres.
 - [ ] T2 **Migración `0034_panel.sql`:**
   - las columnas `user.two_factor_enabled`, `user.debe_cambiar_contrasena` y `organization.pausado_en`;
   - las tablas `two_factor`, `superadministrador` y `registro_panel`;
