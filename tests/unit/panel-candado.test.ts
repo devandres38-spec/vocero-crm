@@ -72,6 +72,13 @@ const PROHIBIDOS = [
   "src/app/api/bot",
 ];
 
+/**
+ * Dentro de una carpeta prohibida, lo que sí puede usar el panel (y se sigue
+ * revisando lo que ESOS importan): el `/health` del cerebro, que es una
+ * llamada de red sin datos de nadie y solo importa `@/lib/brain-status`.
+ */
+const EXCEPCIONES = ["src/server/bot/status.ts"];
+
 /** Tablas que el SQL del panel no puede nombrar (lo que lee lo leen las funciones). */
 const TABLAS_DE_PACIENTES = [
   "message",
@@ -159,7 +166,10 @@ describe("076 — el candado del panel (D16)", () => {
       for (const spec of importaciones(rel)) {
         const destino = resolver(rel, spec);
         if (!destino) continue;
-        if (PROHIBIDOS.some((p) => destino === p || destino.startsWith(`${p}/`))) {
+        if (
+          !EXCEPCIONES.includes(destino) &&
+          PROHIBIDOS.some((p) => destino === p || destino.startsWith(`${p}/`))
+        ) {
           caminos.push([...camino, destino].join(" → "));
           continue;
         }
