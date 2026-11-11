@@ -7,4 +7,4 @@ Un commit por paso, cada uno con las pruebas de su módulo. PRs: `vocero-crm` (c
 - [x] T3 (4.3) `crearNegocio()` en `src/server/auth/alta.ts` (una transacción, correo único, slug único, candado) y `pnpm negocio:alta`; `pnpm seed:demo` exige `--organizacion`. Sabotajes 5 y 6.
 - [x] T4 (4.4) Reparto justo del despacho por negocio en `tomarPendientes` y `tanda`; guardarraíl de claves de `checkRateLimit`. Sabotajes 7 y 8.
 - [x] T5 `e2e.yml` crea al operador con `pnpm negocio:alta` antes de los arneses; `scripts/e2e-alta.mjs` y `tests/e2e/us-alta.md`, en `e2e.yml`.
-- [ ] T6 `AGENTS.md`, `.env.example`, `quickstart.md`, `README.md`, `decisiones.md` y `estado.md`. CI y `e2e.yml` en verde.
+- [x] T6 `AGENTS.md`, `.env.example`, `quickstart.md`, `README.md`, `decisiones.md` y `estado.md`. CI y `e2e.yml` en verde.
