@@ -16,9 +16,10 @@ const resolveAiProvider = vi.hoisted(() => vi.fn<() => Promise<AiResolution>>())
 vi.mock("@/lib/ai/provider", () => ({ resolveAiProvider }));
 const marcarEstadoPorRespuesta = vi.hoisted(() => vi.fn(async () => true));
 vi.mock("@/server/ai/credentials", () => ({ marcarEstadoPorRespuesta }));
-vi.mock("@/server/bot/auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/server/bot/auth")>()),
-  resolveInstanceOrg: async () => "org_1",
+// 073: la instalación de la prueba tiene un solo negocio (llave cruda, compatibilidad).
+vi.mock("@/server/bot/organizaciones", () => ({
+  hastaDosOrganizaciones: async () => ["org_1"],
+  organizacionExiste: async (id: string) => id === "org_1",
 }));
 
 import { POST } from "@/app/api/bot/llm/[...ruta]/route";

@@ -34,7 +34,7 @@ export const GET = withAuth(async (session) => {
     aiConfigured,
     agentEnabled: rows[0]?.enabled ?? false,
     botKeyConfigured: isBotKeyConfigured(),
-    lastSeenAt: botLastSeenAt(),
+    lastSeenAt: botLastSeenAt(session.organizationId),
     health,
     dispatch,
     now: new Date(),

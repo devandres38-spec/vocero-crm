@@ -21,10 +21,11 @@ vi.mock("@/lib/db", async (importOriginal) => {
   return { ...actual, getDb: () => builder };
 });
 
-vi.mock("@/server/bot/auth", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/server/bot/auth")>();
-  return { ...actual, resolveInstanceOrg: async () => "org_1" };
-});
+// 073: la instalación de la prueba tiene un solo negocio (llave cruda, compatibilidad).
+vi.mock("@/server/bot/organizaciones", () => ({
+  hastaDosOrganizaciones: async () => ["org_1"],
+  organizacionExiste: async (id: string) => id === "org_1",
+}));
 
 /** Perfil del agente + knowledge base vía la API de servicio `/api/bot/*`. */
 
