@@ -10,9 +10,19 @@ import type { Sql } from "postgres";
  */
 export async function motivosParaNoArrancar(sql: Sql): Promise<string[]> {
   const [fila] = await sql<
-    { rolsuper: boolean; rolbypassrls: boolean; dueno: boolean; sin_rls: string[] }[]
+    {
+      rolsuper: boolean;
+      rolbypassrls: boolean;
+      dueno: boolean;
+      hereda_panel: boolean;
+      sin_rls: string[];
+    }[]
   >`
     select r.rolsuper, r.rolbypassrls,
+      -- 076: la app entra al rol del panel con SET ROLE, pero no debe heredar
+      -- sus permisos (si no, cualquier negocio podría leer los agregados).
+      case when exists (select 1 from pg_roles p where p.rolname = 'vocero_panel')
+        then pg_has_role(current_user, 'vocero_panel', 'USAGE') else false end as hereda_panel,
       exists (
         select 1 from pg_tables t
         where t.schemaname = 'public' and t.tableowner = current_user
@@ -36,6 +46,7 @@ export async function motivosParaNoArrancar(sql: Sql): Promise<string[]> {
     ...(fila.rolsuper ? ["es superusuario"] : []),
     ...(fila.rolbypassrls ? ["tiene BYPASSRLS"] : []),
     ...(fila.dueno ? ["es dueño de las tablas"] : []),
+    ...(fila.hereda_panel ? ["hereda los permisos de vocero_panel"] : []),
     ...(fila.sin_rls.length > 0 ? [`tablas de negocio sin RLS: ${fila.sin_rls.join(", ")}`] : []),
   ];
 }

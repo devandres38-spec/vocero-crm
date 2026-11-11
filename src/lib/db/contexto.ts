@@ -17,13 +17,19 @@ import { AsyncLocalStorage } from "node:async_hooks";
  *   (worker, arranque, comando). Empieza de cero, sin heredar el negocio de
  *   quien creó el temporizador, y desde ahí puede entrar a cualquier negocio.
  *
+ * - `comoPanel(superadminId, fn)` (076, D16): el panel de Andres. Cada
+ *   consulta corre con el rol `vocero_panel`, que no puede leer NINGUNA tabla:
+ *   solo las funciones `vocero_panel_*`, que devuelven agregados. Desde ahí no
+ *   se puede entrar a un negocio ni al modo sistema (`PanelSinSalida`).
+ *
  * Una consulta sin nada de esto lanza `ConsultaSinNegocio` (respuesta 1 de
  * Andres): con RLS devolvería vacío en silencio y escondería el error.
  */
 
 export type Contexto =
   | { tipo: "negocio"; organizationId: string }
-  | { tipo: "sistema"; motivo: string; desde: string | null };
+  | { tipo: "sistema"; motivo: string; desde: string | null }
+  | { tipo: "panel"; superadminId: string };
 
 const g = globalThis as unknown as { __voceroContextoDb?: AsyncLocalStorage<Contexto> };
 
@@ -54,6 +60,13 @@ export class NegocioCruzado extends Error {
   }
 }
 
+export class PanelSinSalida extends Error {
+  constructor() {
+    super("Desde el panel de Andres no se entra a un negocio ni al modo sistema: solo agregados (D16)");
+    this.name = "PanelSinSalida";
+  }
+}
+
 export function validarNegocio(organizationId: string): void {
   if (typeof organizationId !== "string" || !ID_DE_NEGOCIO.test(organizationId)) {
     throw new Error("organizationId inválido");
@@ -73,6 +86,7 @@ export function negocioActual(): string | null {
 export function conNegocio<T>(organizationId: string, fn: () => PromiseLike<T>): Promise<T> {
   validarNegocio(organizationId);
   const actual = contextoActual();
+  if (actual?.tipo === "panel") return Promise.reject(new PanelSinSalida());
   const desde =
     actual?.tipo === "negocio" ? actual.organizationId : actual?.tipo === "sistema" ? actual.desde : null;
   if (desde !== null && desde !== organizationId) {
@@ -83,13 +97,29 @@ export function conNegocio<T>(organizationId: string, fn: () => PromiseLike<T>):
 
 export function comoSistema<T>(motivo: string, fn: () => PromiseLike<T>): Promise<T> {
   const actual = contextoActual();
+  if (actual?.tipo === "panel") return Promise.reject(new PanelSinSalida());
   const desde =
     actual?.tipo === "negocio" ? actual.organizationId : actual?.tipo === "sistema" ? actual.desde : null;
   return almacen().run({ tipo: "sistema", motivo, desde }, () => dentro(fn));
 }
 
 export function trabajoDeFondo<T>(motivo: string, fn: () => PromiseLike<T>): Promise<T> {
+  if (contextoActual()?.tipo === "panel") return Promise.reject(new PanelSinSalida());
   return almacen().run({ tipo: "sistema", motivo, desde: null }, () => dentro(fn));
+}
+
+/**
+ * 076 — El panel de Andres. Solo se entra desde fuera de todo contexto (la
+ * ruta o la página del panel, tras `requireSuperadmin`): nunca desde un
+ * negocio ni desde el modo sistema.
+ */
+export function comoPanel<T>(superadminId: string, fn: () => PromiseLike<T>): Promise<T> {
+  validarNegocio(superadminId);
+  const actual = contextoActual();
+  if (actual && !(actual.tipo === "panel" && actual.superadminId === superadminId)) {
+    return Promise.reject(new PanelSinSalida());
+  }
+  return almacen().run({ tipo: "panel", superadminId }, () => dentro(fn));
 }
 
 /**
