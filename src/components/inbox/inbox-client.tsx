@@ -228,6 +228,12 @@ export function InboxClient({
       // Un entrante nuevo puede crear/mover el lead: refresca el panel.
       setDetailRev((v) => v + 1);
     },
+    // 071 — La segunda red de salud omitió el texto: se reemplaza el mensaje.
+    onMessageUpdated: ({ conversationId, message }) => {
+      if (selectedIdRef.current !== conversationId) return;
+      const nuevo = message as MessageDto;
+      setMessages((prev) => prev.map((m) => (m.id === nuevo.id ? { ...m, ...nuevo } : m)));
+    },
     onMessageMedia: ({ conversationId, messageId, media }) => {
       if (selectedIdRef.current !== conversationId) return;
       setMessages((prev) =>

@@ -83,6 +83,19 @@
         }
       }
     },
+    "/api/bot/omit": {
+      "post": {
+        "summary": "Segunda red de salud: omitir entrantes",
+        "description": "071 — El LLM marcó salud en mensajes que el filtro no reconoció. Solo entrantes de esa conversación; un id que no cumple se ignora. El texto pasa a `[mensaje con información de salud omitido]`, las marcas suman `salud`, el pie del adjunto se borra y su copia en los eventos de webhook también. Idempotente. Llámalo antes de guardar tu punto de control.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "messageIds", "reason"], "properties": { "conversationId": { "type": "string" }, "messageIds": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string" } }, "reason": { "type": "string", "enum": ["salud"] } } } } } },
+        "responses": {
+          "200": { "description": "Omitidos", "content": { "application/json": { "schema": { "type": "object", "required": ["omitted"], "properties": { "omitted": { "type": "integer", "minimum": 0 } } } } } },
+          "404": { "$ref": "#/components/responses/NoEncontrada" },
+          "409": { "$ref": "#/components/responses/SinOrganizacion" },
+          "422": { "$ref": "#/components/responses/Invalido" }
+        }
+      }
+    },
     "/api/bot/profile": {
       "get": {
         "summary": "Perfil del agente y conocimiento",

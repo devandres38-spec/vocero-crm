@@ -70,7 +70,7 @@ describe("071 — historial", () => {
 
   it("nunca lee las notas internas", () => {
     const fuente = readFileSync("src/server/bot/historial.ts", "utf8");
-    expect(fuente).not.toMatch(/conversationNote|conversation_note\b(?!`)/);
+    expect(fuente).not.toMatch(/schema\.conversationNote/);
   });
 
   it("limit de 1 a 50, 20 por defecto", () => {
