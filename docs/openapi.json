@@ -38,7 +38,7 @@
           "422": { "$ref": "#/components/responses/Invalido" },
           "502": { "description": "El canal (Meta o Zernio) rechazó el envío.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         },
-        "x-codigos-409": ["ai_paused", "window_closed", "sandbox_violation", "message_limit", "canal_sin_botones", "mensaje_en_curso", "agente_apagado", "no_org"]
+        "x-codigos-409": ["ai_paused", "window_closed", "sandbox_violation", "message_limit", "canal_sin_botones", "mensaje_en_curso", "agente_apagado", "no_org", "organizacion_requerida"]
       }
     },
     "/api/bot/consent": {
