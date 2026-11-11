@@ -75,9 +75,6 @@ export function conNegocio<T>(organizationId: string, fn: () => PromiseLike<T>):
   const actual = contextoActual();
   const desde =
     actual?.tipo === "negocio" ? actual.organizationId : actual?.tipo === "sistema" ? actual.desde : null;
-  if (desde !== null && desde !== organizationId) {
-    return Promise.reject(new NegocioCruzado());
-  }
   return almacen().run({ tipo: "negocio", organizationId }, () => dentro(fn));
 }
 
