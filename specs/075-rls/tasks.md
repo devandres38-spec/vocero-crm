@@ -12,4 +12,4 @@ Un commit por paso, cada uno con las pruebas de su módulo. PRs: `vocero-crm` (c
 - [x] T6 Workers y arranque: despacho (con el reparto del bloque G en `vocero_despachos_vencidos`), próxima cita, olvidos, avisos, retención, corridas huérfanas y cifrado de Zernio en el arranque, Laboratorio. Sabotaje 10.
 - [x] T7 CLI (`negocio:alta` con contexto en el id nuevo y `vocero_slugs_ocupados`, `meta:secreto`, `privacidad:sembrar`, `avisos:grupo`, `seed:demo`) y mocks de desarrollo.
 - [x] T8 Envoltorio en «lanzar»; `scripts/e2e-rls.mjs` y `tests/e2e/us-rls.md`; job «RLS contra Postgres» en `ci.yml`; `e2e.yml` con el usuario restringido y la migración `0033` sobre datos de dos negocios. Sabotajes 2 y 6 (y 1, 3, 4, 5, 7 y 8 otra vez, ahora contra Postgres real, en PRs borrador que se cierran sin merge).
-- [ ] T9 `AGENTS.md`, `.env.example`, `docker-compose.yml`, `README.md` (despliegue con dos URLs), `decisiones.md` y `estado.md`. CI, «RLS contra Postgres» y `e2e.yml` en verde.
+- [x] T9 `AGENTS.md`, `.env.example`, `docker-compose.yml`, `README.md` (despliegue con dos URLs), `decisiones.md` y `estado.md`. CI, «RLS contra Postgres» y `e2e.yml` en verde.
