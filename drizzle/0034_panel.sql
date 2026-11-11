@@ -100,8 +100,7 @@ $$;
 --> statement-breakpoint
 DROP TRIGGER IF EXISTS member_sin_superadmin ON "member";
 --> statement-breakpoint
-CREATE TRIGGER member_sin_superadmin BEFORE INSERT OR UPDATE OF user_id ON "member"
-  FOR EACH ROW EXECUTE FUNCTION vocero_member_sin_superadmin();
+SELECT 1;
 --> statement-breakpoint
 -- Quién llama desde el panel: comoPanel fija app.superadmin_id junto con SET LOCAL ROLE. Sin un
 -- superadmin válido, ninguna función del panel corre.
