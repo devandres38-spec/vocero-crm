@@ -1,6 +1,19 @@
 # 078 — Etapa por eventos y ficha con lista blanca (bloque J, pasos 5.1 y 5.2)
 
-**Estado:** propuesta, en espera del visto bueno de Andres.
+**Estado:** aprobada por Andres el 12-nov-2026, con sus 6 respuestas.
+
+**Las respuestas:**
+1. **El mapeo:** en Vocero, por id. La interfaz y la validación solo dejan mapear a etapas abiertas, nunca a ganada ni perdida.
+2. **`ETAPAS_INICIALES`:** `primera_respuesta` → «En conversación» y `servicio_consultado` → «Interesado». `pidio_cita` queda sin etapa: cada negocio que use citas o reservas crea y mapea la suya.
+3. **La ficha:** solo `servicio_interes` y `quiere_cita` (sin `temas_consultados`).
+   - En negocios **sin** filtro de salud se guarda `servicio_interes`.
+   - En negocios **con** filtro de salud (`sensible`), no, solo `quiere_cita`.
+   - Queda **pendiente confirmarlo con el abogado**.
+4. **`is_test`:** no mueve ni escribe (`200` con `prueba`).
+5. **`stage` por nombre:** se conserva para cerebros externos; `aliantis-brain` solo usa `evento`.
+6. **La medición real:** permiso para `npm run evals -- --real --tope 0.5`, sin leer `.env`, al cerrar los cambios.
+
+El sistema es neutro para cualquier rubro: «salud» es solo el caso de los negocios con filtro sensible.
 **Repos:**
 - `vocero-crm` (esta spec);
 - `aliantis-brain` (`specs/014-etapa-y-ficha/`);
