@@ -49,13 +49,6 @@ async function postSinNegocio(req: Request) {
     .limit(1);
   const conv = rows[0];
   if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
-  if (!conv.isTest) {
-    return apiError(
-      409,
-      "solo_laboratorio",
-      "El reinicio solo vale en una conversación del Laboratorio"
-    );
-  }
 
   await db
     .update(schema.conversation)
