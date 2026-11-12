@@ -21,11 +21,13 @@ export type DiaDelNegocio = {
 };
 
 /** Pura: el día del negocio que contiene `ahora`. */
-export function diaDelNegocio(ahora: Date, zona: string): DiaDelNegocio {
-  const hoy = todayInTz(ahora, zona);
-  const desde = zonedWallClockToUtc(hoy, "00:00", zona) ?? ahora;
-  const seLibera = zonedWallClockToUtc(addDaysISO(hoy, 1), "00:00", zona) ?? ahora;
-  return { desde, seLibera, zona };
+export function diaDelNegocio(ahora: Date, _zona: string): DiaDelNegocio {
+  // SABOTAJE 3: contar las corridas en UTC en vez de la zona del negocio.
+  const z = "UTC";
+  const hoy = todayInTz(ahora, z);
+  const desde = zonedWallClockToUtc(hoy, "00:00", z) ?? ahora;
+  const seLibera = zonedWallClockToUtc(addDaysISO(hoy, 1), "00:00", z) ?? ahora;
+  return { desde, seLibera, zona: z };
 }
 
 export type EstadoTope = {
