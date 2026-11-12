@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db";
 import { normalizeMx } from "@/lib/meta/client";
 
 /**
@@ -31,4 +33,25 @@ export function permitidoPorLista(lista: ListaDeNumeros, identidad: string | nul
   // Los dos lados normalizados: `521…` y `52…` son el mismo número de México.
   const buscado = normalizeMx(identidad);
   return lista.numeros.some((n) => normalizeMx(n) === buscado);
+}
+
+/**
+ * La lista del negocio, leída al ENTREGAR (pudo cambiar en la ventana de
+ * agrupado). No viaja en el evento: el cuerpo es contrato firmado con el
+ * cerebro, y los números de otros clientes no son asunto suyo. Sin perfil,
+ * apagada.
+ */
+export async function leerListaDeNumeros(
+  organizationId: string,
+  db: ReturnType<typeof getDb> = getDb()
+): Promise<ListaDeNumeros> {
+  const [perfil] = await db
+    .select({
+      activo: schema.agentProfile.soloNumerosActivo,
+      numeros: schema.agentProfile.soloNumeros,
+    })
+    .from(schema.agentProfile)
+    .where(eq(schema.agentProfile.organizationId, organizationId))
+    .limit(1);
+  return perfil ? { activo: perfil.activo === true, numeros: perfil.numeros ?? [] } : LISTA_APAGADA;
 }

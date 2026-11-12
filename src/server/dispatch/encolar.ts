@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { encolarDespacho } from "@/server/dispatch/outbox";
+import { permitidoPorLista } from "@/server/dispatch/solo-numeros";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 
 /**
@@ -29,6 +30,7 @@ export async function despacharAlCerebro(
         aiEnabled: schema.conversation.aiEnabled,
         handoffAt: schema.conversation.handoffAt,
         isTest: schema.conversation.isTest,
+        contactId: schema.conversation.contactId,
       })
       .from(schema.conversation)
       .where(
@@ -48,7 +50,11 @@ export async function despacharAlCerebro(
     if (!conv.aiEnabled || conv.handoffAt || conv.isTest) return;
 
     const [perfil] = await getDb()
-      .select({ enabled: schema.agentProfile.enabled })
+      .select({
+        enabled: schema.agentProfile.enabled,
+        soloNumerosActivo: schema.agentProfile.soloNumerosActivo,
+        soloNumeros: schema.agentProfile.soloNumeros,
+      })
       .from(schema.agentProfile)
       .where(eq(schema.agentProfile.organizationId, organizationId))
       .limit(1);
@@ -64,6 +70,25 @@ export async function despacharAlCerebro(
     // pausado), lo marcado con salud se despacha igual; lo demás queda para
     // una persona. La seguridad del paciente no se pausa.
     if (!agenteActivo && !opciones.salud) return;
+
+    // 079 (5.5) — «Solo estos números» (piloto): fuera de la lista, el
+    // mensaje queda en la bandeja para una persona. La misma excepción de
+    // salud (D9): lo marcado con salud se despacha igual. El Laboratorio no
+    // llega aquí (`isTest` ya salió arriba).
+    if (perfil?.soloNumerosActivo === true && !opciones.salud) {
+      const [contacto] = await getDb()
+        .select({ waIdentity: schema.contact.waIdentity })
+        .from(schema.contact)
+        .where(
+          and(
+            eq(schema.contact.id, conv.contactId),
+            eq(schema.contact.organizationId, organizationId)
+          )
+        )
+        .limit(1);
+      const lista = { activo: true, numeros: perfil.soloNumeros ?? [] };
+      if (!permitidoPorLista(lista, contacto?.waIdentity)) return;
+    }
 
     // 025 — El despacho anota qué entrante lo provoca: es lo que le debe al
     // cerebro, aunque después la conversación tenga una respuesta.
