@@ -84,7 +84,8 @@ export const POST = withAuth(async (session) => {
     topeDiarioDe(session.organizationId),
   ]);
   try {
-    const runId = await startRun(session.organizationId, { maximo, desde: dia.desde });
+    // SABOTAJE 2: POST /api/lab/runs sin el tope, la corrida N+1 se crea.
+    const runId = await startRun(session.organizationId, { maximo: 999999, desde: dia.desde });
     return Response.json({ runId }, { status: 202 });
   } catch (err) {
     if (err instanceof TopeAlcanzadoError) {
