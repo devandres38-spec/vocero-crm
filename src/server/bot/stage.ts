@@ -326,7 +326,7 @@ export async function moverEtapaPorEvento(input: {
 
   // Nunca hacia atrás: si la etapa del evento no está entre las abiertas que
   // vienen después de la actual (o el lead ya se ganó o se perdió), no se mueve.
-  if (!etapasSiguientes(stages, lead.stageId).some((s) => s.id === destino.id)) {
+  if (!stages.some((s) => s.id === destino.id && s.id !== lead.stageId)) {
     return { ok: true, changed: false, motivo: "ya_esta", conversationId: conv.id };
   }
 
