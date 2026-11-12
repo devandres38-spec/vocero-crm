@@ -2,7 +2,7 @@
 
 Fase 5 de Aliantis, paso 5.3. Toca dinero: va solo. Concreta **D20** (el Laboratorio corre con nuestra llave controlada y con un tope diario de corridas por negocio) y el matiz de **D3** (el rol del negocio nunca ve ni edita llaves ni proveedores de IA). Cierra la brecha **N9**.
 
-> Borrador para aprobar. Las preguntas abiertas están al final (P1 a P7), cada una con la recomendación. Lo marcado «(P#)» depende de esa respuesta; el plan está escrito con la recomendación.
+> Aprobada por Andres el 12-nov-2026, con las siete recomendaciones (P1 a P7, al final). Lo marcado «(P#)» remite a esa respuesta.
 
 ## Por qué
 
@@ -65,7 +65,7 @@ Fase 5 de Aliantis, paso 5.3. Toca dinero: va solo. Concreta **D20** (el Laborat
 
 ### 4. El proxy `/api/bot/llm` (P7)
 
-- **Recomendado: apagarlo.** Con la llave de Aliantis, el proxy sería una puerta para gastar sin tope, con cualquier modelo y sin los proveedores fijos, y nuestro cerebro no lo usa. `POST /api/bot/llm/*` responde `404 proxy_apagado` y `GET /api/bot/profile` devuelve `llm: null`. `docs/openapi.json` lo dice. Se registra en `decisiones.md` como función apagada (Suma de Potencias: choca con los pilares 5 y 1 y no hay forma barata de adaptarla).
+- **Se apaga.** Con la llave de Aliantis, el proxy sería una puerta para gastar sin tope, con cualquier modelo y sin los proveedores fijos, y nuestro cerebro no lo usa. `POST /api/bot/llm/*` responde `404 proxy_apagado` y `GET /api/bot/profile` devuelve `llm: null`. `docs/openapi.json` lo dice. Se registra en `decisiones.md` como función apagada (Suma de Potencias: choca con los pilares 5 y 1 y no hay forma barata de adaptarla).
 
 ## `aliantis-brain`
 
@@ -112,12 +112,12 @@ Fase 5 de Aliantis, paso 5.3. Toca dinero: va solo. Concreta **D20** (el Laborat
 - Borrar la tabla `ai_credentials` y sus archivos (bloque V).
 - Un tope en dólares del Laboratorio en Vocero (el dinero lo mide el cerebro).
 
-## Preguntas abiertas (con la recomendación)
+## Respuestas de Andres (12-nov-2026): las siete recomendaciones, aprobadas
 
-- **P1. ¿Cuántas corridas por día y dónde se cambia?** Recomiendo **3 por defecto**, de 0 a 20, en una columna de `organization` que solo escribe el panel de Andres. La app actualiza su propia fila (Marca, `apariencia.ts:54`), y `vocero_app` tiene `UPDATE` sobre toda la tabla (`0033_rls.sql:25`); en Postgres, revocar una sola columna no sirve si queda el permiso de tabla. Por eso la `0037` hace `REVOKE UPDATE ON organization FROM vocero_app` y vuelve a dar `UPDATE` **solo** en las columnas que la app sí cambia (`name`, `slug`, `logo`, `metadata` y las de marca). **Hallazgo de la planeación:** `pausado_en` (la pausa de Andres, 076) hoy también la podría escribir la app; con esta lista queda fuera. La función del panel es `SECURITY DEFINER` y no se afecta. Estimación de costo: una corrida son 8 llamadas del juez más los turnos del cerebro; con DeepSeek V4.1 Flash, centavos de dólar (estimación, no medida).
-- **P2. ¿Qué cuenta para el tope?** Recomiendo **toda corrida creada hoy en la zona del negocio**, también las fallidas: gastaron.
-- **P3. ¿Quién puede correr el Laboratorio?** Hoy cualquier miembro. Recomiendo **solo `canConfigure`** (`owner`/`admin`), 403 para `member`: gasta dinero de Aliantis.
-- **P4. ¿La fila de `ai_credentials` sigue valiendo si existe?** Recomiendo **no**: Vocero solo usa la llave del entorno (la de Aliantis). Así un negocio no puede pagar con su propia llave ni con cualquier proveedor.
-- **P5. ¿Borrar las filas de `ai_credentials` en la migración?** Recomiendo **sí** (irreversible): por D3 no deben existir llaves de negocios; la tabla vacía se elimina en el V. Alternativa: dejarlas hasta el V.
-- **P6. ¿Proveedores fijos y `reasoning: none` también en el juez?** Recomiendo **sí**, con el modelo del entorno (DeepSeek V4.1 Flash, como el cerebro). Aunque las conversaciones del Laboratorio son simuladas, es una llamada pagada por Aliantis y el pilar 5 no tiene excepciones.
-- **P7. ¿Apagar el proxy `/api/bot/llm`?** Recomiendo **sí**: nuestro cerebro no lo usa, y con la llave de Aliantis sería gasto sin tope y sin proveedores fijos. Se registra como función apagada. Alternativa: dejarlo con la llave del entorno, los proveedores fijos y un tope propio (más trabajo, sin uso hoy).
+- **P1. Cuántas corridas por día y dónde se cambia:** **3 por defecto**, de 0 a 20, en una columna de `organization` que solo escribe el panel de Andres. La app actualiza su propia fila (Marca, `apariencia.ts:54`), y `vocero_app` tiene `UPDATE` sobre toda la tabla (`0033_rls.sql:25`); en Postgres, revocar una sola columna no sirve si queda el permiso de tabla. Por eso la `0037` hace `REVOKE UPDATE ON organization FROM vocero_app` y vuelve a dar `UPDATE` **solo** en las columnas que la app sí cambia (`name`, `slug`, `logo`, `metadata` y las de marca), **verificando antes en T3 cuáles escriben la app y Better Auth**. **Hallazgo de la planeación:** `pausado_en` (la pausa de Andres, 076) hoy también la podría escribir la app; con esta lista queda fuera. La función del panel es `SECURITY DEFINER` y no se afecta. Estimación de costo: una corrida son 8 llamadas del juez más los turnos del cerebro; con DeepSeek V4.1 Flash, centavos de dólar (estimación, no medida).
+- **P2. Qué cuenta para el tope:** **toda corrida creada hoy en la zona del negocio**, también las fallidas: gastaron.
+- **P3. Quién puede correr el Laboratorio:** hoy cualquier miembro; desde este bloque, **solo `canConfigure`** (`owner`/`admin`), 403 para `member`: gasta dinero de Aliantis.
+- **P4. La fila de `ai_credentials` ya no vale:** Vocero solo usa la llave del entorno (la de Aliantis). Así un negocio no puede pagar con su propia llave ni con cualquier proveedor.
+- **P5. La migración borra las filas de `ai_credentials`** (irreversible): por D3 no deben existir llaves de negocios; la tabla vacía se elimina en el V.
+- **P6. Proveedores fijos y `reasoning: none` también en el juez,** con el modelo del entorno (DeepSeek V4.1 Flash, como el cerebro). Aunque las conversaciones del Laboratorio son simuladas, es una llamada pagada por Aliantis y el pilar 5 no tiene excepciones.
+- **P7. El proxy `/api/bot/llm` se apaga:** nuestro cerebro no lo usa, y con la llave de Aliantis sería gasto sin tope y sin proveedores fijos. Se registra como función apagada en `decisiones.md`.

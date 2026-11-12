@@ -1,8 +1,8 @@
 # Tareas — 080 El Laboratorio con la llave de Aliantis, tope diario y Ajustes → IA fuera del negocio (bloque L)
 
-Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera del plan, se para y se pregunta. Escritas con las recomendaciones de P1 a P7; si Andres responde otra cosa, se ajustan antes de T2.
+Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera del plan, se para y se pregunta.
 
-- [x] **T1 — Spec y tareas** (borrador, pendiente de la aprobación de Andres y de P1 a P7).
+- [x] **T1 — Spec y tareas** (aprobados por Andres el 12-nov-2026, con las siete recomendaciones P1 a P7).
 - [ ] **T2 — La llave de Aliantis y los proveedores fijos:**
   - `src/lib/ai/provider.ts`: solo el entorno; la fila de `ai_credentials` ya no se consulta (P4);
   - `src/lib/ai/index.ts`: sin pausa por 401/402; con base OpenRouter, el mismo `provider` y `reasoning` que el cerebro (`deepinfra` y `parasail`, ZDR, `data_collection: "deny"`, `require_parameters`, `effort: "none"`) (P6);
