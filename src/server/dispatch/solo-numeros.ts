@@ -55,3 +55,51 @@ export async function leerListaDeNumeros(
     .limit(1);
   return perfil ? { activo: perfil.activo === true, numeros: perfil.numeros ?? [] } : LISTA_APAGADA;
 }
+
+/**
+ * Un número pegado a la lista: se limpia lo que trae un teléfono copiado
+ * (espacios, `+`, guiones, puntos y paréntesis); después tienen que quedar
+ * solo dígitos, con código de país, de 11 a 15, y se aplica `normalizeMx`.
+ * `null` si no sirve (letras u otros signos, o largo fuera de rango).
+ */
+export function normalizarNumeroDeLista(crudo: string): string | null {
+  const limpio = crudo.replace(/[\s+\-.()]/g, "");
+  if (!/^\d{11,15}$/.test(limpio)) return null;
+  return normalizeMx(limpio);
+}
+
+export type ListaValidada =
+  | { ok: true; lista: { activo: boolean; numeros: string[] } }
+  | { ok: false; code: "numero_invalido" | "lista_vacia"; message: string };
+
+/**
+ * La lista que llega de la pantalla: cada número limpio y normalizado, sin
+ * repetidos (comparados ya normalizados) y sin renglones vacíos. Encenderla
+ * vacía no se puede.
+ */
+export function validarListaDeNumeros(entrada: {
+  activo: boolean;
+  numeros: readonly string[];
+}): ListaValidada {
+  const numeros: string[] = [];
+  for (const crudo of entrada.numeros) {
+    if (!crudo.trim()) continue;
+    const n = normalizarNumeroDeLista(crudo);
+    if (!n) {
+      return {
+        ok: false,
+        code: "numero_invalido",
+        message: `«${crudo.trim()}» no es un número válido: escríbelo con el código de país (11 a 15 dígitos).`,
+      };
+    }
+    if (!numeros.includes(n)) numeros.push(n);
+  }
+  if (entrada.activo && numeros.length === 0) {
+    return {
+      ok: false,
+      code: "lista_vacia",
+      message: "Para encender «Solo estos números» agrega al menos un número.",
+    };
+  }
+  return { ok: true, lista: { activo: entrada.activo, numeros } };
+}
