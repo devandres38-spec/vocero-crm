@@ -127,8 +127,8 @@ export function settingsSections({
   if (messenger) canales.push({ href: "/settings/messenger", label: "Messenger" });
   if (tiktok) canales.push({ href: "/settings/tiktok", label: "TikTok" });
 
-  // #85 — el proveedor de IA se configura aquí; el entorno queda de respaldo.
-  const agente: SettingsLink[] = [{ href: "/settings/ai", label: "IA" }];
+  // 080 (D3) — Ajustes → IA salió: la llave de IA es de Aliantis.
+  const agente: SettingsLink[] = [];
   if (agenda) agente.push({ href: "/settings/calendar", label: "Agenda" });
 
   const negocio: SettingsLink[] = [
@@ -142,11 +142,12 @@ export function settingsSections({
   ];
   if (atribucion) negocio.push({ href: "/settings/ads", label: "Anuncios" });
 
+  // Un grupo sin enlaces (Agente sin la agenda) no se muestra.
   return [
     { title: "Canales", links: canales },
     { title: "Agente", links: agente },
     { title: "Negocio", links: negocio },
-  ];
+  ].filter((g) => g.links.length > 0);
 }
 
 /** Activa si la ruta es la entrada o cuelga de ella (`/inbox/cv_123`). */

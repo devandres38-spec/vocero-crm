@@ -65,7 +65,7 @@ describe("073 — las seis reglas del contrato", () => {
     expect(
       await resultado({ "x-vocero-organization": "org_b", "x-api-key": cred("org_b") })
     ).toEqual({ status: 200, org: "org_b" });
-    // También como Bearer (el SDK de OpenAI de /api/bot/llm).
+    // También como Bearer (lo que manda un SDK compatible con OpenAI).
     expect(
       await resultado({
         "x-vocero-organization": "org_a",
@@ -171,8 +171,15 @@ describe("073 — guardarraíl: toda ruta de /api/bot/* entra por requireBot", (
   }
 
   it("cada ruta (salvo la del contrato público) llama requireBot", () => {
+    // 080 (P7) — El proxy apagado no autentica: responde 404 a todos. La
+    // excepción vale solo mientras siga apagado (sin `fetch` ni la llave).
+    const apagado = (f: string) => {
+      const t = readFileSync(f, "utf8");
+      return f.includes(`${path.sep}llm${path.sep}`) && t.includes("proxy_apagado") && !/fetch\(|OPENROUTER|resolveAiProvider/.test(t);
+    };
     const sin = rutas(BOT)
       .filter((f) => !f.includes(`${path.sep}openapi.json${path.sep}`))
+      .filter((f) => !apagado(f))
       .filter((f) => !readFileSync(f, "utf8").includes("requireBot("))
       .map((f) => path.relative(SRC, f));
     expect(sin).toEqual([]);

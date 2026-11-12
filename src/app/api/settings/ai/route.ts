@@ -1,50 +1,15 @@
-import { apiError, parseBody, withAuth } from "@/lib/api";
-import {
-  AiCredentialError,
-  deleteAiCredential,
-  saveAiCredential,
-} from "@/server/ai/credentials";
-import {
-  aiSettingsPutSchema,
-  baseUrlEfectiva,
-  vistaAjustesIa,
-} from "@/server/ai/settings";
+import { apiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Ajustes → IA: el proveedor, el modelo y la llave de ESTA organización
- * (issue #85). La llave nunca sale de aquí: la respuesta lleva sus últimos 4,
- * el estado y, si el entorno trae `OPENROUTER_*`, el respaldo que aplica
- * mientras no haya nada guardado.
+ * 080 (D3 de Aliantis, N9) — Ajustes → IA salió del negocio: la llave de IA es
+ * de Aliantis y vive en el entorno. Esta ruta responde 404 a todos (también a
+ * `owner` y `admin`); el archivo se borra con la tabla `ai_credentials` en el
+ * bloque V.
  */
+const fuera = async (_req: Request) => apiError(404, "not_found", "No encontrado");
 
-export const GET = withAuth(async (session) => {
-  return Response.json(await vistaAjustesIa(session.organizationId));
-});
-
-export const PUT = withAuth(async (session, req: Request) => {
-  const body = await parseBody(req, aiSettingsPutSchema);
-  if (!body.ok) return body.response;
-
-  try {
-    await saveAiCredential({
-      organizationId: session.organizationId,
-      provider: body.data.provider,
-      baseUrl: baseUrlEfectiva(body.data.provider, body.data.baseUrl),
-      model: body.data.model,
-      token: body.data.token,
-    });
-  } catch (err) {
-    if (err instanceof AiCredentialError) {
-      return apiError(422, err.code, err.message);
-    }
-    throw err;
-  }
-  return Response.json(await vistaAjustesIa(session.organizationId));
-});
-
-export const DELETE = withAuth(async (session) => {
-  await deleteAiCredential(session.organizationId);
-  return Response.json(await vistaAjustesIa(session.organizationId));
-});
+export const GET = fuera;
+export const PUT = fuera;
+export const DELETE = fuera;

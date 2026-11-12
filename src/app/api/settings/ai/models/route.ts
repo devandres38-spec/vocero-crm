@@ -1,44 +1,13 @@
-import { apiError, parseBody, withAuth } from "@/lib/api";
-import { listModels } from "@/lib/ai/probe";
-import {
-  aiModelsSchema,
-  baseUrlEfectiva,
-  llaveParaProbar,
-} from "@/server/ai/settings";
+import { apiError } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
 /**
- * «Traer modelos»: `GET {base}/v1/models` con la llave escrita (o la
- * guardada). Un proveedor que no publica la lista no es un error: se dice
- * (`soportado: false`) y el modelo se escribe a mano.
+ * 080 (D3 de Aliantis, N9) — Ajustes → IA salió del negocio: la llave de IA es
+ * de Aliantis y vive en el entorno. Esta ruta responde 404 a todos (también a
+ * `owner` y `admin`); el archivo se borra con la tabla `ai_credentials` en el
+ * bloque V.
  */
-export const POST = withAuth(async (session, req: Request) => {
-  const body = await parseBody(req, aiModelsSchema);
-  if (!body.ok) return body.response;
+const fuera = async (_req: Request) => apiError(404, "not_found", "No encontrado");
 
-  const llave = await llaveParaProbar(session.organizationId, body.data.token);
-  if (!llave) {
-    return apiError(
-      422,
-      "sin_token",
-      "Pega la llave del proveedor para traer sus modelos"
-    );
-  }
-
-  const baseUrl = baseUrlEfectiva(body.data.provider, body.data.baseUrl);
-  const result = await listModels({ baseUrl, token: llave.token });
-  if (result.ok) {
-    return Response.json({ soportado: true, modelos: result.modelos });
-  }
-  if (result.code === "unsupported") {
-    return Response.json({
-      soportado: false,
-      modelos: [],
-      mensaje: result.message,
-    });
-  }
-  const status =
-    result.code === "invalid_token" || result.code === "bad_url" ? 422 : 503;
-  return apiError(status, result.code, result.message);
-});
+export const POST = fuera;

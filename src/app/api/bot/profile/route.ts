@@ -3,8 +3,7 @@ import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
 import { rutaDelCerebro } from "@/server/bot/ruta";
-import { serializeBotProfile, type BotLlm } from "@/server/bot/profile";
-import { resolveAiProvider } from "@/lib/ai/provider";
+import { serializeBotProfile } from "@/server/bot/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +37,9 @@ async function getSinNegocio(req: Request) {
     .where(eq(schema.kbEntry.organizationId, organizationId))
     .orderBy(asc(schema.kbEntry.createdAt));
 
-  // 036 — Con qué piensa el cerebro que no trae llave: el proxy del CRM.
-  const ia = await resolveAiProvider(organizationId);
-  const llm: BotLlm = ia.ok && ia.provider.model ? { path: "/api/bot/llm", model: ia.provider.model } : null;
-
-  return Response.json(serializeBotProfile(profile, kb, llm));
+  // 080 (P7) — El proxy `/api/bot/llm` está apagado: el cerebro piensa con su
+  // propia llave. El campo se queda en el contrato, siempre `null`.
+  return Response.json(serializeBotProfile(profile, kb, null));
 }
 
 // 075 — Autentica el negocio y corre la ruta dentro de él (RLS).

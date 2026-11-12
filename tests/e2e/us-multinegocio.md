@@ -12,4 +12,4 @@ Arnés: `scripts/e2e-multinegocio.mjs`, en `.github/workflows/e2e.yml` (etiqueta
    - Firmado con otro secreto, o sin firma: 401, y nada en `webhook_event` ni en `message`.
    - Firmado con el secreto de A: 200, y el mensaje entra en la bandeja de A.
 
-Además, en los otros arneses el cerebro falso y el guion contestan con la credencial derivada del negocio, como el cerebro real. La llave cruda (compatibilidad, con un solo negocio) se sigue probando en el proxy `/api/bot/llm` de `e2e-despacho`.
+Además, en los otros arneses el cerebro falso y el guion contestan con la credencial derivada del negocio, como el cerebro real. La llave cruda (compatibilidad, con un solo negocio) la prueba `bot-auth-negocio.test.ts`; el proxy `/api/bot/llm` está apagado desde 080.

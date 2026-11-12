@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -69,6 +68,9 @@ export function LabClient() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [launching, setLaunching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 080 (D20, P3) — El tope del día y quién puede correrlo.
+  const [cupo, setCupo] = useState<Cupo | null>(null);
+  const [puedeCorrer, setPuedeCorrer] = useState(true);
 
   const refetchRuns = useCallback(async () => {
     const res = await fetch("/api/lab/runs").catch(() => null);
@@ -77,10 +79,14 @@ export function LabClient() {
       runs: Run[];
       aiConfigured: boolean;
       brainConnected?: boolean;
+      laboratorio?: Cupo;
+      puedeCorrer?: boolean;
     };
     setRuns(data.runs);
     setAiConfigured(data.aiConfigured);
     setBrainConnected(data.brainConnected !== false);
+    setCupo(data.laboratorio ?? null);
+    setPuedeCorrer(data.puedeCorrer !== false);
     if (!selectedRunId && data.runs[0]) setSelectedRunId(data.runs[0].id);
   }, [selectedRunId]);
 
@@ -125,6 +131,8 @@ export function LabClient() {
         setBrainConnected(false);
         return;
       }
+      // 080 — El tope se alcanzó desde que se abrió la pantalla.
+      if (data?.error?.code === "tope_laboratorio") void refetchRuns();
       setError(data?.error?.message ?? "No se pudo lanzar la corrida");
       return;
     }
@@ -136,25 +144,20 @@ export function LabClient() {
 
   // 036 — Sin agente conectado, las corridas viejas se siguen pudiendo leer:
   // el aviso va arriba y solo se apaga el botón de correr.
+  // 080 — El juez paga con la llave de Aliantis: sin ella, no hay nada que
+  // configurar aquí; se le avisa a Aliantis.
   if (!aiConfigured && brainConnected) {
     return (
       <div className="flex h-full flex-col">
-        <Header running={false} launching={false} onLaunch={() => {}} disabled />
-        <div className="m-4 rounded-lg border border-brand-soft bg-brand-tint p-6 text-center sm:m-6 sm:p-8">
+        <Header running={false} launching={false} onLaunch={() => {}} disabled cupo={null} />
+        <div
+          data-lab-sin-llave
+          className="m-4 rounded-lg border border-brand-soft bg-brand-tint p-6 text-center sm:m-6 sm:p-8"
+        >
           <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary" />
-          <p className="font-medium">
-            Configura tu proveedor de IA para usar el Laboratorio
-          </p>
+          <p className="font-medium">El Laboratorio no está disponible ahora</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            Con esa llave piensan tu agente (a través del CRM) y el juez que
-            califica cada conversación: configúrala en{" "}
-            <Link
-              href="/settings/ai"
-              className="font-medium text-brand-text underline underline-offset-2"
-            >
-              Ajustes → IA
-            </Link>{" "}
-            y vuelve aquí.
+            Avísale a Aliantis para que lo revise.
           </p>
         </div>
       </div>
@@ -169,8 +172,15 @@ export function LabClient() {
         running={running}
         launching={launching}
         onLaunch={() => void launch()}
-        disabled={!brainConnected}
+        disabled={!brainConnected || !puedeCorrer || (cupo !== null && !cupo.disponible)}
+        cupo={brainConnected && puedeCorrer ? cupo : null}
       />
+      {!puedeCorrer && (
+        <p data-lab-sin-permiso className="px-4 pt-3 text-sm text-muted-foreground sm:px-6">
+          Solo quien administra el negocio puede correr el Laboratorio. Aquí puedes leer sus
+          reportes.
+        </p>
+      )}
       {error && <p className="px-4 pt-3 text-sm text-destructive sm:px-6">{error}</p>}
 
       {!brainConnected && (
@@ -245,16 +255,28 @@ export function LabClient() {
   );
 }
 
+/** 080 — El tope del día, como lo da `GET /api/lab/runs`. */
+type Cupo = { corridasHoy: number; topeDiario: number; disponible: boolean };
+
+/** Pura, para las pruebas: lo que dice la pantalla junto al botón. */
+export function textoCupo(cupo: Cupo): string {
+  if (!cupo.disponible) return "Vuelve a estar disponible mañana";
+  const quedan = Math.max(0, cupo.topeDiario - cupo.corridasHoy);
+  return `Te quedan ${quedan} ${quedan === 1 ? "corrida" : "corridas"} hoy`;
+}
+
 function Header({
   running,
   launching,
   onLaunch,
   disabled,
+  cupo,
 }: {
   running: boolean;
   launching: boolean;
   onLaunch: () => void;
   disabled: boolean;
+  cupo: Cupo | null;
 }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 sm:py-4">
@@ -266,10 +288,17 @@ function Header({
           Sandbox interno — no envía mensajes reales
         </p>
       </div>
-      <Button onClick={onLaunch} disabled={disabled || running || launching}>
-        <Play className="h-4 w-4" />
-        {running ? "Corrida en curso…" : "Correr evaluación"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-3">
+        {cupo && (
+          <span data-lab-cupo className="text-xs text-muted-foreground">
+            {textoCupo(cupo)}
+          </span>
+        )}
+        <Button onClick={onLaunch} disabled={disabled || running || launching}>
+          <Play className="h-4 w-4" />
+          {running ? "Corrida en curso…" : "Correr evaluación"}
+        </Button>
+      </div>
     </header>
   );
 }

@@ -3,8 +3,10 @@ import { apiError, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { isAiConfiguredFor } from "@/lib/ai/provider";
+import { canConfigure } from "@/lib/auth/roles";
 import { leerConfigDespacho } from "@/server/brains/config";
-import { RunConflictError, startRun } from "@/server/lab/runner";
+import { RunConflictError, startRun, TopeAlcanzadoError } from "@/server/lab/runner";
+import { diaDe, estadoTopeDe, mensajeTope, topeDiarioDe } from "@/server/lab/tope";
 
 export const dynamic = "force-dynamic";
 
@@ -35,15 +37,32 @@ export const GET = withAuth(async (session) => {
           : null,
     };
   });
+  const tope = await estadoTopeDe(session.organizationId);
   return Response.json({
     runs: withDelta,
-    aiConfigured: await isAiConfiguredFor(session.organizationId),
+    aiConfigured: await isAiConfiguredFor(),
     // 036 — Sin cerebro conectado, la pantalla lo dice en vez de ofrecer correr.
     brainConnected: leerConfigDespacho().active,
+    // 080 (D20) — Cuántas corridas lleva hoy (en la zona del negocio) y su tope.
+    laboratorio: {
+      corridasHoy: tope.corridasHoy,
+      topeDiario: tope.topeDiario,
+      disponible: tope.disponible,
+      seLibera: tope.seLibera.toISOString(),
+    },
+    // 080 (P3) — Correrlo gasta dinero de Aliantis: solo quien administra.
+    puedeCorrer: canConfigure(session.role),
   });
 });
 
+/**
+ * 080 — En este orden: quién (P3), a quién probar, con qué juzgar, el tope del
+ * día (D20) y la corrida en curso.
+ */
 export const POST = withAuth(async (session) => {
+  if (!canConfigure(session.role)) {
+    return apiError(403, "forbidden", "Solo quien administra puede correr el Laboratorio");
+  }
   // 036 — El Laboratorio prueba al cerebro conectado: sin él no hay a quién.
   if (!leerConfigDespacho().active) {
     return apiError(
@@ -52,17 +71,25 @@ export const POST = withAuth(async (session) => {
       "Conecta tu agente para correr el Laboratorio: prueba al cerebro que contesta a tus clientes"
     );
   }
-  if (!(await isAiConfiguredFor(session.organizationId))) {
+  // 080 (D20) — El juez paga con la llave de Aliantis; sin ella, no hay Laboratorio.
+  if (!(await isAiConfiguredFor())) {
     return apiError(
       409,
-      "ai_not_configured",
-      "Configura tu proveedor de IA en Ajustes → IA para correr el Laboratorio"
+      "laboratorio_sin_llave",
+      "El Laboratorio no está disponible ahora. Avísale a Aliantis."
     );
   }
+  const [dia, maximo] = await Promise.all([
+    diaDe(session.organizationId),
+    topeDiarioDe(session.organizationId),
+  ]);
   try {
-    const runId = await startRun(session.organizationId);
+    const runId = await startRun(session.organizationId, { maximo, desde: dia.desde });
     return Response.json({ runId }, { status: 202 });
   } catch (err) {
+    if (err instanceof TopeAlcanzadoError) {
+      return apiError(429, "tope_laboratorio", mensajeTope(maximo, dia.seLibera, dia.zona));
+    }
     if (err instanceof RunConflictError) {
       return apiError(
         409,

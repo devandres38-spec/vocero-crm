@@ -12,6 +12,7 @@ import { avisarOlvido } from "@/server/brains/deliver";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 import { computeScore, judgeCase } from "@/server/lab/judge";
+import { corridasDesde } from "@/server/lab/tope";
 import { PERSONAS, type Persona } from "@/server/lab/personas";
 import { rolDe } from "@/lib/agent-roles";
 
@@ -46,15 +47,35 @@ export const SILENCIO_MS = 45_000;
 
 export class RunConflictError extends Error {}
 
-export async function startRun(organizationId: string): Promise<string> {
+/** 080 — El negocio ya creó hoy todas las corridas de su tope. */
+export class TopeAlcanzadoError extends Error {
+  constructor(readonly corridasHoy: number) {
+    super("Tope diario del Laboratorio alcanzado");
+  }
+}
+
+/**
+ * 080 (D20) — `tope`: cuántas corridas puede crear el negocio desde `desde`
+ * (la medianoche de su zona). Se cuenta y se inserta en la misma transacción;
+ * dos POST a la vez no pasan juntos porque el índice parcial deja una sola
+ * corrida `running` (la segunda da `RunConflictError`).
+ */
+export async function startRun(
+  organizationId: string,
+  tope: { maximo: number; desde: Date }
+): Promise<string> {
   const db = getDb();
   let runId: string;
   try {
-    const inserted = await db
-      .insert(schema.agentTestRun)
-      .values({ id: newId("testRun"), organizationId, status: "running" })
-      .returning();
-    runId = inserted[0]!.id;
+    runId = await db.transaction(async (tx) => {
+      const hechas = await corridasDesde(tx, organizationId, tope.desde);
+      if (hechas >= tope.maximo) throw new TopeAlcanzadoError(hechas);
+      const inserted = await tx
+        .insert(schema.agentTestRun)
+        .values({ id: newId("testRun"), organizationId, status: "running" })
+        .returning();
+      return inserted[0]!.id;
+    });
   } catch (err) {
     // Violación del índice parcial UNIQUE → ya hay una corrida activa.
     if (isUniqueViolation(err)) {
@@ -186,7 +207,6 @@ async function runAllCases(
     }
 
     const outcome = await judgeCase({
-      organizationId,
       personaKey: persona.key,
       transcript,
       kbText,

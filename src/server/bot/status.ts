@@ -67,7 +67,7 @@ export function resetBrainStatusState(): void {
 // ---------------------------------------------------------------------------
 
 export type BrainStatusInput = {
-  /** La organización tiene con qué pensar (Ajustes → IA o el entorno). */
+  /** 080 — La llave de IA de Aliantis (entorno), la del juez del Laboratorio. */
   aiConfigured: boolean;
   /** El interruptor del Agente: el CRM despacha. */
   agentEnabled: boolean;

@@ -3,7 +3,6 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
 import {
   CLAVES_HERRAMIENTA,
   herramientasEfectivas,
@@ -26,7 +25,6 @@ export const GET = withAuth(async (session) => {
     .limit(1);
   const p = rows[0];
   if (!p) return apiError(404, "not_found", "Perfil del agente no encontrado");
-  const estado = await estadoIaDe(session.organizationId);
   return Response.json({
     profile: {
       enabled: p.enabled,
@@ -43,10 +41,8 @@ export const GET = withAuth(async (session) => {
     },
     // 034 — Sin la bandera, la pantalla no ofrece agendar ni reprogramar.
     agendaEnabled: agendaEnabled(),
-    aiConfigured: estado.activa,
-    // Por qué no (sin configurar, llave rechazada, sin saldo): la pantalla
-    // Agente lo dice con el enlace a Ajustes → IA.
-    aiMensaje: mensajeDeEstado(estado),
+    // 080 (D3) — Sin `aiConfigured`: el cerebro piensa con su propia llave, y
+    // la de Vocero (la de Aliantis) solo la usa el juez del Laboratorio.
   });
 });
 

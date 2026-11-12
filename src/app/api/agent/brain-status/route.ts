@@ -27,7 +27,7 @@ export const GET = withAuth(async (session) => {
       .where(scoped(schema.agentProfile.organizationId, session.organizationId))
       .limit(1),
     getBrainHealth(urlSaludCerebro() ?? undefined),
-    isAiConfiguredFor(session.organizationId),
+    isAiConfiguredFor(),
     estadoDelDespacho(session.organizationId),
   ]);
   const status = computeBrainStatus({

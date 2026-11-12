@@ -28,7 +28,7 @@ const step = (
 });
 
 const all = (overrides: Partial<Record<ReadinessStep["key"], ReadinessStep["status"]>> = {}) =>
-  (["profile", "ai", "whatsapp", "brain", "calendar"] as const).map((k) =>
+  (["profile", "whatsapp", "brain", "calendar"] as const).map((k) =>
     step(k, overrides[k] ?? "ready", {
       nextAction:
         k === "profile"
@@ -38,12 +38,11 @@ const all = (overrides: Partial<Record<ReadinessStep["key"], ReadinessStep["stat
   );
 
 describe("guía de inicio", () => {
-  it("son cinco pasos en el orden pedido: agente, IA, número, tu agente, agenda", () => {
+  it("son cuatro pasos en el orden pedido: agente, número, tu agente, agenda (080: sin IA)", () => {
     const guide = guideFrom({ steps: all(), enabled: false });
-    expect(guide.steps.map((s) => s.key)).toEqual(["agent", "ai", "whatsapp", "brain", "calendar"]);
+    expect(guide.steps.map((s) => s.key)).toEqual(["agent", "whatsapp", "brain", "calendar"]);
     expect(guide.steps.map((s) => s.href)).toEqual([
       "/agent",
-      "/settings/ai",
       "/settings/whatsapp",
       GUIA_DEL_PAR,
       "/settings/calendar",
@@ -53,7 +52,7 @@ describe("guía de inicio", () => {
 
   it("036 — «Conecta tu agente» es opcional: sin él la guía se completa (bandeja manual)", () => {
     const steps = all({ brain: "pending" });
-    steps[3] = step("brain", "pending", { nextAction: "Levanta tu agente", problem: null });
+    steps[2] = step("brain", "pending", { nextAction: "Levanta tu agente", problem: null });
     const guide = guideFrom({ steps, enabled: false });
     const brain = guide.steps.find((s) => s.key === "brain");
     expect(brain).toMatchObject({ done: false, optional: true, hint: "Levanta tu agente" });
@@ -62,7 +61,7 @@ describe("guía de inicio", () => {
 
   it("sin agenda en la instancia el paso desaparece (no se pinta «no aplica»)", () => {
     const guide = guideFrom({ steps: all({ calendar: "not_applicable" }), enabled: false });
-    expect(guide.steps.map((s) => s.key)).toEqual(["agent", "ai", "whatsapp", "brain"]);
+    expect(guide.steps.map((s) => s.key)).toEqual(["agent", "whatsapp", "brain"]);
     expect(guide.complete).toBe(true);
   });
 
@@ -74,29 +73,27 @@ describe("guía de inicio", () => {
   });
 
   it("una conexión pendiente deja la guía incompleta", () => {
-    for (const key of ["ai", "whatsapp", "calendar"] as const) {
+    for (const key of ["whatsapp", "calendar"] as const) {
       expect(guideFrom({ steps: all({ [key]: "pending" }), enabled: false }).complete, key).toBe(
         false
       );
     }
   });
 
-  it("lo que está mal (llave rechazada, token vencido, conector sin credencial) sale como pista", () => {
+  it("lo que está mal (token vencido, conector sin credencial) sale como pista", () => {
     const steps = all();
-    steps[1] = step("ai", "pending", { problem: "El proveedor rechazó tu llave." });
-    steps[2] = step("whatsapp", "pending", { problem: "Meta dejó de aceptar el token." });
-    steps[3] = step("brain", "pending", { problem: "Falta BOT_API_KEY." });
-    steps[4] = step("calendar", "pending", { problem: "Elegiste Zoom pero no está conectado." });
+    steps[1] = step("whatsapp", "pending", { problem: "Meta dejó de aceptar el token." });
+    steps[2] = step("brain", "pending", { problem: "Falta BOT_API_KEY." });
+    steps[3] = step("calendar", "pending", { problem: "Elegiste Zoom pero no está conectado." });
     const guide = guideFrom({ steps, enabled: false });
     expect(guide.steps.map((s) => s.hint)).toEqual([
       null,
-      "El proveedor rechazó tu llave.",
       "Meta dejó de aceptar el token.",
       "Falta BOT_API_KEY.",
       "Elegiste Zoom pero no está conectado.",
     ]);
     // Un conector desconocido también bloquea: no es «listo» ni «no aplica».
-    steps[4] = step("calendar", "unsupported", { problem: "El conector no existe." });
+    steps[3] = step("calendar", "unsupported", { problem: "El conector no existe." });
     expect(guideFrom({ steps, enabled: false }).complete).toBe(false);
   });
 

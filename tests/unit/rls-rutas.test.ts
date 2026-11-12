@@ -26,6 +26,8 @@ const ENVOLTORIOS =
 const SIN_ENVOLTORIO: Record<string, string> = {
   "src/app/api/auth/[...all]/route.ts": "Better Auth: solo sus tablas, por dbDeCuentas",
   "src/app/api/bot/openapi.json/route.ts": "el contrato público, sin base",
+  // 080 (P7) — Apagado: 404 `proxy_apagado` a todos, sin base ni proveedor.
+  "src/app/api/bot/llm/[...ruta]/route.ts": "proxy apagado: 404 fijo, sin base",
   "src/app/api/events/route.ts": "requireSession y el bus en memoria, sin consultas",
   "src/app/api/health/route.ts": "checkHealth corre en comoSistema por dentro",
   "src/app/api/branding/app-icon/route.ts": "appIconResponse usa marcaDeLaPeticion",

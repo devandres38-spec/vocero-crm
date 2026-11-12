@@ -1,11 +1,7 @@
 /**
- * Catálogo del proveedor de IA (Ajustes → IA). Sin imports de servidor: lo
- * leen también los componentes de cliente.
- *
- * Un preset es solo una ayuda para no escribir la `base_url` a mano. Lo que
- * identifica al proveedor en la base es la `base_url`: cualquier API
- * compatible con la de OpenAI sirve (OpenRouter, OpenAI, Groq, un vLLM
- * propio…), que es la única frontera con el LLM que admite la constitución.
+ * Las URLs del proveedor de IA y lo que queda del catálogo de la vieja
+ * Ajustes → IA (los tipos de `ai_credentials`, que se borra en el bloque V).
+ * 080: la llave es la de Aliantis, en el entorno (`lib/ai/provider.ts`).
  */
 
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api";
@@ -19,38 +15,6 @@ export const AI_STATUSES = [
   "paused_no_credit",
 ] as const;
 export type AiStatus = (typeof AI_STATUSES)[number];
-
-export type AiProviderPreset = {
-  id: AiProviderId;
-  label: string;
-  /** Fija en el preset; `null` = la escribe el dueño. */
-  baseUrl: string | null;
-  modelPlaceholder: string;
-  tokenPlaceholder: string;
-};
-
-export const AI_PROVIDER_PRESETS: Record<AiProviderId, AiProviderPreset> = {
-  openrouter: {
-    id: "openrouter",
-    label: "OpenRouter",
-    baseUrl: OPENROUTER_BASE_URL,
-    modelPlaceholder: "anthropic/claude-sonnet-4.5",
-    tokenPlaceholder: "sk-or-…",
-  },
-  openai_compatible: {
-    id: "openai_compatible",
-    label: "Otro compatible con OpenAI",
-    baseUrl: null,
-    modelPlaceholder: "gpt-4.1-mini",
-    tokenPlaceholder: "sk-…",
-  },
-};
-
-export const AI_STATUS_LABEL: Record<AiStatus, string> = {
-  active: "Activo",
-  paused_invalid_token: "Pausado: llave rechazada",
-  paused_no_credit: "Pausado: sin saldo",
-};
 
 /** A qué preset corresponde una base URL (la del entorno o una guardada). */
 export function presetDeBaseUrl(baseUrl: string): AiProviderId {

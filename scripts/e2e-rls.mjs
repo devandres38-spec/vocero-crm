@@ -153,7 +153,8 @@ async function catalogo() {
         "agente_encendido boolean, whatsapp boolean, instagram boolean, messenger boolean, " +
         "tiktok boolean, usuarios bigint, conversaciones bigint, conversaciones_7d bigint, " +
         "entrantes_24h bigint, ultimo_entrante_en timestamp, despachos_pendientes bigint, " +
-        "a_humano_24h bigint, webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer"
+        "a_humano_24h bigint, webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer, " +
+        "lab_tope integer, lab_corridas_hoy bigint"
     ),
     vocero_panel_salud: tabla(
       "negocios bigint, pausados bigint, webhooks_pendientes bigint, webhooks_agotados bigint, " +
@@ -171,8 +172,9 @@ async function catalogo() {
     vocero_panel_registro: tabla(
       "cuando timestamp, accion text, negocio_id text, nombre text, detalle jsonb"
     ),
+    vocero_panel_tope_laboratorio: "integer",
   };
-  ok("las 23 funciones SECURITY DEFINER esperadas", funciones.length === 23, funciones.map((f) => f.nombre).join(", "));
+  ok("las 24 funciones SECURITY DEFINER esperadas", funciones.length === 24, funciones.map((f) => f.nombre).join(", "));
   const raras = funciones.filter(
     (f) =>
       !(f.config ?? []).includes("search_path=public, pg_temp") ||
@@ -313,7 +315,9 @@ async function cruzados(tablas, sembradas) {
     });
     if (visto.ajenas !== 0 || visto.total !== deA) anotar(t, `SELECT con A: ${JSON.stringify(visto)} (de A: ${deA})`);
 
-    const upd = await comoApp(A, async (tx) => (await tx`update ${tx(t)} set ${tx(col)} = ${tx(col)} where ${tx(col)} = ${B}`).count);
+    // 080: en organization la app solo tiene UPDATE en name, slug, logo y metadata.
+    const colUpd = t === "organization" ? "name" : col;
+    const upd = await comoApp(A, async (tx) => (await tx`update ${tx(t)} set ${tx(colUpd)} = ${tx(colUpd)} where ${tx(col)} = ${B}`).count);
     if (upd !== 0) anotar(t, `UPDATE de filas de B con A: ${upd}`);
     const del = await comoApp(A, async (tx) => (await tx`delete from ${tx(t)} where ${tx(col)} = ${B}`).count);
     if (del !== 0) anotar(t, `DELETE de filas de B con A: ${del}`);
@@ -658,6 +662,67 @@ async function soloNumerosRls() {
   );
 }
 
+/**
+ * 080 (D20, P1) — El tope del Laboratorio y la pausa los escribe solo el
+ * panel: la app tiene UPDATE en organization solo para name, slug, logo y
+ * metadata; la función del panel exige superadmin, valida 0-20 y anota.
+ */
+async function laboratorioTopeRls() {
+  console.log("\n== 080: el tope del Laboratorio, solo desde el panel ==");
+  for (const [col, valor] of [
+    ["lab_corridas_por_dia", 5],
+    ["pausado_en", new Date()],
+  ]) {
+    ok(
+      `la app no cambia ${col} de su propio negocio (42501)`,
+      (await codigoDe(A, (tx) => tx`update organization set ${tx(col)} = ${valor} where id = ${A}`)) === "42501"
+    );
+  }
+  const nombre = await comoApp(A, async (tx) =>
+    (await tx`update organization set name = name, metadata = metadata where id = ${A} returning id`).length
+  );
+  ok("la app sí cambia name y metadata (Marca, Apariencia, Better Auth)", nombre === 1, String(nombre));
+  ok(
+    "sin SET ROLE, la app no ejecuta vocero_panel_tope_laboratorio",
+    (await codigoDe(null, (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 5)`)) === "42501"
+  );
+  ok(
+    "con el rol del panel pero sin superadmin: se niega",
+    (await codigoPanel(null, (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 5)`)) === "42501"
+  );
+  ok(
+    "con un usuario de negocio: se niega",
+    (await codigoPanel("usr_rls_a", (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 5)`)) === "42501"
+  );
+  ok(
+    "fuera de 0 a 20: 22023",
+    (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 21)`)) === "22023"
+  );
+  ok(
+    "un negocio que no existe: P0002",
+    (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_tope_laboratorio('org_que_no_existe', 3)`)) === "P0002"
+  );
+  const cambio = await comoPanelCrudo(SUPER, async (tx) => {
+    const [t] = await tx`select vocero_panel_tope_laboratorio(${A}, 5) as tope`;
+    const [n] = (await tx`select * from vocero_panel_negocios()`).filter((x) => x.id === A);
+    const [r] = await tx`select * from vocero_panel_registro(1)`;
+    return { tope: t?.tope, lab_tope: n?.lab_tope, corridas: n?.lab_corridas_hoy, accion: r?.accion, detalle: r?.detalle };
+  });
+  ok(
+    "el superadmin lo cambia, vocero_panel_negocios lo muestra y queda en el registro",
+    cambio.tope === 5 && cambio.lab_tope === 5 && cambio.corridas !== undefined &&
+      cambio.accion === "tope_laboratorio" && Number(cambio.detalle?.tope) === 5,
+    JSON.stringify(cambio)
+  );
+  let check = null;
+  try {
+    await dueno`update organization set lab_corridas_por_dia = 21 where id = ${A}`;
+  } catch (err) {
+    check = err?.code;
+  }
+  ok("ni el dueño de la base pasa de 20 (CHECK: 23514)", check === "23514", String(check));
+}
+
 async function main() {
   const tablas = await catalogo();
   const sembradas = await sembrar(tablas);
@@ -668,6 +733,7 @@ async function main() {
   await panel(tablas);
   await etapaPorEventos();
   await soloNumerosRls();
+  await laboratorioTopeRls();
 }
 
 main()

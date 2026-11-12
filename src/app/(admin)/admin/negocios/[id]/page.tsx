@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { dolares, fechaCorta, hace, numero, ROLES } from "@/components/panel/formato";
-import { AccionesDeUsuario, PausarNegocio } from "@/components/panel/acciones-negocio";
+import { AccionesDeUsuario, PausarNegocio, TopeLaboratorio } from "@/components/panel/acciones-negocio";
 import { Cifra, Encabezado, Seccion } from "@/components/panel/piezas";
 import { negociosDelPanel, usuariosDelPanel } from "@/server/panel/datos";
 import { gastoDelCerebro } from "@/server/panel/gasto";
@@ -63,7 +63,20 @@ async function Negocio(
           valor={negocio.retencionDias === null ? "—" : `${negocio.retencionDias} días`}
           nota={negocio.retencionDias === null ? "sin perfil de privacidad" : undefined}
         />
+        <Cifra
+          etiqueta="Laboratorio"
+          valor={`${numero(negocio.laboratorio.corridasHoy)} de ${numero(negocio.laboratorio.tope)}`}
+          nota={negocio.laboratorio.tope === 0 ? "apagado" : "corridas hoy (UTC)"}
+        />
       </div>
+
+      <Seccion titulo="Laboratorio">
+        <p className="mb-3 text-sm text-text-3">
+          Laboratorio: {negocio.laboratorio.corridasHoy} de {negocio.laboratorio.tope} corridas hoy. Cada
+          corrida paga el juez con la llave de Aliantis y los turnos del cerebro.
+        </p>
+        <TopeLaboratorio id={negocio.id} tope={negocio.laboratorio.tope} />
+      </Seccion>
 
       <Seccion titulo={`Usuarios (${usuarios.length})`}>
         <ul className="divide-y">

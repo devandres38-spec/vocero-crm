@@ -17,10 +17,9 @@ type KbEntry = typeof schema.kbEntry.$inferSelect;
  * claves de `src/lib/agent-roles.ts`; `escalar` siempre). Aditivas: un cerebro
  * que no las conozca las ignora y enciende todo, como antes.
  *
- * 036 — `llm`: con qué piensa el cerebro sin llave propia. `path` es el proxy
- * (`/api/bot/llm`, que le pone la llave de Ajustes → IA) y `model`, el que
- * eligió el negocio. `null` sin proveedor de IA configurado o con la llave
- * pausada: el cerebro no tiene con qué pensar por el CRM.
+ * 036 — `llm`: con qué piensa el cerebro sin llave propia. 080 (P7): el proxy
+ * `/api/bot/llm` está apagado y la ruta del perfil siempre manda `null`; el
+ * campo se queda en el contrato para no romper a quien lo lee.
  */
 export type BotLlm = { path: string; model: string } | null;
 

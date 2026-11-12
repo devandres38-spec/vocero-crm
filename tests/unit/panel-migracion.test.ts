@@ -48,7 +48,6 @@ const PROHIBIDAS = [
   "media_asset",
   "ad_attribution",
   "conversion_event",
-  "agent_test_run",
   "agent_test_case",
   "kb_entry",
   "quick_reply",
@@ -60,11 +59,15 @@ type Funcion = { nombre: string; retorno: string; cuerpo: string };
 function funcionesDelPanel(): Funcion[] {
   const re =
     /CREATE OR REPLACE FUNCTION (vocero_panel_\w+)\(([^)]*)\)\s*RETURNS ([\s\S]*?)\s*LANGUAGE[\s\S]*?AS \$\$([\s\S]*?)\$\$;/g;
-  return [...MIGRACIONES.matchAll(re)].map((m) => ({
-    nombre: m[1]!,
-    retorno: m[3]!.trim(),
-    cuerpo: m[4]!,
-  }));
+  const vigentes = new Map<string, Funcion>();
+  for (const m of MIGRACIONES.matchAll(re)) {
+    vigentes.set(m[1]!, {
+      nombre: m[1]!,
+      retorno: m[3]!.trim(),
+      cuerpo: m[4]!,
+    });
+  }
+  return [...vigentes.values()];
 }
 
 function columnas(retorno: string): { nombre: string; tipo: string }[] {
@@ -79,7 +82,7 @@ function columnas(retorno: string): { nombre: string; tipo: string }[] {
 describe("076 — las funciones del panel solo devuelven agregados", () => {
   const funciones = funcionesDelPanel();
 
-  it("están las 9 (si cambia, revisa esta prueba)", () => {
+  it("están las 10 (si cambia, revisa esta prueba)", () => {
     expect(funciones.map((f) => f.nombre).sort()).toEqual(
       [
         "vocero_panel_anotar",
@@ -90,6 +93,7 @@ describe("076 — las funciones del panel solo devuelven agregados", () => {
         "vocero_panel_registro",
         "vocero_panel_restablecer",
         "vocero_panel_salud",
+        "vocero_panel_tope_laboratorio",
         "vocero_panel_usuarios",
       ].sort()
     );
@@ -109,10 +113,10 @@ describe("076 — las funciones del panel solo devuelven agregados", () => {
     expect(malas).toEqual([]);
   });
 
-  it("las que no devuelven tabla, devuelven nada, una fecha o (la interna) un id", () => {
+  it("las que no devuelven tabla, devuelven nada, una fecha, un entero o (la interna) un id", () => {
     const malas = funciones
       .filter((f) => !f.retorno.startsWith("TABLE"))
-      .filter((f) => !["void", "timestamp"].includes(f.retorno))
+      .filter((f) => !["void", "timestamp", "integer"].includes(f.retorno))
       .filter((f) => !(f.nombre === "vocero_panel_quien" && f.retorno === "text"))
       .map((f) => `${f.nombre}: ${f.retorno}`);
     expect(malas).toEqual([]);

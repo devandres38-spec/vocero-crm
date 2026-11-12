@@ -18,7 +18,6 @@ describe("judgeCase (FR-032)", () => {
       raw: "{}",
     });
     const outcome = await judgeCase({
-      organizationId: "org_1",
       personaKey: "comprador_decidido",
       transcript: [{ role: "cliente", text: "hola" }],
       kbText: "kb",
@@ -36,7 +35,6 @@ describe("judgeCase (FR-032)", () => {
       detail: "no cumple el esquema (raw=...)",
     });
     const outcome = await judgeCase({
-      organizationId: "org_1",
       personaKey: "fuera_de_kb",
       transcript: [],
       kbText: "",

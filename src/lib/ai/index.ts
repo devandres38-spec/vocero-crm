@@ -1,11 +1,6 @@
 import type { z } from "zod";
-import { chatCompletionsUrl } from "@/lib/ai/presets";
-import {
-  resolveAiProvider,
-  type AiProvider,
-  type EstadoIa,
-} from "@/lib/ai/provider";
-import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
+import { chatCompletionsUrl, presetDeBaseUrl } from "@/lib/ai/presets";
+import { resolveAiProvider, type AiProvider } from "@/lib/ai/provider";
 
 /**
  * Adaptador LLM OpenRouter-compatible — ÚNICA frontera con el proveedor de IA
@@ -13,9 +8,35 @@ import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
  * todo consumo pasa por extracción robusta + Zod + reintentos, y un hipo del
  * proveedor jamás propaga excepción (resultado `error` tipado).
  *
- * Con quién habla lo decide `lib/ai/provider.ts`: la fila de Ajustes → IA de
- * la organización, y si no hay, las variables `OPENROUTER_*` del entorno.
+ * Con quién habla lo decide `lib/ai/provider.ts`: solo la llave de Aliantis,
+ * en las variables `OPENROUTER_*` del entorno (080, D20).
+ *
+ * Pilar 5 de Aliantis: hacia OpenRouter, toda llamada va con los proveedores
+ * fijos (`deepinfra` y `parasail`), ZDR, sin guardar datos y sin razonamiento,
+ * igual que el cerebro (`aliantis-brain/src/llm/openrouter-llm.ts`).
  */
+
+/** Lo que se agrega al cuerpo cuando la base es OpenRouter (pilar 5). */
+export const OPENROUTER_FIJOS = {
+  reasoning: { effort: "none" },
+  provider: {
+    data_collection: "deny",
+    zdr: true,
+    require_parameters: true,
+    only: ["deepinfra", "parasail"],
+  },
+} as const;
+
+/** El cuerpo hacia el proveedor: con base OpenRouter, más los fijos. */
+export function cuerpoHaciaProveedor(
+  baseUrl: string,
+  model: string,
+  messages: ChatMessage[]
+): Record<string, unknown> {
+  return presetDeBaseUrl(baseUrl) === "openrouter"
+    ? { model, messages, ...OPENROUTER_FIJOS }
+    : { model, messages };
+}
 
 export type ChatMessage = {
   role: "system" | "user" | "assistant";
@@ -47,19 +68,14 @@ export async function chatJson<T>(
     model?: string;
     judge?: boolean;
     timeoutMs?: number;
-    /**
-     * De quién es la configuración con la que se paga esta llamada. Sin ella
-     * solo cuenta el entorno: no hay fila que consultar ni que pausar.
-     */
-    organizationId?: string;
   }
 ): Promise<ChatJsonResult<T>> {
-  const resolved = await resolveAiProvider(opts?.organizationId);
+  const resolved = await resolveAiProvider();
   if (!resolved.ok) {
     return {
       ok: false,
       error: "not_configured",
-      detail: detalleNoConfigurado(resolved.estado),
+      detail: "Sin la llave de IA de Aliantis (OPENROUTER_API_TOKEN en el entorno)",
     };
   }
   const provider = resolved.provider;
@@ -69,7 +85,7 @@ export async function chatJson<T>(
     return {
       ok: false,
       error: "not_configured",
-      detail: "Sin modelo configurado (Ajustes → IA u OPENROUTER_MODEL)",
+      detail: "Sin modelo configurado (OPENROUTER_MODEL en el entorno)",
     };
   }
 
@@ -109,26 +125,17 @@ export async function chatJson<T>(
     } catch (err) {
       lastDetail = err instanceof Error ? err.message : String(err);
       /**
-       * El estado de la credencial lo dicta QUIEN COBRA, no la UI.
-       *
-       * Si el proveedor dijo 401 o 402 sobre la llave guardada en Ajustes → IA,
-       * la credencial queda pausada y se deja de intentar: reintentar una
-       * llave que el proveedor rechaza solo gasta tiempo, y el turno ya está
-       * perdido. Un 429 o un 500 NO pausan (ver `estadoSegunRespuesta`), así
-       * que ahí sí se reintenta. La llave del entorno no tiene fila que
-       * pausar: ahí se reintenta como siempre.
+       * Un 401 o 402 de la llave de Aliantis no pausa nada (no hay fila del
+       * negocio): se reintenta y, si sigue, el caso queda `judge_failed` con
+       * el motivo. Se avisa en el log, sin la llave.
        */
       if (
         err instanceof ProviderHttpError &&
-        provider.source === "org" &&
-        opts?.organizationId
+        (err.status === 401 || err.status === 402)
       ) {
-        const pausada = await marcarEstadoPorRespuesta(
-          opts.organizationId,
-          err.status,
-          lastDetail
-        ).catch(() => false);
-        if (pausada) break;
+        console.warn(
+          `[ia] el proveedor rechazó la llave de Aliantis (${err.status}); revisa OPENROUTER_API_TOKEN y el saldo`
+        );
       }
       if (attempt < MAX_ATTEMPTS) {
         await sleep(RETRY_DELAY_MS * attempt);
@@ -143,17 +150,6 @@ export async function chatJson<T>(
       : "provider_error",
     detail: lastDetail,
   };
-}
-
-function detalleNoConfigurado(estado: Exclude<EstadoIa, { activa: true }>): string {
-  switch (estado.motivo) {
-    case "sin_configurar":
-      return "Sin proveedor de IA: configúralo en Ajustes → IA (u OPENROUTER_API_TOKEN en el entorno)";
-    case "token_invalido":
-      return `La llave de IA (…${estado.last4}) está pausada: el proveedor la rechazó`;
-    case "sin_saldo":
-      return `La llave de IA (…${estado.last4}) está pausada: la cuenta no tiene saldo`;
-  }
 }
 
 async function callProvider(
@@ -172,7 +168,7 @@ async function callProvider(
         Authorization: `Bearer ${provider.token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages }),
+      body: JSON.stringify(cuerpoHaciaProveedor(provider.baseUrl, model, messages)),
       signal: controller.signal,
     });
     if (!res.ok) {

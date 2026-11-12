@@ -4,7 +4,7 @@ import { contextoActual, validarNegocio } from "@/lib/db/contexto";
 
 /**
  * 076 (D16 de Aliantis) — El ÚNICO módulo del panel de Andres que habla con la
- * base. Solo llama a las funciones `vocero_panel_*` de la migración 0034, que
+ * base. Solo llama a las funciones `vocero_panel_*` de las migraciones 0034 y 0037, que
  * devuelven agregados (conteos, sumas, banderas, fechas) y el personal de cada
  * negocio; nunca texto de pacientes ni de conversaciones.
  *
@@ -57,6 +57,8 @@ export type NegocioDelPanel = {
   webhooksPendientes: number;
   webhooksAgotados: number;
   retencionDias: number | null;
+  /** 080 — El tope diario del Laboratorio y las corridas de hoy (en UTC). */
+  laboratorio: { tope: number; corridasHoy: number };
 };
 
 type FilaNegocio = {
@@ -80,6 +82,8 @@ type FilaNegocio = {
   webhooks_pendientes: number;
   webhooks_agotados: number;
   retencion_dias: number | null;
+  lab_tope: number;
+  lab_corridas_hoy: number;
 };
 
 export async function negociosDelPanel(): Promise<NegocioDelPanel[]> {
@@ -93,7 +97,7 @@ export async function negociosDelPanel(): Promise<NegocioDelPanel[]> {
       ultimo_entrante_en at time zone 'UTC' as ultimo_entrante_en,
       despachos_pendientes::int as despachos_pendientes, a_humano_24h::int as a_humano_24h,
       webhooks_pendientes::int as webhooks_pendientes, webhooks_agotados::int as webhooks_agotados,
-      retencion_dias
+      retencion_dias, lab_tope, lab_corridas_hoy::int as lab_corridas_hoy
     from vocero_panel_negocios()`);
   return r.map((f) => ({
     id: f.id,
@@ -118,6 +122,7 @@ export async function negociosDelPanel(): Promise<NegocioDelPanel[]> {
     webhooksPendientes: f.webhooks_pendientes,
     webhooksAgotados: f.webhooks_agotados,
     retencionDias: f.retencion_dias,
+    laboratorio: { tope: f.lab_tope, corridasHoy: f.lab_corridas_hoy },
   }));
 }
 
@@ -201,6 +206,14 @@ export async function pausarDesdeElPanel(organizationId: string, pausar: boolean
   const [f] = await filas<{ pausado_en: Date | null }>(sql`
     select vocero_panel_pausar(${organizationId}::text, ${pausar}::boolean) at time zone 'UTC' as pausado_en`);
   return fecha(f?.pausado_en ?? null);
+}
+
+/** 080 (D20) — Cambia el tope diario del Laboratorio (0 a 20; 0 lo apaga). Devuelve el nuevo. */
+export async function topeLaboratorioDesdeElPanel(organizationId: string, tope: number): Promise<number> {
+  validarNegocio(organizationId);
+  const [f] = await filas<{ tope: number }>(sql`
+    select vocero_panel_tope_laboratorio(${organizationId}::text, ${tope}::integer) as tope`);
+  return f?.tope ?? tope;
 }
 
 /** El hash lo calcula quien llama (`hashPassword` de Better Auth): la contraseña nunca llega a la base. */
