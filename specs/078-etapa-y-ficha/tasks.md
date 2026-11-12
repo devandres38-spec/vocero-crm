@@ -43,7 +43,7 @@
   - `e2e-contrato-aliantis` gana etapa y ficha: el evento mueve; `ya_esta`; `sin_etapa`; con una persona, 409; `is_test` no escribe; la clave libre da 422; salud en un valor se omite;
   - `e2e-rls`: la columna y el índice; un negocio no mueve etapas de otro;
   - `tests/e2e/us-contrato-aliantis.md`.
-- [ ] T7 **Documentación y revisión:**
+- [x] T7 **Documentación y revisión:**
   - `AGENTS.md` y el README (el mapeo de etapas);
   - CI y `e2e.yml` en verde;
   - los sabotajes en PRs borrador (uno tras otro), cerrados sin merge.
@@ -51,3 +51,12 @@
   - `decisiones.md` (D18 y D12 concretadas, con las respuestas);
   - `estado.md` con las cifras;
   - el relevo, si cambia algo.
+
+**Resultado (12-nov-2026):**
+- **CI** en verde: las dos configuraciones, «RLS contra Postgres» (47/47, con 6 checks del mapeo) y Docker.
+- **`e2e.yml`:** contrato 50/50 (antes 31; 19 checks de etapa y ficha), despacho 146/146, consentimiento 63/63, retención 60/60, multinegocio 15/15, alta 18/18 y panel 51/51. La migración sobre datos está bien y no hay consultas fuera de su negocio. `e2e-despacho` tarda 394 s (383 s en el I2).
+- **Sabotajes** en PRs borrador, uno tras otro, cerrados sin merge; cada uno falla por su prueba:
+  - **#37:** hacia atrás;
+  - **#38:** una clave fuera de la lista;
+  - **#39:** la ficha con una persona atendiendo.
+- **Hallazgo:** la etapa y la ficha van antes del traspaso, porque después Vocero las rechaza (lo encontró la integración del cerebro).
