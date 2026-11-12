@@ -1,6 +1,5 @@
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { estadoIaDe } from "@/lib/ai/provider";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { verifyCalendar } from "./calendar-verifiers";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
@@ -10,14 +9,14 @@ import { getBrainHealth } from "@/server/bot/status";
  * Qué le falta a esta instancia para que el agente conteste (issue #86).
  *
  * Puerto de `onboarding/status.ts` de Vocero Cloud recortado a lo que la raíz
- * tiene: el perfil del agente, la credencial de IA (la fila de Ajustes → IA
- * o, de respaldo, `OPENROUTER_*` del entorno), el número de WhatsApp y, solo
- * con `AGENDA=on`, la agenda. Nada de modelo de plataforma, dueño invitado,
+ * tiene: el perfil del agente, el número de WhatsApp, el cerebro y, solo con
+ * `AGENDA=on`, la agenda. (080: la IA ya no es un paso del negocio; la llave
+ * es de Aliantis.) Nada de modelo de plataforma, dueño invitado,
  * cerebro compartido, cobertura ni evidencia de prueba: aquí una instancia es
  * un negocio y quien la instala es quien la configura.
  *
  * Cada paso sale de la MISMA fuente que ya decide si esa pieza funciona
- * (`estadoIaDe`, el `status` de la conexión, el catálogo de conectores): la
+ * (el `status` de la conexión, el catálogo de conectores): la
  * guía no inventa su propia noción de «listo».
  */
 export type ReadinessStatus =
@@ -26,7 +25,7 @@ export type ReadinessStatus =
   | "unsupported"
   | "not_applicable";
 
-export type ReadinessKey = "profile" | "ai" | "whatsapp" | "brain" | "calendar";
+export type ReadinessKey = "profile" | "whatsapp" | "brain" | "calendar";
 
 export type ReadinessStep = {
   key: ReadinessKey;
@@ -74,22 +73,9 @@ export async function onboardingStatus(
     .from(schema.metaCredentials)
     .where(scoped(schema.metaCredentials.organizationId, organizationId))
     .limit(1);
-  const ia = await estadoIaDe();
 
   const steps: ReadinessStep[] = [
     pasoPerfil(profile, Boolean(kb)),
-    {
-      key: "ai",
-      label: "Proveedor de IA",
-      status: ia.activa ? "ready" : "pending",
-      nextAction: ia.activa
-        ? "La llave de IA es de Aliantis"
-        : "Pega la llave de tu proveedor y elige el modelo en Ajustes → IA",
-      href: "/settings/ai",
-      // 080: la única llave es la del entorno; no hay llave del dueño que
-      // pueda fallar, así que no hay «problema» que decir. T6 quita el paso.
-      problem: null,
-    },
     {
       key: "whatsapp",
       label: "WhatsApp",

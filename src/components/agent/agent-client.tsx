@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { BrainStatusCard } from "@/components/agent/brain-status-card";
-import { externalDown, type BrainStatusDto } from "@/lib/brain-status";
+import type { BrainStatusDto } from "@/lib/brain-status";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,8 +41,6 @@ type KbEntry = {
 
 export function AgentClient() {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [aiConfigured, setAiConfigured] = useState(true);
-  const [aiMensaje, setAiMensaje] = useState<string | null>(null);
   const [entries, setEntries] = useState<KbEntry[]>([]);
   const [kbSize, setKbSize] = useState<{ chars: number; warnAt: number; warning: boolean } | null>(null);
   const [saved, setSaved] = useState(false);
@@ -71,8 +68,6 @@ export function AgentClient() {
     ]).catch(() => [null, null, null]);
     if (p) {
       setProfile(p.profile);
-      setAiConfigured(p.aiConfigured);
-      setAiMensaje(p.aiMensaje ?? null);
       setAgendaEnabled(p.agendaEnabled === true);
     }
     if (kb) setEntries(kb.entries);
@@ -143,12 +138,6 @@ export function AgentClient() {
   const brainConnected = brain?.dispatch.active === true;
   const switchDisabled = !profile.enabled && brain !== null && !brainConnected;
 
-  // 036 — Sin llave de IA el agente conectado no tiene con qué pensar (piensa
-  // por el CRM, `/api/bot/llm`). Sin agente conectado no hace falta pedirla:
-  // la bandeja manual no la usa. Con el agente caído ya lo dice la tarjeta.
-  const aiCallout =
-    !aiConfigured && brainConnected && brain && !externalDown(brain);
-
   return (
     <div className="h-full overflow-y-auto">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 sm:py-4">
@@ -188,26 +177,6 @@ export function AgentClient() {
       {brain && (
         <div className="mx-4 mt-4 sm:mx-6 sm:mt-6">
           <BrainStatusCard status={brain} />
-        </div>
-      )}
-
-      {aiCallout && (
-        <div className="mx-4 mt-4 rounded-lg border border-brand-soft bg-brand-tint p-5 text-center sm:mx-6 sm:mt-6 sm:p-6">
-          <Sparkles className="mx-auto mb-2 h-8 w-8 text-primary" />
-          <p className="font-medium">
-            {aiMensaje ? "Tu agente no puede pensar" : "Tu agente no tiene con qué pensar"}
-          </p>
-          <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
-            {aiMensaje ??
-              "Piensa a través del CRM con la llave de Ajustes → IA: elige el proveedor, el modelo y pega tu llave, sin reiniciar nada."}{" "}
-            (Si tu agente usa su propia llave, puedes ignorar este aviso.)
-          </p>
-          <Link
-            href="/settings/ai"
-            className="mt-3 inline-block text-sm font-medium text-brand-text underline underline-offset-2"
-          >
-            Ir a Ajustes → IA →
-          </Link>
         </div>
       )}
 

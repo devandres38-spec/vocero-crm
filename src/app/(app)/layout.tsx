@@ -9,8 +9,6 @@ import { resolveCommit } from "@/lib/version";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { enabledChannels } from "@/server/channels/enabled";
 import { navKicker } from "@/lib/channels";
-import { avisoIaDe } from "@/server/ai/aviso";
-import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
 
 async function AppLayout({
   children,
@@ -28,10 +26,6 @@ async function AppLayout({
   }
   // 062 — Para el botón de sol y luna: salta a la pareja del tema actual.
   const { apariencia } = await aparienciaActual(session.organizationId);
-  // El agente encendido y sin con qué pensar se ve desde fuera igual que un
-  // bot roto. Se resuelve en el servidor y en el layout para que se vea desde
-  // CUALQUIER pantalla, no solo desde el panel de un contacto (#85).
-  const aviso = await avisoIaDe(session.organizationId);
 
   return (
     <AppShell
@@ -48,7 +42,6 @@ async function AppLayout({
       // cliente: no puede —ni debe— leer variables de entorno.
       agenda={agendaEnabled()}
       kicker={navKicker([...enabledChannels()])}
-      aviso={<AvisoIaBanner aviso={aviso} />}
     >
       {children}
     </AppShell>

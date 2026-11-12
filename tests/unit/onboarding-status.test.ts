@@ -1,20 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { getDb } from "@/lib/db";
 import { schema } from "@/lib/db";
-import type { EstadoIa } from "@/lib/ai/provider";
 
 /**
  * #86 — Los pasos verificados de la guía de inicio, con la base falsa: cada
- * paso sale de la misma fuente que ya decide si esa pieza funciona (la fila
- * de Ajustes → IA o el entorno, el `status` de la conexión, el catálogo de
- * conectores), y lo que está MAL se dice en `problem`.
+ * paso sale de la misma fuente que ya decide si esa pieza funciona (el
+ * `status` de la conexión, el catálogo de conectores), y lo que está MAL se
+ * dice en `problem`. 080: la IA ya no es un paso (la llave es de Aliantis).
  */
-
-const estadoIaDe = vi.hoisted(() => vi.fn<() => Promise<EstadoIa>>());
-vi.mock("@/lib/ai/provider", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/ai/provider")>()),
-  estadoIaDe,
-}));
 
 const getBrainHealth = vi.hoisted(() => vi.fn());
 vi.mock("@/server/bot/status", () => ({ getBrainHealth }));
@@ -49,7 +42,6 @@ beforeEach(() => {
   vi.stubEnv("BRAIN_HEALTH_URL", "");
   getBrainHealth.mockReset();
   getBrainHealth.mockResolvedValue(null);
-  estadoIaDe.mockResolvedValue({ activa: false, motivo: "sin_configurar" });
   rows.set(schema.agentProfile, [{ name: "Asistente", instructions: null, enabled: false }]);
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -60,7 +52,6 @@ describe("una instancia recién instalada", () => {
     expect(status.enabled).toBe(false);
     expect(status.steps.map((s) => [s.key, s.status])).toEqual([
       ["profile", "pending"],
-      ["ai", "pending"],
       ["whatsapp", "pending"],
       ["brain", "pending"],
       ["calendar", "not_applicable"],
@@ -74,7 +65,6 @@ describe("una instancia recién instalada", () => {
     const status = await onboardingStatus("org_1", db);
     expect(status.steps.map((s) => s.href)).toEqual([
       "/agent",
-      "/settings/ai",
       "/settings/whatsapp",
       null,
       null,
@@ -137,21 +127,6 @@ describe("paso 1: el agente", () => {
   it("`enabled` sale del mismo perfil", async () => {
     rows.set(schema.agentProfile, [{ name: "Sofi", instructions: "x", enabled: true }]);
     expect((await onboardingStatus("org_1", db)).enabled).toBe(true);
-  });
-});
-
-describe("paso 2: el proveedor de IA (080: solo la llave de Aliantis)", () => {
-  it("con la llave del entorno, listo", async () => {
-    estadoIaDe.mockResolvedValue({ activa: true, origen: "env", last4: "abcd" });
-    const step = await paso("ai");
-    expect(step).toMatchObject({ status: "ready", problem: null });
-    expect(step?.nextAction).toMatch(/Aliantis/);
-  });
-
-  it("sin llave, pendiente y sin «problema» (no hay llave del dueño que falle)", async () => {
-    estadoIaDe.mockResolvedValue({ activa: false, motivo: "sin_configurar" });
-    const step = await paso("ai");
-    expect(step).toMatchObject({ status: "pending", problem: null });
   });
 });
 
@@ -246,5 +221,13 @@ describe("verifyCalendar (pura)", () => {
     expect(verifyCalendar({ connector: "otro", weeklyHours: HORAS })).toBe("unsupported");
     // Sin horarios manda lo pendiente, aunque el conector sea desconocido.
     expect(verifyCalendar({ connector: "otro", weeklyHours: {} })).toBe("pending");
+  });
+});
+
+describe("080 — sin paso de IA", () => {
+  it("ningún paso habla de la IA ni lleva a Ajustes → IA", async () => {
+    const status = await onboardingStatus("org_1", db);
+    expect(status.steps.map((s) => s.key)).not.toContain("ai");
+    expect(status.steps.map((s) => s.href)).not.toContain("/settings/ai");
   });
 });

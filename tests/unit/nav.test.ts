@@ -61,8 +61,8 @@ describe("barra lateral agrupada", () => {
     expect(isNavActive("/inbox/cv_123", "/inbox")).toBe(true);
     expect(isNavActive("/inbox", "/inbox")).toBe(true);
     expect(isNavActive("/inboxes", "/inbox")).toBe(false);
-    expect(isNavActive("/settings/ai", "/settings")).toBe(true);
-    expect(isNavActive("/settings/ai", "/agent")).toBe(false);
+    expect(isNavActive("/settings/team", "/settings")).toBe(true);
+    expect(isNavActive("/settings/team", "/agent")).toBe(false);
   });
 });
 
@@ -70,12 +70,11 @@ describe("ajustes en tres secciones", () => {
   const links = (s: { title: string; links: { label: string }[] }[]) =>
     Object.fromEntries(s.map((x) => [x.title, x.links.map((l) => l.label)]));
 
-  it("con todo apagado: Canales, Agente y Negocio con lo mínimo", () => {
+  it("con todo apagado: Canales y Negocio (Agente sin enlaces no se muestra; 080 sin «IA»)", () => {
     const sections = settingsSections({});
-    expect(sections.map((s) => s.title)).toEqual(["Canales", "Agente", "Negocio"]);
+    expect(sections.map((s) => s.title)).toEqual(["Canales", "Negocio"]);
     expect(links(sections)).toEqual({
       Canales: ["WhatsApp"],
-      Agente: ["IA"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo"],
     });
   });
@@ -84,7 +83,6 @@ describe("ajustes en tres secciones", () => {
     // 023: con un canal social, "Estado" abre la sección.
     expect(links(settingsSections({ messenger: true }))).toEqual({
       Canales: ["Estado", "WhatsApp", "Messenger"],
-      Agente: ["IA"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo"],
     });
     expect(links(settingsSections({ instagram: true })).Canales).toEqual([
@@ -97,12 +95,11 @@ describe("ajustes en tres secciones", () => {
     ).toEqual(["Estado", "WhatsApp", "Instagram", "Messenger", "TikTok"]);
     expect(links(settingsSections({ agenda: true }))).toEqual({
       Canales: ["WhatsApp"],
-      Agente: ["IA", "Agenda"],
+      Agente: ["Agenda"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo"],
     });
     expect(links(settingsSections({ atribucion: true }))).toEqual({
       Canales: ["WhatsApp"],
-      Agente: ["IA"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo", "Anuncios"],
     });
   });
@@ -125,7 +122,6 @@ describe("ajustes en tres secciones", () => {
         "/settings/instagram",
         "/settings/messenger",
         "/settings/tiktok",
-        "/settings/ai",
         "/settings/calendar",
         "/settings/branding",
         "/settings/appearance",
@@ -143,5 +139,14 @@ describe("ajustes en tres secciones", () => {
       .map((l) => l.href);
     expect(hrefs).not.toContain("/lab");
     expect(appNavGroups({ role: "owner" }).flatMap((g) => g.items).map((i) => i.href)).toContain("/lab");
+  });
+});
+
+describe("080 — Ajustes → IA salió del negocio", () => {
+  it("ninguna combinación de banderas enlaza /settings/ai", () => {
+    for (const flags of [{}, { agenda: true, atribucion: true, instagram: true, messenger: true, tiktok: true }]) {
+      const hrefs = settingsSections(flags).flatMap((s) => s.links.map((l) => l.href));
+      expect(hrefs).not.toContain("/settings/ai");
+    }
   });
 });

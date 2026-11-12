@@ -3,7 +3,7 @@
   "info": {
     "title": "Vocero CRM — API de servicio del cerebro",
     "version": "2.0.0",
-    "description": "El contrato entre Vocero CRM y su cerebro (Nea u otro). Dos mitades: el CRM le DESPACHA a tu cerebro cada ráfaga del cliente (sección `webhooks`), y tu cerebro contesta por `/api/bot/*` (sección `paths`).\n\nRegla de versión: agregar una llave o una ruta cabe en cualquier versión; quitar o renombrar una es una versión mayor. Ignora las llaves que no conozcas.\n\nCambios de contrato de la 2.0: `POST /api/bot/llm/{ruta}` y `llm` en el perfil (036); `adOrigen` en el contexto (031); `fileName`, `location` y `contacts` en los mensajes del despacho (031); `conversation.test` en el despacho y `/api/bot/messages` guardando las respuestas de prueba (033); `role` y `tools` en el perfil (034); `POST /api/bot/stage`, `lead.nextStages` en el contexto y la herramienta `etapa` (038).\n\nLa forma exacta del despacho y del aviso de olvido está fijada byte a byte en pruebas gemelas de los dos repositorios: `tests/unit/despacho-contrato.test.ts` y `tests/unit/olvido-contrato.test.ts` aquí, `tests/test_despacho_raiz.py` y `tests/test_olvido.py` en nea-agent. Guía de migración: `docs/migrar-a-2.0.md`.",
+    "description": "El contrato entre Vocero CRM y su cerebro (Nea u otro). Dos mitades: el CRM le DESPACHA a tu cerebro cada ráfaga del cliente (sección `webhooks`), y tu cerebro contesta por `/api/bot/*` (sección `paths`).\n\nRegla de versión: agregar una llave o una ruta cabe en cualquier versión; quitar o renombrar una es una versión mayor. Ignora las llaves que no conozcas.\n\nCambios de contrato de la 2.0: `POST /api/bot/llm/{ruta}` y `llm` en el perfil (036; apagado en 080: 404 `proxy_apagado` y `llm: null`); `adOrigen` en el contexto (031); `fileName`, `location` y `contacts` en los mensajes del despacho (031); `conversation.test` en el despacho y `/api/bot/messages` guardando las respuestas de prueba (033); `role` y `tools` en el perfil (034); `POST /api/bot/stage`, `lead.nextStages` en el contexto y la herramienta `etapa` (038).\n\nLa forma exacta del despacho y del aviso de olvido está fijada byte a byte en pruebas gemelas de los dos repositorios: `tests/unit/despacho-contrato.test.ts` y `tests/unit/olvido-contrato.test.ts` aquí, `tests/test_despacho_raiz.py` y `tests/test_olvido.py` en nea-agent. Guía de migración: `docs/migrar-a-2.0.md`.",
     "license": { "name": "MIT" }
   },
   "servers": [{ "url": "https://tu-crm.example.com" }],
@@ -109,19 +109,14 @@
     },
     "/api/bot/llm/{ruta}": {
       "post": {
-        "summary": "El CRM piensa por el cerebro (proxy compatible con OpenAI)",
-        "description": "036 — Apunta el `base_url` de tu cliente de OpenAI a `{CRM}/api/bot/llm` con `BOT_API_KEY` como llave: el SDK llama a `/api/bot/llm/chat/completions`. El CRM reenvía el cuerpo TAL CUAL al proveedor de Ajustes → IA (o `OPENROUTER_*` de respaldo) con la llave del negocio y devuelve la respuesta del proveedor tal cual, con su código. La llave de IA nunca sale del CRM. Un 401 o 402 del proveedor pausa la llave en Ajustes → IA. Usa el modelo que dice `llm.model` del perfil.",
-        "security": [{ "botKey": [] }, { "botBearer": [] }],
+        "summary": "Apagado: el proxy de IA del CRM",
+        "deprecated": true,
+        "description": "080 (P7 de Aliantis) — APAGADO. Antes (036) el CRM reenviaba aquí el cuerpo al proveedor de IA con la llave del negocio. La llave de IA ahora es de Aliantis (D20, D3) y el proxy sería gasto sin tope y sin los proveedores fijos, así que responde siempre 404 `proxy_apagado` sin llamar a nadie. El cerebro piensa con su propia llave; `llm` del perfil es siempre `null`.",
         "parameters": [
-          { "name": "ruta", "in": "path", "required": true, "description": "Lo que el SDK añade a su `base_url`: `chat/completions` hoy. Comodín: puede llevar `/`.", "schema": { "type": "string" }, "examples": { "chat": { "value": "chat/completions" } } }
+          { "name": "ruta", "in": "path", "required": true, "description": "Cualquiera: la respuesta es la misma.", "schema": { "type": "string" } }
         ],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "description": "El cuerpo de la API del proveedor (OpenAI-compatible). El CRM no lo interpreta." } } } },
         "responses": {
-          "200": { "description": "La respuesta del proveedor, tal cual. Cualquier otro código del proveedor (400, 401, 429…) también pasa tal cual." },
-          "401": { "description": "Sin `BOT_API_KEY` válida (o el proveedor rechazó la llave del negocio: la respuesta es la suya y la llave queda pausada)." },
-          "402": { "description": "`sin_credencial`: no hay proveedor de IA configurado, o la llave está pausada. El cerebro no tiene con qué pensar.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "409": { "$ref": "#/components/responses/SinOrganizacion" },
-          "504": { "description": "`proveedor_sin_respuesta`: el proveedor no contestó en 120 s o no se pudo hablar con él. No pausa la llave.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "404": { "description": "`proxy_apagado`: el proxy está apagado.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
@@ -286,7 +281,7 @@
   "components": {
     "securitySchemes": {
       "botKey": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "073 — La credencial derivada del negocio: `base64url_sin_relleno(HMAC-SHA256(BOT_API_KEY, \"vocero:cerebro:v1:\" + org_id))`, con la cabecera `X-Vocero-Organization: <org id>`. La credencial de otro negocio, o la `BOT_API_KEY` cruda con cabecera, da 401; un negocio que no existe, 401. Sin la cabecera, la `BOT_API_KEY` cruda solo vale si la instalación tiene un negocio (compatibilidad); con dos o más, `409 organizacion_requerida`. La `BOT_API_KEY` es también la llave con que el CRM firma el despacho. Presupuesto: 1200 llamadas por minuto por negocio." },
-      "botBearer": { "type": "http", "scheme": "bearer", "description": "036 — La misma `BOT_API_KEY`, como `Authorization: Bearer`: es lo que manda el SDK de OpenAI que apunta su `base_url` a `/api/bot/llm`. Vale en todas las rutas de `/api/bot/*`." }
+      "botBearer": { "type": "http", "scheme": "bearer", "description": "036 — La misma `BOT_API_KEY`, como `Authorization: Bearer` (lo que manda un SDK compatible con OpenAI). Vale en todas las rutas de `/api/bot/*`." }
     },
     "responses": {
       "NoEncontrada": { "description": "No existe la conversación.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
@@ -317,7 +312,7 @@
           "kb": { "type": "string" },
           "resources": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "url": { "type": "string" } } } },
           "llm": {
-            "description": "036 — Con qué piensa un cerebro sin llave propia: `path` es el proxy (`/api/bot/llm`) y `model`, el modelo que eligió el negocio en Ajustes → IA. `null` sin proveedor de IA configurado o con la llave pausada.",
+            "description": "036 — Con qué piensa un cerebro sin llave propia. 080 (P7): el proxy `/api/bot/llm` está apagado, así que es siempre `null`; la llave se queda en el contrato para no romper a quien la lee. El cerebro piensa con su propia llave.",
             "oneOf": [
               { "type": "object", "required": ["path", "model"], "properties": { "path": { "type": "string", "examples": ["/api/bot/llm"] }, "model": { "type": "string", "examples": ["openai/gpt-4o-mini"] } } },
               { "type": "null" }

@@ -12,8 +12,9 @@ type InMessage = { role: string; content: string };
 /**
  * Sufijos de la llave que el mock rechaza, con el código que daría el
  * proveedor real: `-invalid` → 401 (llave rechazada) y `-sin-saldo` → 402.
- * Es lo que permite ejercitar la pausa de Ajustes → IA en el self-test sin
- * un proveedor de verdad. Cualquier otra llave se acepta.
+ * Es lo que permite ejercitar un proveedor que rechaza la llave sin uno de
+ * verdad (080: el caso queda `judge_failed`, nada se pausa). Cualquier otra
+ * llave se acepta.
  */
 export function aiMockAuthFailure(
   authorization: string | null

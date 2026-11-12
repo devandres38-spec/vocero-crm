@@ -89,8 +89,8 @@ export const SIN_DESPACHO: BrainDispatchDto = {
 export type BrainStatusDto = {
   /** 036 — El interruptor del Agente: el CRM le despacha al cerebro. */
   enabled: boolean;
-  /** Hay con qué pensar: la llave de Ajustes → IA (o `OPENROUTER_API_TOKEN`
-   *  de respaldo), que el cerebro usa por `/api/bot/llm`. */
+  /** 080 — Está la llave de IA de Aliantis (`OPENROUTER_API_TOKEN`), la del
+   *  juez del Laboratorio. El cerebro piensa con la suya: no lo afecta. */
   aiConfigured: boolean;
   external: {
     /** `BOT_API_KEY` válida: la API `/api/bot/*` está abierta. */

@@ -75,9 +75,3 @@ export async function estadoIaDe(): Promise<EstadoIa> {
 export async function isAiConfiguredFor(): Promise<boolean> {
   return (await estadoIaDe()).activa;
 }
-
-/** El mensaje que ve el dueño cuando el Laboratorio no tiene con qué juzgar. */
-export function mensajeDeEstado(estado: EstadoIa): string | null {
-  if (estado.activa) return null;
-  return "El Laboratorio no está disponible ahora. Avísale a Aliantis.";
-}

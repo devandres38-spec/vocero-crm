@@ -175,5 +175,7 @@ describe("GET /api/bot/profile (ruta, DB fake)", () => {
     expect(body.profile.name).toBe("Sofi");
     expect(body.kb).toBe("P: ¿Cuánto?\nR: $800.");
     expect(body.resources).toEqual([]);
+    // 080 (P7) — El proxy está apagado: el perfil no lo anuncia.
+    expect(body.llm).toBeNull();
   });
 });

@@ -1,7 +1,6 @@
-import { AiClient } from "@/components/settings/ai-client";
+import { notFound } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
+/** 080 (D3, N9) — Ajustes → IA salió del negocio: la llave es de Aliantis. */
 export default function AiSettingsPage() {
-  return <AiClient />;
+  notFound();
 }

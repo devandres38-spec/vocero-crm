@@ -42,10 +42,6 @@ vi.mock("@/lib/auth/session", () => ({
   requireSession: async () => ({ userId: "usr_1", organizationId: "org_1", role: h.rol }),
   getSessionOrNull: async () => ({ userId: "usr_1", organizationId: "org_1", role: h.rol }),
 }));
-vi.mock("@/lib/ai/provider", () => ({
-  estadoIaDe: async () => ({ activa: true }),
-  mensajeDeEstado: () => null,
-}));
 
 import { GET, PUT } from "@/app/api/agent/profile/route";
 

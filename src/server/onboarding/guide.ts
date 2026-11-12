@@ -56,7 +56,6 @@ export function guideFrom(status: OnboardingStatus): Guide {
   const step = (key: ReadinessStep["key"]) =>
     status.steps.find((s) => s.key === key);
   const profile = step("profile");
-  const ai = step("ai");
   const whatsapp = step("whatsapp");
   const calendar = step("calendar");
   const brain = step("brain");
@@ -71,16 +70,6 @@ export function guideFrom(status: OnboardingStatus): Guide {
       href: "/agent",
       cta: "Ir a Agente",
       hint: ready(profile) ? null : (profile?.nextAction ?? null),
-    },
-    {
-      key: "ai",
-      title: "Vincula tu proveedor de IA",
-      description:
-        "Es la cuenta con la que tu agente piensa: OpenRouter o cualquier proveedor compatible con la API de OpenAI. La creas y la pagas tú; aquí solo pegas la llave y eliges el modelo.",
-      done: ready(ai),
-      href: "/settings/ai",
-      cta: "Vincular proveedor",
-      hint: ai?.problem ?? null,
     },
     {
       key: "whatsapp",
