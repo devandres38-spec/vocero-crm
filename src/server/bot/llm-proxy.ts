@@ -1,6 +1,5 @@
 import { apiRoot } from "@/lib/ai/presets";
 import { resolveAiProvider } from "@/lib/ai/provider";
-import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
 
 /**
  * 036 — El CRM piensa por el cerebro (`POST /api/bot/llm/{ruta}`).
@@ -36,16 +35,13 @@ export async function pensarPorElCerebro(input: {
   cuerpoCrudo: string;
   contentType: string | null;
 }): Promise<ResultadoProxy> {
-  const r = await resolveAiProvider(input.organizationId);
+  const r = await resolveAiProvider();
   if (!r.ok) {
     return {
       ok: false,
       status: 402,
       code: "sin_credencial",
-      message:
-        r.estado.motivo === "sin_configurar"
-          ? "No hay proveedor de IA configurado. Ponlo en Ajustes → IA."
-          : "La llave de IA está pausada (el proveedor la rechazó). Revísala en Ajustes → IA.",
+      message: "No hay llave de IA de Aliantis en el entorno.",
     };
   }
   const { provider } = r;
@@ -64,15 +60,6 @@ export async function pensarPorElCerebro(input: {
       signal: controller.signal,
     });
     const cuerpo = await res.text();
-
-    // El estado de la credencial lo dicta quien cobra. El respaldo del
-    // entorno no tiene fila que pausar. `.catch`: un fallo al escribir el
-    // estado no convierte la respuesta del proveedor en un error.
-    if (!res.ok && provider.source === "org") {
-      await marcarEstadoPorRespuesta(input.organizationId, res.status, cuerpo.slice(0, 200)).catch(
-        () => {}
-      );
-    }
 
     return {
       ok: true,

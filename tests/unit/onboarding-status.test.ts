@@ -140,39 +140,18 @@ describe("paso 1: el agente", () => {
   });
 });
 
-describe("paso 2: el proveedor de IA (la fila manda, el entorno es respaldo)", () => {
-  it("la llave guardada en Ajustes → IA lo deja listo", async () => {
-    estadoIaDe.mockResolvedValue({ activa: true, origen: "org", last4: "abcd" });
-    const step = await paso("ai");
-    expect(step).toMatchObject({ status: "ready", problem: null });
-    expect(step?.nextAction).toMatch(/Ajustes/);
-  });
-
-  it("sin fila, OPENROUTER_* del entorno también cuenta", async () => {
+describe("paso 2: el proveedor de IA (080: solo la llave de Aliantis)", () => {
+  it("con la llave del entorno, listo", async () => {
     estadoIaDe.mockResolvedValue({ activa: true, origen: "env", last4: "abcd" });
     const step = await paso("ai");
-    expect(step?.status).toBe("ready");
-    expect(step?.nextAction).toMatch(/entorno/);
+    expect(step).toMatchObject({ status: "ready", problem: null });
+    expect(step?.nextAction).toMatch(/Aliantis/);
   });
 
-  it("una llave pausada NO está lista y el problema se dice (rechazada o sin saldo)", async () => {
-    estadoIaDe.mockResolvedValue({
-      activa: false,
-      motivo: "token_invalido",
-      last4: "abcd",
-      desde: null,
-    });
-    const rechazada = await paso("ai");
-    expect(rechazada?.status).toBe("pending");
-    expect(rechazada?.problem).toMatch(/rechazó/);
-
-    estadoIaDe.mockResolvedValue({
-      activa: false,
-      motivo: "sin_saldo",
-      last4: "abcd",
-      desde: null,
-    });
-    expect((await paso("ai"))?.problem).toMatch(/saldo/);
+  it("sin llave, pendiente y sin «problema» (no hay llave del dueño que falle)", async () => {
+    estadoIaDe.mockResolvedValue({ activa: false, motivo: "sin_configurar" });
+    const step = await paso("ai");
+    expect(step).toMatchObject({ status: "pending", problem: null });
   });
 });
 

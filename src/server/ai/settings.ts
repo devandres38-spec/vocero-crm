@@ -122,7 +122,7 @@ export type AiSettingsView = {
     desde: string | null;
     actualizado: string;
   } | null;
-  /** Lo que resuelve el adaptador ahora mismo (fila, y si no, entorno). */
+  /** Lo que resuelve el adaptador ahora mismo (080: solo el entorno). */
   activa: boolean;
   origen: "org" | "env" | null;
   mensaje: string | null;
@@ -151,7 +151,7 @@ export async function vistaAjustesIa(
 ): Promise<AiSettingsView> {
   const [cred, estado] = await Promise.all([
     getAiCredentialPublic(organizationId),
-    estadoIaDe(organizationId),
+    estadoIaDe(),
   ]);
   return armarVista(cred, estado);
 }

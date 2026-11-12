@@ -3,10 +3,10 @@ import type { AiResolution } from "@/lib/ai/provider";
 
 /**
  * 036 — `POST /api/bot/llm/{ruta}`: el CRM piensa por el cerebro con la llave
- * de Ajustes → IA. Lo que se protege: que solo entre quien trae `BOT_API_KEY`
+ * del entorno. Lo que se protege: que solo entre quien trae `BOT_API_KEY`
  * (también como Bearer, que es lo que manda el SDK), que el cuerpo y la
- * respuesta viajen tal cual, que el 401/402 del proveedor pause la llave del
- * negocio, y que la llave de IA no vuelva nunca al cerebro.
+ * respuesta viajen tal cual, que nada escriba en `ai_credentials` (080), y que
+ * la llave de IA no vuelva nunca al cerebro. T6 de 080 apaga el proxy.
  */
 
 const LLAVE_BOT = "b".repeat(32);
@@ -25,9 +25,9 @@ vi.mock("@/server/bot/organizaciones", () => ({
 import { POST } from "@/app/api/bot/llm/[...ruta]/route";
 import { resetRateLimit } from "@/lib/rate-limit";
 
-const PROVEEDOR = (source: "org" | "env" = "org"): AiResolution => ({
+const PROVEEDOR = (): AiResolution => ({
   ok: true,
-  provider: { source, baseUrl: "https://proveedor.test/api", model: "m/uno", judgeModel: "m/uno", token: LLAVE_IA },
+  provider: { source: "env", baseUrl: "https://proveedor.test/api", model: "m/uno", judgeModel: "m/uno", token: LLAVE_IA },
 });
 
 const CUERPO = JSON.stringify({ model: "m/uno", messages: [{ role: "user", content: "hola" }], extra: { x: 1 } });
@@ -97,18 +97,12 @@ describe("/api/bot/llm — el reenvío", () => {
     fetchMock.mockResolvedValue(new Response('{"error":"lento"}', { status: 429 }));
     const res = await peticion({ authorization: `Bearer ${LLAVE_BOT}` });
     expect(res.status).toBe(429);
-    expect(marcarEstadoPorRespuesta).toHaveBeenCalledWith("org_1", 429, '{"error":"lento"}');
+    expect(marcarEstadoPorRespuesta).not.toHaveBeenCalled();
   });
 
-  it("un 401 del proveedor llega a la función que pausa la llave del negocio", async () => {
+  it("un 401 o 402 del proveedor pasa tal cual y no pausa nada (080)", async () => {
     fetchMock.mockResolvedValue(new Response('{"error":"bad key"}', { status: 401 }));
-    const res = await peticion({ authorization: `Bearer ${LLAVE_BOT}` });
-    expect(res.status).toBe(401);
-    expect(marcarEstadoPorRespuesta).toHaveBeenCalledWith("org_1", 401, '{"error":"bad key"}');
-  });
-
-  it("con el respaldo del entorno no hay fila que pausar", async () => {
-    resolveAiProvider.mockResolvedValue(PROVEEDOR("env"));
+    expect((await peticion({ authorization: `Bearer ${LLAVE_BOT}` })).status).toBe(401);
     fetchMock.mockResolvedValue(new Response("{}", { status: 402 }));
     expect((await peticion({ authorization: `Bearer ${LLAVE_BOT}` })).status).toBe(402);
     expect(marcarEstadoPorRespuesta).not.toHaveBeenCalled();
@@ -120,16 +114,6 @@ describe("/api/bot/llm — el reenvío", () => {
     expect(res.status).toBe(402);
     expect((await res.json()).error.code).toBe("sin_credencial");
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("con la llave pausada → 402 sin_credencial que dice que está pausada", async () => {
-    resolveAiProvider.mockResolvedValue({
-      ok: false,
-      estado: { activa: false, motivo: "sin_saldo", last4: "9f3a", desde: null },
-    });
-    const res = await peticion({ authorization: `Bearer ${LLAVE_BOT}` });
-    expect(res.status).toBe(402);
-    expect((await res.json()).error.message).toMatch(/pausada/);
   });
 
   it("si el proveedor no contesta → 504 proveedor_sin_respuesta y NO pausa", async () => {

@@ -26,7 +26,7 @@ export const GET = withAuth(async (session) => {
     .limit(1);
   const p = rows[0];
   if (!p) return apiError(404, "not_found", "Perfil del agente no encontrado");
-  const estado = await estadoIaDe(session.organizationId);
+  const estado = await estadoIaDe();
   return Response.json({
     profile: {
       enabled: p.enabled,

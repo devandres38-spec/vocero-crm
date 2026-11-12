@@ -39,7 +39,7 @@ async function getSinNegocio(req: Request) {
     .orderBy(asc(schema.kbEntry.createdAt));
 
   // 036 — Con qué piensa el cerebro que no trae llave: el proxy del CRM.
-  const ia = await resolveAiProvider(organizationId);
+  const ia = await resolveAiProvider();
   const llm: BotLlm = ia.ok && ia.provider.model ? { path: "/api/bot/llm", model: ia.provider.model } : null;
 
   return Response.json(serializeBotProfile(profile, kb, llm));

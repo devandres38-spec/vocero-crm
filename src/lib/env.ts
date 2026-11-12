@@ -158,9 +158,8 @@ export function isMockEnabled(): boolean {
 
 /**
  * true si el ENTORNO trae proveedor de IA (`OPENROUTER_API_TOKEN` presente y
- * no vacío). Es solo el respaldo: lo que decide si una organización tiene IA
- * es `isAiConfiguredFor()` en `lib/ai/provider.ts`, que mira primero lo
- * guardado en Ajustes → IA.
+ * no vacío). Desde 080 es la única llave de Vocero (la de Aliantis): Ajustes
+ * → IA ya no cuenta (ver `lib/ai/provider.ts`).
  */
 export function isAiConfiguredByEnv(): boolean {
   const token = process.env.OPENROUTER_API_TOKEN;

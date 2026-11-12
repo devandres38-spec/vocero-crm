@@ -28,8 +28,6 @@ export type JudgeOutcome =
  * visible en el reporte y excluido del score. La corrida continúa.
  */
 export async function judgeCase(input: {
-  /** De quién es la configuración de IA con la que juzga. */
-  organizationId: string;
   personaKey: string;
   transcript: { role: "cliente" | "agente" | "sistema"; text: string }[];
   kbText: string;
@@ -47,7 +45,8 @@ export async function judgeCase(input: {
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { judge: true, organizationId: input.organizationId }
+    // Con la llave de Aliantis y los proveedores fijos (080, D20).
+    { judge: true }
   );
   if (!result.ok) {
     // Diagnóstico operativo: el caso queda visible como judge_failed y aquí

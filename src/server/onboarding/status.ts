@@ -1,6 +1,6 @@
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
+import { estadoIaDe } from "@/lib/ai/provider";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { verifyCalendar } from "./calendar-verifiers";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
@@ -74,7 +74,7 @@ export async function onboardingStatus(
     .from(schema.metaCredentials)
     .where(scoped(schema.metaCredentials.organizationId, organizationId))
     .limit(1);
-  const ia = await estadoIaDe(organizationId);
+  const ia = await estadoIaDe();
 
   const steps: ReadinessStep[] = [
     pasoPerfil(profile, Boolean(kb)),
@@ -83,17 +83,12 @@ export async function onboardingStatus(
       label: "Proveedor de IA",
       status: ia.activa ? "ready" : "pending",
       nextAction: ia.activa
-        ? ia.origen === "org"
-          ? "Llave guardada en Ajustes → IA"
-          : "Respaldo del entorno (OPENROUTER_*)"
+        ? "La llave de IA es de Aliantis"
         : "Pega la llave de tu proveedor y elige el modelo en Ajustes → IA",
       href: "/settings/ai",
-      // «Sin configurar» es lo obvio del paso; lo que sí hay que decir es por
-      // qué una llave que el dueño YA pegó no sirve.
-      problem:
-        !ia.activa && ia.motivo !== "sin_configurar"
-          ? mensajeDeEstado(ia)
-          : null,
+      // 080: la única llave es la del entorno; no hay llave del dueño que
+      // pueda fallar, así que no hay «problema» que decir. T6 quita el paso.
+      problem: null,
     },
     {
       key: "whatsapp",

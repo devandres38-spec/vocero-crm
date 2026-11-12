@@ -9,8 +9,9 @@ import {
 } from "@/lib/ai/presets";
 import {
   envAiProvider,
-  interpretarCredencial,
+  estadoIaDe,
   mensajeDeEstado,
+  resolveAiProvider,
   resolver,
   type AiProvider,
 } from "@/lib/ai/provider";
@@ -21,25 +22,29 @@ import {
   aiSettingsPutSchema,
   baseUrlEfectiva,
 } from "@/server/ai/settings";
-import type { AiCredentialSecret } from "@/server/ai/credentials";
 
 /**
- * #85 — Ajustes → IA. Las reglas puras: con quién habla el adaptador (la fila
- * manda, el entorno es respaldo), qué hace cada código del proveedor con el
- * estado, y qué acepta el `PUT`.
+ * 080 — La llave de IA es la de Aliantis, solo del entorno (D20, D3): la fila
+ * de `ai_credentials` ya no se consulta. Más las reglas puras que aún viven en
+ * Ajustes → IA hasta que T6 la saque del negocio.
  */
 
-const FILA: AiCredentialSecret = {
-  provider: "openrouter",
-  baseUrl: OPENROUTER_BASE_URL,
-  model: "org/modelo",
-  tokenLast4: "1234",
-  status: "active",
-  statusReason: null,
-  statusChangedAt: new Date("2026-10-01T00:00:00Z"),
-  updatedAt: new Date("2026-10-01T00:00:00Z"),
-  token: "sk-or-fila-1234",
-};
+/** Si el proveedor tocara la fila, esta prueba lo vería. */
+const consultas = vi.hoisted(() => ({ fila: 0 }));
+vi.mock("@/server/ai/credentials", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/server/ai/credentials")>();
+  return {
+    ...original,
+    getAiCredentialSecret: async () => {
+      consultas.fila++;
+      return null;
+    },
+    getAiCredentialPublic: async () => {
+      consultas.fila++;
+      return null;
+    },
+  };
+});
 
 const ENTORNO: AiProvider = {
   source: "env",
@@ -72,65 +77,22 @@ describe("URLs del proveedor", () => {
   });
 });
 
-describe("resolución: la fila manda, el entorno es respaldo", () => {
-  it("fila activa → la fila, aunque el entorno tenga su propio token", () => {
-    const r = resolver(FILA, ENTORNO);
-    expect(r.ok).toBe(true);
-    if (r.ok) {
-      expect(r.provider.source).toBe("org");
-      expect(r.provider.token).toBe(FILA.token);
-      expect(r.provider.model).toBe("org/modelo");
-      // Un solo modelo en la UI: el juez usa el mismo.
-      expect(r.provider.judgeModel).toBe("org/modelo");
-    }
-  });
-
-  it("sin fila → el entorno tal cual (con su juez aparte)", () => {
-    const r = resolver(null, ENTORNO);
+describe("resolución: solo la llave del entorno (080, P4)", () => {
+  it("con entorno → el entorno tal cual (con su juez aparte)", () => {
+    const r = resolver(ENTORNO);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.provider).toEqual(ENTORNO);
   });
 
-  it("sin nada → no configurado", () => {
-    const r = resolver(null, null);
-    expect(r).toEqual({ ok: false, estado: { activa: false, motivo: "sin_configurar" } });
-  });
-
-  it("fila pausada NO cae al entorno: el dueño configuró su llave y debe ver el problema", () => {
-    const r = resolver({ ...FILA, status: "paused_invalid_token" }, ENTORNO);
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.estado).toEqual({
-        activa: false,
-        motivo: "token_invalido",
-        last4: "1234",
-        desde: FILA.statusChangedAt,
-      });
-    }
-    const sinSaldo = resolver({ ...FILA, status: "paused_no_credit" }, null);
-    expect(sinSaldo.ok).toBe(false);
-    if (!sinSaldo.ok) expect(sinSaldo.estado.motivo).toBe("sin_saldo");
-  });
-
-  it("interpretarCredencial distingue el origen", () => {
-    expect(interpretarCredencial(FILA, { last4: "9999" })).toEqual({
-      activa: true,
-      origen: "org",
-      last4: "1234",
-    });
-    expect(interpretarCredencial(null, { last4: "9999" })).toEqual({
-      activa: true,
-      origen: "env",
-      last4: "9999",
-    });
-    expect(interpretarCredencial(null, null)).toEqual({
-      activa: false,
-      motivo: "sin_configurar",
+  it("sin entorno → no configurado", () => {
+    expect(resolver(null)).toEqual({
+      ok: false,
+      estado: { activa: false, motivo: "sin_configurar" },
     });
   });
 });
 
-describe("la máquina de estados la dicta quien cobra", () => {
+describe("la máquina de estados de la vieja fila (solo Ajustes → IA)", () => {
   it("401 pausa por llave, 402 por saldo; 429 y 500 no pausan", () => {
     expect(estadoSegunRespuesta(401)).toBe("paused_invalid_token");
     expect(estadoSegunRespuesta(402)).toBe("paused_no_credit");
@@ -139,15 +101,11 @@ describe("la máquina de estados la dicta quien cobra", () => {
     expect(estadoSegunRespuesta(200)).toBeNull();
   });
 
-  it("cada motivo manda a Ajustes → IA; activa no dice nada", () => {
-    expect(mensajeDeEstado({ activa: true, origen: "org", last4: "1234" })).toBeNull();
-    for (const motivo of ["sin_configurar", "token_invalido", "sin_saldo"] as const) {
-      const estado =
-        motivo === "sin_configurar"
-          ? { activa: false as const, motivo }
-          : { activa: false as const, motivo, last4: "1234", desde: null };
-      expect(mensajeDeEstado(estado)).toContain("Ajustes → IA");
-    }
+  it("sin llave, el mensaje manda a Aliantis y no a Ajustes → IA; activa no dice nada", () => {
+    expect(mensajeDeEstado({ activa: true, origen: "env", last4: "1234" })).toBeNull();
+    const m = mensajeDeEstado({ activa: false, motivo: "sin_configurar" });
+    expect(m).toContain("Aliantis");
+    expect(m).not.toContain("Ajustes");
   });
 });
 
@@ -221,7 +179,7 @@ describe("validación del PUT /api/settings/ai", () => {
   });
 });
 
-describe("el respaldo del entorno", () => {
+describe("la llave del entorno", () => {
   const original = { ...process.env };
 
   beforeAll(() => {
@@ -253,5 +211,23 @@ describe("el respaldo del entorno", () => {
       judgeModel: "env/modelo",
       token: "tok-entorno-9999",
     });
+  });
+
+  it("resolveAiProvider y estadoIaDe usan el entorno y no consultan la fila", async () => {
+    vi.stubEnv("OPENROUTER_API_TOKEN", "tok-entorno-9999");
+    vi.stubEnv("OPENROUTER_MODEL", "env/modelo");
+    consultas.fila = 0;
+    const r = await resolveAiProvider();
+    expect(r.ok && r.provider.token).toBe("tok-entorno-9999");
+    expect(await estadoIaDe()).toEqual({ activa: true, origen: "env", last4: "9999" });
+    expect(consultas.fila).toBe(0);
+  });
+
+  it("sin entorno → sin configurar, aunque hubiera fila guardada", async () => {
+    vi.stubEnv("OPENROUTER_API_TOKEN", "");
+    consultas.fila = 0;
+    expect(await estadoIaDe()).toEqual({ activa: false, motivo: "sin_configurar" });
+    expect((await resolveAiProvider()).ok).toBe(false);
+    expect(consultas.fila).toBe(0);
   });
 });

@@ -18,7 +18,7 @@ import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
 export type AvisoIa = { mensaje: string; accion: string } | null;
 
 export async function avisoIaDe(organizationId: string): Promise<AvisoIa> {
-  const estado = await estadoIaDe(organizationId);
+  const estado = await estadoIaDe();
   if (estado.activa) return null;
 
   const db = getDb();
