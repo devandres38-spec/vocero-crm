@@ -12,7 +12,7 @@ import { ContrasenaUnaVez } from "./contrasena-una-vez";
  * nombre escrito como confirmación) y, por cada cuenta del personal,
  * restablecer la contraseña o quitarla (nunca al último dueño).
  */
-async function pedir(url: string, method: "POST" | "DELETE", cuerpo?: unknown) {
+async function pedir(url: string, method: "POST" | "PUT" | "DELETE", cuerpo?: unknown) {
   const r = await fetch(url, {
     method,
     headers: cuerpo ? { "Content-Type": "application/json" } : undefined,
@@ -81,6 +81,49 @@ export function PausarNegocio({ id, nombre, pausado }: { id: string; nombre: str
           Cancelar
         </Button>
       </div>
+    </form>
+  );
+}
+
+/** 080 (D20) — El tope diario del Laboratorio de un negocio, de 0 a 20. */
+export function TopeLaboratorio({ id, tope }: { id: string; tope: number }) {
+  const router = useRouter();
+  const [valor, setValor] = useState(String(tope));
+  const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const n = Number(valor);
+  const valido = valor.trim() !== "" && Number.isInteger(n) && n >= 0 && n <= 20;
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setEnviando(true);
+    const r = await pedir(`/api/admin/negocios/${id}/laboratorio`, "PUT", { tope: n });
+    setEnviando(false);
+    if (!r.ok) return setError(r.mensaje ?? "No se pudo");
+    router.refresh();
+  }
+
+  return (
+    <form onSubmit={guardar} className="flex flex-wrap items-end gap-2">
+      <div className="space-y-1.5">
+        <Label htmlFor="tope-laboratorio">Corridas por día (0 a 20; 0 lo apaga)</Label>
+        <Input
+          id="tope-laboratorio"
+          type="number"
+          inputMode="numeric"
+          min={0}
+          max={20}
+          step={1}
+          className="w-28"
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+        />
+      </div>
+      <Button type="submit" variant="outline" className="min-h-11" disabled={enviando || !valido || n === tope}>
+        Guardar
+      </Button>
+      {error && <p className="w-full text-sm text-destructive">{error}</p>}
     </form>
   );
 }
