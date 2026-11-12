@@ -266,10 +266,8 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     return;
   }
   // 079 — La lista se lee al entregar (el Laboratorio no la necesita).
-  const lista = evento.conversation.test
-    ? null
-    : await leerListaDeNumeros(fila.organizationId);
-  const motivo = motivoDeDescarte(evento, lista);
+  await leerListaDeNumeros(fila.organizationId);
+  const motivo = motivoDeDescarte(evento, null);
   if (motivo) {
     await descartarDespacho(fila, motivo);
     return;
