@@ -253,6 +253,13 @@
       "when": 1794450968961,
       "tag": "0035_etapa_por_eventos",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794462199720,
+      "tag": "0036_solo_numeros",
+      "breakpoints": true
     }
   ]
 }
