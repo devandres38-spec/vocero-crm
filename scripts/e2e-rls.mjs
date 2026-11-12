@@ -619,6 +619,45 @@ async function etapaPorEventos() {
   }
 }
 
+/**
+ * 079 (5.5) — «Solo estos números» vive en agent_profile, bajo su RLS: la
+ * lista de un negocio no se lee ni se cambia desde otro, y la base no deja
+ * guardar más de 50 (CHECK).
+ */
+async function soloNumerosRls() {
+  console.log("\n== 079: la lista de solo estos números ==");
+  for (const org of [A, B]) {
+    await dueno`insert into agent_profile (id, organization_id) values (${`agp_rls_${org}`}, ${org})
+                on conflict (organization_id) do nothing`;
+  }
+  await dueno`update agent_profile set solo_numeros_activo = true, solo_numeros = ${["573001112233"]}
+              where organization_id = ${A}`;
+  const leer = (tx) =>
+    tx`select solo_numeros_activo, solo_numeros from agent_profile where organization_id = ${A}`;
+  const propia = await comoApp(A, leer);
+  ok(
+    "A lee su propia lista",
+    propia?.length === 1 && propia[0].solo_numeros_activo === true && propia[0].solo_numeros[0] === "573001112233",
+    JSON.stringify(propia)
+  );
+  ok("B no lee la lista de A (0 filas)", (await comoApp(B, leer))?.length === 0);
+  ok(
+    "B no cambia la lista de A (0 filas)",
+    (await comoApp(B, async (tx) =>
+      (await tx`update agent_profile set solo_numeros = ${["573009998877"]}
+                 where organization_id = ${A} returning id`).length
+    )) === 0
+  );
+  const [tras] = await dueno`select solo_numeros from agent_profile where organization_id = ${A}`;
+  ok("y la lista de A sigue igual", tras?.solo_numeros?.[0] === "573001112233", JSON.stringify(tras));
+  const muchos = Array.from({ length: 51 }, (_, i) => `5730011${String(i).padStart(5, "0")}`);
+  ok(
+    "más de 50 números: 23514 (CHECK en la base)",
+    (await codigoDe(A, (tx) => tx`update agent_profile set solo_numeros = ${muchos} where organization_id = ${A}`)) ===
+      "23514"
+  );
+}
+
 async function main() {
   const tablas = await catalogo();
   const sembradas = await sembrar(tablas);
@@ -628,6 +667,7 @@ async function main() {
   await funcionesDeSoloIds();
   await panel(tablas);
   await etapaPorEventos();
+  await soloNumerosRls();
 }
 
 main()
