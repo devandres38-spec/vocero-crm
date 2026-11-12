@@ -22,7 +22,7 @@
   - `schema.ts` con `pnpm db:generate`;
   - el guardarraíl de la migración;
   - revisar el `ON DELETE` de las etapas.
-- [ ] T3 **La etapa por evento:**
+- [x] T3 **La etapa por evento:**
   - `moverEtapaPorEvento` en `stage.ts`: `sin_etapa`, `ya_esta`, `prueba`, `ai_paused` y `herramienta_apagada`;
   - `POST /api/bot/stage` con `evento` (`stage` se conserva; los dos a la vez dan 422);
   - `docs/openapi.json`;

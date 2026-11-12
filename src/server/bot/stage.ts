@@ -3,6 +3,7 @@ import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { herramientasEfectivas } from "@/lib/agent-roles";
 import { moveLeadToStage } from "@/server/leads/stage-history";
+import type { EventoEtapa } from "@/lib/eventos-etapa";
 
 /**
  * 038 — El cerebro mueve la etapa del lead (`POST /api/bot/stage`).
@@ -211,4 +212,138 @@ export async function siguientesDelLead(
     .from(schema.pipelineStage)
     .where(scoped(schema.pipelineStage.organizationId, organizationId));
   return etapasSiguientes(stages, currentStageId).map(({ id, name }) => ({ id, name }));
+}
+
+/**
+ * 078 (D18 de Aliantis) — Por qué un evento no movió al lead, sin que sea un
+ * error: el negocio no mapeó ese evento (`sin_etapa`), el lead ya está en esa
+ * etapa o más adelante (`ya_esta`: nunca hacia atrás, nunca reabre un lead
+ * ganado o perdido) o la conversación es del Laboratorio (`prueba`).
+ */
+export type MotivoSinCambio = "sin_etapa" | "ya_esta" | "prueba";
+
+export type ResultadoEvento =
+  | {
+      ok: true;
+      changed: boolean;
+      motivo?: MotivoSinCambio;
+      lead?: { id: string; stageName: string };
+      conversationId: string;
+    }
+  | { ok: false; status: 404; code: "not_found" | "sin_lead"; message: string }
+  | { ok: false; status: 409; code: "ai_paused" | "herramienta_apagada"; message: string };
+
+/**
+ * 078 — El cerebro mueve la etapa por un EVENTO, no por un nombre: el LLM no
+ * elige la etapa (D18). La etapa sale del mapeo del negocio
+ * (`pipeline_stage.evento_bot`, solo abiertas), con las mismas reglas de
+ * `moverEtapaPorElCerebro`: solo hacia adelante, con la herramienta `etapa`
+ * encendida y nunca con una persona atendiendo.
+ */
+export async function moverEtapaPorEvento(input: {
+  organizationId: string;
+  conversationId: string;
+  evento: EventoEtapa;
+}): Promise<ResultadoEvento> {
+  const db = getDb();
+  const { organizationId } = input;
+
+  const convRows = await db
+    .select({
+      id: schema.conversation.id,
+      contactId: schema.conversation.contactId,
+      aiEnabled: schema.conversation.aiEnabled,
+      handoffAt: schema.conversation.handoffAt,
+      isTest: schema.conversation.isTest,
+    })
+    .from(schema.conversation)
+    .where(
+      scoped(
+        schema.conversation.organizationId,
+        organizationId,
+        eq(schema.conversation.id, input.conversationId)
+      )
+    )
+    .limit(1);
+  const conv = convRows[0];
+  if (!conv) {
+    return { ok: false, status: 404, code: "not_found", message: "Conversación no encontrada" };
+  }
+  // El Laboratorio no ensucia el Pipeline con clientes de prueba.
+  if (conv.isTest) return { ok: true, changed: false, motivo: "prueba", conversationId: conv.id };
+  if (!conv.aiEnabled || conv.handoffAt) {
+    return {
+      ok: false,
+      status: 409,
+      code: "ai_paused",
+      message: "La IA está en pausa en esta conversación",
+    };
+  }
+
+  const perfiles = await db
+    .select({ tools: schema.agentProfile.tools })
+    .from(schema.agentProfile)
+    .where(scoped(schema.agentProfile.organizationId, organizationId))
+    .limit(1);
+  if (!herramientasEfectivas(perfiles[0]?.tools).includes("etapa")) {
+    return {
+      ok: false,
+      status: 409,
+      code: "herramienta_apagada",
+      message: "La herramienta «Mover de etapa» está apagada en el perfil del agente",
+    };
+  }
+
+  const [leadRows, stages] = await Promise.all([
+    db
+      .select({ id: schema.lead.id, stageId: schema.lead.stageId })
+      .from(schema.lead)
+      .where(
+        scoped(schema.lead.organizationId, organizationId, eq(schema.lead.contactId, conv.contactId))
+      )
+      .limit(1),
+    db
+      .select({
+        id: schema.pipelineStage.id,
+        name: schema.pipelineStage.name,
+        position: schema.pipelineStage.position,
+        kind: schema.pipelineStage.kind,
+        eventoBot: schema.pipelineStage.eventoBot,
+      })
+      .from(schema.pipelineStage)
+      .where(scoped(schema.pipelineStage.organizationId, organizationId))
+      .orderBy(asc(schema.pipelineStage.position)),
+  ]);
+
+  // Solo abiertas: la base ya lo impide (CHECK), y aquí se repite por si acaso.
+  const destino = stages.find((s) => s.eventoBot === input.evento && s.kind === "open");
+  if (!destino) return { ok: true, changed: false, motivo: "sin_etapa", conversationId: conv.id };
+
+  const lead = leadRows[0];
+  if (!lead) {
+    return { ok: false, status: 404, code: "sin_lead", message: "El contacto no tiene lead en el pipeline" };
+  }
+
+  // Nunca hacia atrás: si la etapa del evento no está entre las abiertas que
+  // vienen después de la actual (o el lead ya se ganó o se perdió), no se mueve.
+  if (!etapasSiguientes(stages, lead.stageId).some((s) => s.id === destino.id)) {
+    return { ok: true, changed: false, motivo: "ya_esta", conversationId: conv.id };
+  }
+
+  const res = await moveLeadToStage({
+    organizationId,
+    leadId: lead.id,
+    toStageId: destino.id,
+    source: "bot",
+    extra: { lastActivityAt: new Date() },
+  });
+  if (!res.ok) {
+    return { ok: false, status: 404, code: "sin_lead", message: "El lead o la etapa ya no existen" };
+  }
+  return {
+    ok: true,
+    changed: res.changed,
+    lead: { id: res.lead.id, stageName: destino.name },
+    conversationId: conv.id,
+  };
 }
