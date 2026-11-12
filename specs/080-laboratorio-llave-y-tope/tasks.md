@@ -35,7 +35,7 @@ Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera d
   - `scripts/e2e-rls.mjs`: el `42501` en `lab_corridas_por_dia` y `pausado_en`, `name` sí, y la función del panel sin superadministrador;
   - `e2e-selftest.mjs` (no corre en CI): quitar lo de Ajustes → IA para que no quede roto;
   - los guiones `tests/e2e/*.md` que hablan de Ajustes → IA (`us3-agent.md`, `us-guia-de-inicio.md`).
-- [ ] **T8 — Documentación:**
+- [x] **T8 — Documentación:**
   - `README.md`, `AGENTS.md`, `.env.example` y el `CLAUDE.md` de este repo (la tabla que nombra Ajustes → IA);
   - en `aliantis-core`, `decisiones.md` y `estado.md` (último PR del bloque);
   - el espacio: N9 cerrada y la fila 13 en `RELEVO_ARQUITECTURA.md`.
@@ -43,6 +43,12 @@ Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera d
   - el CI y `e2e.yml` (etiqueta `e2e`) en verde;
   - los 5 sabotajes en borrador, uno por uno con pausa, cerrados sin merge;
   - el informe corto.
+
+## Ajustes al implementar
+
+- **T6:** la pantalla Agente pierde el recuadro «tu agente no tiene con qué pensar» y la franja de aviso de IA se quita (`server/ai/aviso.ts`, `avisos/aviso-ia.tsx`): el cerebro piensa con su propia llave, así que la llave de Vocero ya no decide si el agente contesta y el aviso sería falso. `GET /api/agent/profile` ya no trae `aiConfigured` ni `aiMensaje`. También se apaga `POST /api/settings/ai/models` (existía además de las cuatro rutas de la spec).
+- **T6:** `presets.ts` pierde el catálogo de la pantalla; `credentials.ts` queda sin uso hasta el bloque V. Las guardas `bot-auth-negocio` y `rls-rutas` aceptan el proxy apagado solo mientras no llame a nadie.
+- **T7:** el cerebro falso de los E2E ya no piensa por el proxy: contesta con su eco, como un cerebro con su propia llave. El 403 de un `member` se prueba cambiando un momento el rol del operador en la base, y el tope se fija por SQL como lo haría el panel.
 
 ## `aliantis-brain`
 
