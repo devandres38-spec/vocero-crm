@@ -11,6 +11,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { EVENTOS_ETAPA } from "../eventos-etapa";
 
 /**
  * Tiempo: todas las columnas son `timestamp without time zone` y el marco es
@@ -233,9 +234,29 @@ export const pipelineStage = pgTable(
     kind: text("kind", { enum: ["open", "won", "lost"] })
       .notNull()
       .default("open"),
+    /**
+     * 078 (D18 de Aliantis) — El evento del cerebro que mueve al lead a esta
+     * etapa (`src/lib/eventos-etapa.ts`). Por id y no por nombre: renombrar la
+     * etapa no rompe el mapeo. Solo en etapas abiertas (ganar y perder son de
+     * una persona) y uno por evento en cada negocio. NULL = ningún evento.
+     */
+    eventoBot: text("evento_bot", { enum: EVENTOS_ETAPA }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [index("stage_org_pos_idx").on(t.organizationId, t.position)]
+  (t) => [
+    index("stage_org_pos_idx").on(t.organizationId, t.position),
+    uniqueIndex("stage_org_evento_uq")
+      .on(t.organizationId, t.eventoBot)
+      .where(sql`${t.eventoBot} is not null`),
+    check(
+      "stage_evento_abierta_chk",
+      sql`${t.eventoBot} is null or ${t.kind} = 'open'`
+    ),
+    check(
+      "stage_evento_catalogo_chk",
+      sql`${t.eventoBot} is null or ${t.eventoBot} in ('primera_respuesta', 'servicio_consultado', 'pidio_cita', 'cita_agendada')`
+    ),
+  ]
 );
 
 export const lead = pgTable(

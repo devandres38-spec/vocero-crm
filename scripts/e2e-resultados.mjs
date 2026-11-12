@@ -346,7 +346,7 @@ async function main() {
     await api("/api/bot/ficha", {
       method: "PUT",
       headers: { "x-api-key": BOT_KEY },
-      body: JSON.stringify({ conversationId: conv[1]?.id, ficha: { interes: "diagnóstico" } }),
+      body: JSON.stringify({ conversationId: conv[1]?.id, ficha: { quiere_cita: true } }),
     });
   }
 

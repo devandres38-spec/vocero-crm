@@ -7,3 +7,18 @@ Arnés: `scripts/e2e-contrato-aliantis.mjs`, en `.github/workflows/e2e.yml` (eti
 3. **Omisión.** `omit` deja el texto omitido en la bandeja y borra la entrega de `webhook_event`; repetirlo da lo mismo.
 4. **Envío idempotente.** El mismo `clientMessageId` dos veces: una sola salida a WhatsApp y `repetido: true`.
 5. **Motivos y avisos (3.7, 3.10).** Un traspaso por `salud` queda con ese motivo. Al grupo llega el aviso con el motivo en palabras y la referencia, sin nombre, teléfono ni texto. La persona vuelve a escribir: un seguimiento; un segundo mensaje enseguida no lo repite.
+
+## 078 — La etapa por eventos y la ficha con lista blanca (D18, D12)
+
+1. **El mapeo:** el dueño mapea en la pantalla de etapas `primera_respuesta` y `servicio_consultado` a dos etapas abiertas. A una etapa ganada responde `409 etapa_cerrada`.
+2. **Los eventos:**
+   - `primera_respuesta` mueve al lead a su etapa; repetirlo da `ya_esta`;
+   - `servicio_consultado` lo adelanta, y un evento de una etapa anterior no lo devuelve (`ya_esta`);
+   - un evento sin etapa da `sin_etapa`;
+   - `evento` y `stage` a la vez dan 422.
+3. **La ficha del cerebro:**
+   - `servicio_interes` y `quiere_cita` se guardan;
+   - una clave ajena da `422 clave_no_permitida`;
+   - un valor con salud no se guarda (ni el marcador) y queda el anterior.
+4. **Con una persona atendiendo:** `409 ai_paused` en la etapa y en la ficha.
+5. **En el Laboratorio:** `200` con `prueba`, sin escribir nada.

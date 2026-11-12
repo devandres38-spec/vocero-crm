@@ -146,8 +146,8 @@ Mientras se publica la imagen 2.0.0 de Nea, el servicio va detrás del perfil
 | `POST /api/bot/messages` | Responder. Sale por el mismo camino que el composer y queda marcado como IA |
 | `GET /api/bot/profile` | El perfil del agente y el knowledge base que editaste en la app; en `llm`, por dónde pensar y con qué modelo (`null` sin IA configurada) |
 | `POST /api/bot/llm/{ruta}` | Pensar con la llave de Ajustes → IA. Compatible con OpenAI: apunta el `base_url` de tu SDK aquí. Acepta `X-API-Key` o `Authorization: Bearer`. Sin IA configurada, 402 `sin_credencial` |
-| `PUT /api/bot/ficha` | Guardar lo que tu bot descubre del lead (claves libres: cada negocio califica distinto) |
-| `POST /api/bot/stage` | Avanzar al lead en el pipeline: solo hacia adelante y a etapas abiertas (las que el contexto trae en `lead.nextStages`). Ganar o perder un trato lo decide una persona. Se apaga desde la pantalla Agente («Mover de etapa») |
+| `PUT /api/bot/ficha` | Guardar lo que tu bot descubre del lead. Solo una lista blanca: `servicio_interes` (el nombre del servicio del catálogo) y `quiere_cita`; otra clave da `422 clave_no_permitida`. Un valor con salud no se guarda. Nunca con una persona atendiendo ni en el Laboratorio. Tú, desde la bandeja, sigues con claves libres |
+| `POST /api/bot/stage` | Avanzar al lead en el pipeline: solo hacia adelante y a etapas abiertas. Ganar o perder un trato lo decide una persona. Se apaga desde la pantalla Agente («Mover de etapa»). Con `evento` (`primera_respuesta`, `servicio_consultado`, `pidio_cita`), la etapa la eliges tú en **Pipeline → Etapas** («El agente mueve aquí al cliente cuando…»); por defecto, «En conversación» y «Interesado». Con `stage` (nombre o id, de `lead.nextStages`) para otros cerebros |
 | `POST /api/bot/handoff` | Devolver la conversación a un humano |
 | `POST /api/bot/typing` | Marcar leído y mostrar "escribiendo…" |
 | `GET /api/bot/media/{id}` | Descargar un adjunto entrante sin tocar Meta |
