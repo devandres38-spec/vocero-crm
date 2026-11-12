@@ -132,7 +132,7 @@ export function normalizeMetaPagePayload(payload: unknown): MessengerInbound[] {
         marcas: marcasDe(msg),
         threadRef: null,
         // 077: el botón que tocó (Quick Reply de Meta).
-        botonId: botonDeQuickReply(msg),
+        botonId: msg.is_echo ? botonDeQuickReply(msg) : null,
       });
     }
   }
