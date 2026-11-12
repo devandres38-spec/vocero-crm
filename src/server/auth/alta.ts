@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { EventoEtapa } from "@/lib/eventos-etapa";
 import { hashPassword } from "better-auth/crypto";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -24,11 +25,19 @@ import { newId } from "@/lib/db/ids";
 
 type Db = ReturnType<typeof getDb>;
 
-/** Etapas sembradas del pipeline (US2), las mismas de siempre. */
-export const ETAPAS_INICIALES: { name: string; kind: "open" | "won" | "lost" }[] = [
+/**
+ * Etapas sembradas del pipeline (US2), las mismas de siempre. 078 (D18): con
+ * el mapeo por defecto de los eventos del cerebro. `pidio_cita` no tiene etapa:
+ * cada negocio que use citas o reservas crea y mapea la suya.
+ */
+export const ETAPAS_INICIALES: {
+  name: string;
+  kind: "open" | "won" | "lost";
+  eventoBot?: EventoEtapa;
+}[] = [
   { name: "Nuevo", kind: "open" },
-  { name: "En conversación", kind: "open" },
-  { name: "Interesado", kind: "open" },
+  { name: "En conversación", kind: "open", eventoBot: "primera_respuesta" },
+  { name: "Interesado", kind: "open", eventoBot: "servicio_consultado" },
   { name: "Cliente", kind: "won" },
   { name: "Perdido", kind: "lost" },
 ];
@@ -164,6 +173,7 @@ export async function crearNegocio(
         name: s.name,
         position: i,
         kind: s.kind,
+        eventoBot: s.eventoBot ?? null,
       }))
     );
     await tx.insert(schema.agentProfile).values({

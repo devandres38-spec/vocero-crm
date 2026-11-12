@@ -15,7 +15,7 @@
 2. El cerebro (014) llama a `evento` y a la ficha estricta cuando Vocero ya los tiene.
 
 - [x] T1 Spec y estas tareas, con las respuestas de Andres.
-- [ ] T2 **Migración `0035_etapa_por_eventos.sql`:**
+- [x] T2 **Migración `0035_etapa_por_eventos.sql`:**
   - la columna `pipeline_stage.evento_bot` (con `CHECK` del catálogo) y el índice único parcial `(organization_id, evento_bot)`;
   - el mapeo por defecto para los negocios que ya existen (por nombre exacto, solo etapas abiertas);
   - `ETAPAS_INICIALES` con el mapeo;
