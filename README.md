@@ -50,8 +50,8 @@ un humano y el que escribe "ke onda si benden pintura"— conversan contra tu
 agente REAL —el que tienes conectado: el CRM le despacha cada mensaje simulado
 como si fuera de un cliente— en un **sandbox que jamás envía mensajes
 reales**. Sin agente conectado, el Laboratorio te dice que lo conectes
-primero. Un juez LLM independiente, con la llave de Ajustes → IA, evalúa cada
-conversación y te entrega:
+primero. Un juez LLM independiente, con la llave de IA de la instalación
+(la de Aliantis, en el entorno), evalúa cada conversación y te entrega:
 
 - un **score 0–100** de qué tan listo está el agente,
 - **hallazgos con evidencia** (alucinaciones, huecos del conocimiento, fallas
@@ -111,9 +111,8 @@ no hay agenda configurada, en la de Ciudad de México.
 En la pantalla **Agente** configuras nombre, tono, instrucciones y reglas de
 escalado, y le das conocimiento en pares pregunta/respuesta y bloques libres.
 Todo eso vive en el CRM y el agente lo lee de ahí (`GET /api/bot/profile`):
-lo editas en un solo lugar. La llave de IA también: la pegas una vez en
-Ajustes → IA y tu agente piensa **a través del CRM**, sin copiarla a ningún
-otro sitio.
+lo editas en un solo lugar. Tu agente piensa con su propia llave: el CRM no
+le presta la suya (080).
 
 El interruptor de esa pantalla dice si el CRM le pasa las conversaciones a tu
 agente. Solo se enciende con un agente conectado y en línea; apagado, todo se
@@ -155,7 +154,7 @@ Mientras se publica la imagen 2.0.0 de Nea, el servicio va detrás del perfil
 | `GET /api/bot/context` | Quién es la persona, su etapa, si un humano tomó la conversación y si la ventana de 24 h sigue abierta. Con la agenda encendida, también sus citas (`booking`): la próxima, la que ya pasó sin cerrarse y la última que se cerró (cancelada, no asistió o realizada) |
 | `POST /api/bot/messages` | Responder. Sale por el mismo camino que el composer y queda marcado como IA |
 | `GET /api/bot/profile` | El perfil del agente y el knowledge base que editaste en la app; en `llm`, por dónde pensar y con qué modelo (`null` sin IA configurada) |
-| `POST /api/bot/llm/{ruta}` | Pensar con la llave de Ajustes → IA. Compatible con OpenAI: apunta el `base_url` de tu SDK aquí. Acepta `X-API-Key` o `Authorization: Bearer`. Sin IA configurada, 402 `sin_credencial` |
+| `POST /api/bot/llm/{ruta}` | 080 — Apagado: `404 proxy_apagado`. Tu agente piensa con su propia llave |
 | `PUT /api/bot/ficha` | Guardar lo que tu bot descubre del lead. Solo una lista blanca: `servicio_interes` (el nombre del servicio del catálogo) y `quiere_cita`; otra clave da `422 clave_no_permitida`. Un valor con salud no se guarda. Nunca con una persona atendiendo ni en el Laboratorio. Tú, desde la bandeja, sigues con claves libres |
 | `POST /api/bot/stage` | Avanzar al lead en el pipeline: solo hacia adelante y a etapas abiertas. Ganar o perder un trato lo decide una persona. Se apaga desde la pantalla Agente («Mover de etapa»). Con `evento` (`primera_respuesta`, `servicio_consultado`, `pidio_cita`), la etapa la eliges tú en **Pipeline → Etapas** («El agente mueve aquí al cliente cuando…»); por defecto, «En conversación» y «Interesado». Con `stage` (nombre o id, de `lead.nextStages`) para otros cerebros |
 | `POST /api/bot/handoff` | Devolver la conversación a un humano |
@@ -204,13 +203,11 @@ pantalla te dice a qué host se está respetando y, si quieres que los mensajes
 vuelvan al CRM (por ejemplo, al pasar de Nea 1.x al despacho), ofrece
 **Recuperar el webhook**: quita ese override y deja el del número aquí.
 
-**Tu agente piensa por el CRM.** `POST /api/bot/llm/{ruta}` reenvía la
-llamada tal cual al proveedor de Ajustes → IA con la llave guardada y te
-devuelve su respuesta. La llave no viaja a tu agente: si se filtra el
-servidor de tu agente, no se filtra con ella. Si el proveedor la rechaza (401)
-o se queda sin saldo (402), se pausa en Ajustes → IA y la pantalla lo dice,
-igual que si fallara en el CRM. Nea lo usa solo cuando no le pones
-`LLM_API_KEY`; con ella, piensa con su propio proveedor.
+**El proxy `/api/bot/llm` está apagado (080).** Antes el CRM reenviaba al
+proveedor la llamada del agente con la llave del negocio. En esta instalación
+la llave de IA es de Aliantis y el proxy sería gasto sin tope y sin los
+proveedores fijos, así que responde `404 proxy_apagado` y el perfil anuncia
+`llm: null`. Tu agente piensa con su propia llave.
 
 Arriba de la pantalla **Agente**, la tarjeta **«Quién responde a tus
 clientes»** dice si hay un agente conectado: su última llamada a la API, a
@@ -312,8 +309,8 @@ Meta y tu proveedor LLM opcional.
   ARM construyes desde el código, que tarda varios minutos y pide más memoria.
 - Un dominio apuntando al VPS (Meta exige **https** para webhooks).
 - Un número de WhatsApp en la Cloud API de Meta (ver [Conexión](#conexión-del-número-de-whatsapp)).
-- Opcional: una API key de [OpenRouter](https://openrouter.ai) (o cualquier
-  proveedor compatible) para tu agente y el juez del Laboratorio.
+- Opcional: la API key de [OpenRouter](https://openrouter.ai) de la
+  instalación, para el juez del Laboratorio (080: la pone quien instala).
 - Opcional: un agente al lado del CRM ([Nea](https://github.com/kevinrivm/nea-agent)
   u otro). Sin él, Vocero funciona como bandeja manual.
 
@@ -757,35 +754,35 @@ El detalle está en [`specs/022-canal-tiktok`](specs/022-canal-tiktok/spec.md).
 
 ## Configuración de la IA
 
-Con esta llave piensa tu agente (a través del CRM, por `/api/bot/llm`) y el
-juez del Laboratorio. Se pone una vez, en la app: en **Ajustes → IA** eliges
-el proveedor (OpenRouter, o cualquier API compatible con la de OpenAI con su
-base URL), el modelo y pegas
-tu llave. «Probar conexión» hace una llamada mínima con lo escrito antes de
-guardar, «Traer modelos» lista los del proveedor, y la ayuda plegable explica
-dónde se consigue la llave. Se guarda cifrada (AES-256-GCM, la misma
-`ENCRYPTION_KEY` que protege el token de WhatsApp) y la pantalla solo enseña
-sus últimos 4.
-
-Si el proveedor rechaza la llave (401) o la cuenta se queda sin saldo (402),
-la llave se pausa sola, un banner lo dice en toda la app y Ajustes → IA
-explica cuál de las dos cosas pasó. Guardar una llave nueva —o «Probar
-conexión» con la guardada después de recargar— lo reactiva. Un 429 o un 500
-del proveedor no pausan nada: son hipos, no problemas de la llave.
-
-Las variables de entorno siguen valiendo como respaldo (instalaciones
-automatizadas, o quien ya las tenía): se usan mientras no haya nada guardado
-en Ajustes → IA, y lo guardado manda sobre ellas.
+**080 (D20 y D3 de Aliantis): una sola llave, la de la instalación.** La pone
+quien instala (Andres) en las variables de entorno; los negocios no ven ni
+editan llaves ni proveedores de IA, y Ajustes → IA ya no existe (sus rutas
+responden 404). Hoy solo la usa el **juez del Laboratorio**; el agente
+conectado piensa con su propia llave. Hacia OpenRouter, cada llamada va con
+los proveedores fijos (`deepinfra` y `parasail`), ZDR, sin guardar datos y
+`reasoning: none`, igual que el cerebro de Aliantis.
 
 ```bash
-OPENROUTER_API_TOKEN=sk-or-...        # respaldo: tu key
-OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
-OPENROUTER_JUDGE_MODEL=               # opcional: modelo distinto para el juez del Laboratorio
-OPENROUTER_BASE_URL=https://openrouter.ai/api   # o tu proveedor OpenAI-compatible
+OPENROUTER_API_TOKEN=sk-or-...        # la llave de Aliantis
+OPENROUTER_MODEL=deepseek/...          # el modelo (DeepSeek V4.1 Flash, como el cerebro)
+OPENROUTER_JUDGE_MODEL=               # opcional: otro modelo para el juez
+OPENROUTER_BASE_URL=https://openrouter.ai/api
 ```
 
-Sin proveedor, todo lo demás funciona; Agente y Laboratorio enlazan a
-Ajustes → IA. Después configura el comportamiento y el conocimiento en la
+Si el proveedor rechaza la llave (401) o se queda sin saldo (402), nada se
+pausa: el caso del Laboratorio queda «el juez falló» con el motivo y el log
+lo avisa, sin la llave. Sin llave, `POST /api/lab/runs` responde
+`409 laboratorio_sin_llave` («El Laboratorio no está disponible ahora.
+Avísale a Aliantis.»).
+
+**El tope diario del Laboratorio.** Cada negocio puede crear hasta **3
+corridas por día** (en su zona; cuentan también las que fallan). Lo cambia
+Andres desde su panel, de 0 a 20 (0 lo apaga); la app del negocio no tiene
+permiso sobre esa columna. Con el tope alcanzado, `POST /api/lab/runs` responde
+`429 tope_laboratorio` y la pantalla dice cuándo vuelve a estar disponible.
+Solo `owner` y `admin` corren el Laboratorio (un `member` lee los reportes).
+
+Sin la llave, todo lo demás funciona. Después configura el comportamiento y el conocimiento en la
 pestaña **Agente**, conecta tu agente y corre el **Laboratorio** antes de
 encenderlo con clientes reales.
 

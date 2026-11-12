@@ -53,9 +53,10 @@ es in-process.
 
 | Quieres cambiar… | Toca… |
 |---|---|
-| El proveedor LLM (juez del Laboratorio y proxy del cerebro) | `src/lib/ai/` (adaptador OpenRouter-compatible, `chatJson<T>`; `provider.ts` resuelve Ajustes → IA o `OPENROUTER_*`) |
+| El proveedor LLM (juez del Laboratorio) | `src/lib/ai/` (adaptador OpenRouter-compatible, `chatJson<T>`; `provider.ts`: solo `OPENROUTER_*`, la llave de Aliantis, con proveedores fijos y ZDR; 080) |
+| El tope diario del Laboratorio | `src/server/lab/tope.ts` + `organization.lab_corridas_por_dia` (solo lo escribe el panel: `vocero_panel_tope_laboratorio`, `PUT /api/admin/negocios/[id]/laboratorio`) |
 | El comportamiento del agente | No vive aquí: el CRM no trae agente (036). Lo que el agente lee —perfil, conocimiento (`renderKb` en `src/server/ai/prompts.ts`), `role`, `tools`, `llm`— sale por `src/server/bot/profile.ts`; lo demás es del cerebro (Nea) |
-| Cómo piensa el cerebro con la llave del CRM | `src/server/bot/llm-proxy.ts` + `src/app/api/bot/llm/[...ruta]/route.ts` |
+| El proxy `/api/bot/llm` | Apagado (080, P7): `src/app/api/bot/llm/[...ruta]/route.ts` responde `404 proxy_apagado` |
 | Las personas o el juez del Laboratorio | `src/server/lab/personas.ts` · `src/server/lab/judge.ts` |
 | El canal WhatsApp (Graph API) | `src/lib/meta/` (cliente único) + `src/server/whatsapp/` |
 | Los canales opcionales (Instagram, Messenger; ADR-001) | `src/lib/channels.ts` (catálogo) · `src/server/channels/` (capacidades y bandera `CHANNELS`) · `src/server/instagram/` · `src/server/messenger/` · `src/server/zernio/` (transporte y firma de la API unificada, compartido) |
@@ -84,8 +85,8 @@ un atributo OPCIONAL. Nunca asumas que un contacto tiene teléfono.
 encenderlo exige el `/health` del cerebro sano, si no 409 `sin_cerebro`), le
 despacha cada ráfaga al cerebro, que conversa por `/api/bot/*` sin que el
 token de WhatsApp salga del CRM: responder, marcar leído + "escribiendo…",
-descargar adjuntos, reiniciar la conversación de pruebas, y pensar por
-`/api/bot/llm` con la llave de Ajustes → IA (la llave no sale del CRM).
+descargar adjuntos y reiniciar la conversación de pruebas. Piensa con su
+propia llave: el proxy `/api/bot/llm` está apagado (080).
 Respeta `conversation.ai_enabled`/`handoff_at`. Sin la key, esa superficie
 responde 401 y el CRM funciona igual, como bandeja manual. No reintroduzcas
 un turno dentro del proceso.
@@ -125,14 +126,14 @@ lo valida con el mismo esquema del arranque (`safeParseEnv` en
 Ver `.env.example` (cada una con guía inline). Las claves: `APP_BASE_URL`,
 `DATABASE_URL`, `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY` (32 bytes base64),
 `META_WEBHOOK_VERIFY_TOKEN` (segmento secreto del webhook), `META_APP_SECRET`
-(opcional, firma). La IA se configura desde la app (Ajustes → IA: proveedor,
-modelo y llave cifrada, con «Probar conexión»); las variables solo son el
-respaldo mientras no haya nada guardado ahí:
+(opcional, firma). La IA (080, D20 y D3): una sola llave, la de Aliantis, en
+el entorno; Ajustes → IA salió del negocio (404). La usa el juez del
+Laboratorio, con proveedores fijos y ZDR hacia OpenRouter:
 
 ```bash
 OPENROUTER_API_TOKEN=sk-or-...
-OPENROUTER_MODEL=anthropic/claude-sonnet-4.5
-OPENROUTER_JUDGE_MODEL=anthropic/claude-haiku-4.5   # opcional: juez más barato
+OPENROUTER_MODEL=deepseek/...                       # DeepSeek V4.1 Flash, como el cerebro
+OPENROUTER_JUDGE_MODEL=                             # opcional: otro modelo para el juez
 ```
 
 Para el self-test local existe además el modo de pruebas interno (mocks) —
