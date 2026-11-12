@@ -85,7 +85,7 @@ export async function escribirFichaDelCerebro(input: {
     .limit(1);
   if (!conv) return { ok: false, status: 404, code: "not_found", message: "Conversación no encontrada" };
   if (conv.isTest) return { ok: true, prueba: true };
-  if (!conv.aiEnabled || conv.handoffAt) {
+  if (!conv.aiEnabled && conv.handoffAt) {
     return { ok: false, status: 409, code: "ai_paused", message: "La IA está en pausa en esta conversación" };
   }
   const [perfil] = await db
