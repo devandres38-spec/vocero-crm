@@ -2,7 +2,7 @@
 
 Fase 6 de Aliantis, bloque M2 (P7 del bloque M). Privacidad, Ley 1581: **va solo**. El diseño completo, la medición y las preguntas están en `aliantis-brain/specs/016-salud-tolerante/spec.md`; aquí va solo lo que cambia en Vocero.
 
-> Borrador para la aprobación de Andres, junto con la spec 016 del cerebro.
+> Aprobada por Andres el 12-nov-2026, junto con la spec 016 del cerebro (P1 a P4). P2 entra: cambian la huella del perfil y `perfil-privacidad-demo.json`.
 
 ## Por qué
 
