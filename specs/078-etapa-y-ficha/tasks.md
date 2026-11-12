@@ -28,7 +28,7 @@
   - `docs/openapi.json`;
   - pruebas.
   - **Sabotaje 1.**
-- [ ] T4 **El mapeo en la interfaz:**
+- [x] T4 **El mapeo en la interfaz:**
   - `stage-manager.tsx` y `/api/pipeline/stages`: elegir el evento de cada etapa, único por negocio, con el texto «El agente mueve aquí al cliente cuando…»;
   - pruebas de la ruta.
 - [ ] T5 **La ficha estricta del cerebro:**

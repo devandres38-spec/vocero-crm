@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import type { StageDto } from "@/lib/types";
+import { ETIQUETA_EVENTO, EVENTOS_ETAPA, esEventoEtapa } from "@/lib/eventos-etapa";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,21 @@ export function StageManager({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: name.trim() }),
     }).catch(() => null);
+    onChanged();
+  }
+
+  /** 078 (D18): el evento del agente que mueve aquí; uno por negocio (el servidor lo reasigna). */
+  async function mapear(stage: StageDto, valor: string) {
+    setError(null);
+    const res = await fetch(`/api/pipeline/stages/${stage.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ eventoBot: esEventoEtapa(valor) ? valor : null }),
+    }).catch(() => null);
+    if (res && !res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      setError(data?.error?.message ?? "No se pudo guardar");
+    }
     onChanged();
   }
 
@@ -97,10 +113,15 @@ export function StageManager({
         className="max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-lg border bg-popover p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="mb-4 font-semibold">Etapas del pipeline</h3>
-        <ul className="space-y-2">
+        <h3 className="mb-1 font-semibold">Etapas del pipeline</h3>
+        <p className="mb-4 text-xs text-muted-foreground">
+          En cada etapa abierta puedes elegir cuándo el agente mueve aquí al cliente. Solo hacia
+          adelante; ganar o perder lo decides tú.
+        </p>
+        <ul className="space-y-3">
           {sorted.map((s, i) => (
-            <li key={s.id} className="flex items-center gap-2">
+            <li key={s.id} className="space-y-1">
+            <div className="flex items-center gap-2">
               <Input
                 defaultValue={s.name}
                 onBlur={(e) => void rename(s, e.target.value)}
@@ -138,6 +159,25 @@ export function StageManager({
               >
                 <ArrowDown className="h-4 w-4" />
               </Button>
+            </div>
+            {s.kind === "open" && (
+              <label className="flex flex-wrap items-center gap-2 pl-1 text-xs text-muted-foreground">
+                <span>El agente mueve aquí al cliente cuando…</span>
+                <select
+                  aria-label={`Cuándo el agente mueve a ${s.name}`}
+                  value={s.eventoBot ?? ""}
+                  onChange={(e) => void mapear(s, e.target.value)}
+                  className="h-8 min-w-0 max-w-full flex-1 rounded-md border border-input bg-card px-2 text-xs text-foreground"
+                >
+                  <option value="">nunca</option>
+                  {EVENTOS_ETAPA.map((ev) => (
+                    <option key={ev} value={ev}>
+                      {ETIQUETA_EVENTO[ev]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             </li>
           ))}
         </ul>

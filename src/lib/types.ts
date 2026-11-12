@@ -1,3 +1,5 @@
+import type { EventoEtapa } from "@/lib/eventos-etapa";
+
 /** DTOs que viajan por la API interna (lado cliente). */
 
 import type { Channel } from "@/lib/channels";
@@ -123,6 +125,8 @@ export type StageDto = {
   name: string;
   position: number;
   kind: "open" | "won" | "lost";
+  /** 078 (D18): el evento del cerebro que mueve al lead aquí (solo abiertas). */
+  eventoBot?: EventoEtapa | null;
 };
 
 /** Un dato de la ficha. Escalar a propósito: ver `server/bot/ficha`. */

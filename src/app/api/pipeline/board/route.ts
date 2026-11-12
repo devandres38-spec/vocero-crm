@@ -45,6 +45,7 @@ export const GET = withAuth(async (session) => {
       name: s.name,
       position: s.position,
       kind: s.kind,
+      eventoBot: s.eventoBot,
     })),
     leads: leads.map((r) => ({
       id: r.lead.id,
