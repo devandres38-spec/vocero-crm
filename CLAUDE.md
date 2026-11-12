@@ -18,8 +18,9 @@
 > privacidad de la Ley 1581 antes de guardar, y un cerebro determinista (`aliantis-brain`).
 > Una función solo se apaga si no puede cumplir un pilar, y eso lo decide Andres.
 
-Lee primero [AGENTS.md](AGENTS.md): el mapa del código y las reglas de
-modificación viven ahí; este archivo solo añade lo específico de Claude Code.
+Consulta [AGENTS.md](AGENTS.md) bajo demanda (solo las fronteras o comandos que no
+estén en tu brief o `spec.md`): el mapa del código y las reglas de modificación
+viven ahí; este archivo solo añade lo específico de Claude Code.
 
 Vocero es un CRM de WhatsApp open source (MIT), self-hosted, con el perfil y el
 conocimiento del agente y un Laboratorio de auto-evaluación. Desde la 2.0 no
