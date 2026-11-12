@@ -191,13 +191,13 @@
     },
     "/api/bot/reset": {
       "post": {
-        "summary": "Reiniciar una conversación de pruebas",
-        "description": "Ficha limpia, IA reactivada y etapa al inicio. Para las líneas de prueba del dueño.",
+        "summary": "Reiniciar una conversación del Laboratorio",
+        "description": "079 — Solo en una conversación de prueba (`is_test`): IA reactivada, sin traspaso y etapa al inicio. Sobre una conversación real responde 409 `solo_laboratorio` y no toca nada. El 404 va antes que el 409.",
         "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId"], "properties": { "conversationId": { "type": "string" } } } } } },
         "responses": {
           "200": { "description": "Hecho", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Ok" } } } },
           "404": { "$ref": "#/components/responses/NoEncontrada" },
-          "409": { "$ref": "#/components/responses/SinOrganizacion" }
+          "409": { "description": "`solo_laboratorio` (la conversación no es de prueba; no se tocó nada) o `no_org`.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
