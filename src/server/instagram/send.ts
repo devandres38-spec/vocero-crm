@@ -48,7 +48,7 @@ export function buildInstagramSendBody(input: {
   botones?: readonly BotonDeMeta[] | null;
 }): Record<string, unknown> {
   const message: Record<string, unknown> = { text: input.text };
-  if (input.botones?.length) message.quick_replies = quickReplies(input.botones);
+  if (input.botones?.length && input.humanAgentTag) message.quick_replies = quickReplies(input.botones);
   const body: Record<string, unknown> = { recipient: { id: input.recipient }, message };
   if (input.humanAgentTag) {
     body.messaging_type = "MESSAGE_TAG";
