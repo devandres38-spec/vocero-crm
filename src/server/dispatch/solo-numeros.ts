@@ -31,8 +31,7 @@ export function permitidoPorLista(lista: ListaDeNumeros, identidad: string | nul
   if (!lista.activo) return true;
   if (!identidad || !SOLO_DIGITOS.test(identidad)) return false;
   // Los dos lados normalizados: `521…` y `52…` son el mismo número de México.
-  const buscado = normalizeMx(identidad);
-  return lista.numeros.some((n) => normalizeMx(n) === buscado);
+  return lista.numeros.some((n) => n === identidad);
 }
 
 /**
