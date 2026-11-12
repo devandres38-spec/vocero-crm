@@ -20,7 +20,7 @@ const rel = (p: string) => path.relative(RAIZ, p).split(path.sep).join("/");
 
 /** Las marcas de que la ruta fija su negocio (o corre en sistema, a propósito). */
 const ENVOLTORIOS =
-  /\b(withAuth|rutaDelCerebro|conNegocio|comoSistema|trabajoDeFondo|paginaConSesion|marcaDeLaPeticion|webhookEntrante)\b/;
+  /\b(withAuth|rutaDelCerebro|conNegocio|comoSistema|trabajoDeFondo|paginaConSesion|marcaDeLaPeticion|webhookEntrante|rutaDelPanel)\b/;
 
 /** Rutas que no necesitan envoltorio, con su porqué. */
 const SIN_ENVOLTORIO: Record<string, string> = {
@@ -29,6 +29,10 @@ const SIN_ENVOLTORIO: Record<string, string> = {
   "src/app/api/events/route.ts": "requireSession y el bus en memoria, sin consultas",
   "src/app/api/health/route.ts": "checkHealth corre en comoSistema por dentro",
   "src/app/api/branding/app-icon/route.ts": "appIconResponse usa marcaDeLaPeticion",
+  // 076 — El panel de Andres: estas dos van antes de tener el segundo factor.
+  "src/app/api/admin/segundo-factor/route.ts":
+    "estadoDelPanel (comoSistema por dentro), Better Auth y la marca del TOTP; sin datos de negocios",
+  "src/app/api/admin/salir/route.ts": "Better Auth: cierra la sesión",
 };
 
 /** 075 — Vacía desde T7: todo punto de entrada fija su negocio. */
@@ -54,6 +58,27 @@ describe("075 — rutas y páginas dentro de un negocio", () => {
           /^export (async )?function (GET|POST|PUT|PATCH|DELETE)\b/m.test(texto) ||
           !/^export const (GET|POST|PUT|PATCH|DELETE) = rutaDelCerebro\(/m.test(texto)
       )
+      .map(({ p }) => p);
+    expect(mal).toEqual([]);
+  });
+
+  it("076 — las rutas de /api/admin/* exportan sus métodos con rutaDelPanel", () => {
+    const mal = archivos(path.join(APP, "api/admin"), /^route\.ts$/)
+      .map((p) => ({ p: rel(p), texto: readFileSync(p, "utf8") }))
+      .filter(({ p }) => !(p in SIN_ENVOLTORIO))
+      .filter(
+        ({ texto }) =>
+          /^export (async )?function (GET|POST|PUT|PATCH|DELETE)\b/m.test(texto) ||
+          !/^export const (GET|POST|PUT|PATCH|DELETE) = rutaDelPanel\(/m.test(texto)
+      )
+      .map(({ p }) => p);
+    expect(mal).toEqual([]);
+  });
+
+  it("076 — las páginas del panel van en paginaDelPanel (o la del segundo factor)", () => {
+    const mal = archivos(path.join(APP, "(admin)"), /^page\.tsx$/)
+      .map((p) => ({ p: rel(p), texto: readFileSync(p, "utf8") }))
+      .filter(({ texto }) => !/export default (paginaDelPanel|paginaDelSegundoFactor)\(/.test(texto))
       .map(({ p }) => p);
     expect(mal).toEqual([]);
   });

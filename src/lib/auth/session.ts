@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { conNegocio } from "@/lib/db/contexto";
-import { resolveMembership } from "@/server/auth/on-signup";
+import { MENSAJE_NEGOCIO_PAUSADO, resolveMembership } from "@/server/auth/on-signup";
 
 export type SessionContext = {
   userId: string;
@@ -13,6 +13,18 @@ export class UnauthorizedError extends Error {
   constructor(message = "No autenticado") {
     super(message);
     this.name = "UnauthorizedError";
+  }
+}
+
+/**
+ * 076 (respuesta 2 de Andres) — El negocio lo pausó Andres: su personal no
+ * entra. Es un `UnauthorizedError`: las rutas responden 401 y las páginas
+ * mandan al login, que no deja entrar y dice por qué.
+ */
+export class NegocioPausado extends UnauthorizedError {
+  constructor() {
+    super(MENSAJE_NEGOCIO_PAUSADO);
+    this.name = "NegocioPausado";
   }
 }
 
@@ -30,6 +42,7 @@ export async function requireSession(): Promise<SessionContext> {
   if (!membership) {
     throw new UnauthorizedError("Sesión sin organización activa");
   }
+  if (membership.pausado) throw new NegocioPausado();
   return {
     userId: session.user.id,
     organizationId: membership.organizationId,

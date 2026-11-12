@@ -35,7 +35,8 @@ export const GET = withAuth(async (session) => {
 const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.string().trim().email(),
-  password: z.string().min(8).max(128),
+  // 076 — 12 para toda contraseña nueva (respuesta 3 de Andres).
+  password: z.string().min(12).max(128),
 });
 
 /** Alta de cuenta de equipo (owner only): email + contraseña temporal (FR-061). */
@@ -69,6 +70,11 @@ export const POST = withAuth(async (session, req: Request) => {
   }
 
   const db = getDb();
+  // 076 — La contraseña la puso el dueño: la cuenta pone la suya al entrar.
+  await db
+    .update(schema.user)
+    .set({ debeCambiarContrasena: true })
+    .where(eq(schema.user.id, newUserId));
   await db
     .insert(schema.member)
     .values({

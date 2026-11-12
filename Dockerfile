@@ -30,6 +30,11 @@ RUN pnpm exec esbuild scripts/migrate.mjs --bundle --platform=node \
 RUN pnpm exec esbuild scripts/seed/demo.ts --bundle --platform=node \
     --format=esm --outfile=seed-demo.bundle.mjs --alias:@=./src \
     --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+# 076: el superadmin del panel de Andres, para `docker exec … node superadmin.mjs`.
+# Exige DATABASE_MIGRATIONS_URL (el dueño): la app no puede darlo.
+RUN pnpm exec esbuild scripts/superadmin.ts --bundle --platform=node \
+    --format=esm --outfile=superadmin.bundle.mjs --alias:@=./src \
+    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
 
 FROM node:22.23.4-alpine AS runner
 WORKDIR /app
@@ -53,6 +58,7 @@ COPY --from=builder --chown=vocero:vocero /app/.next/static ./.next/static
 COPY --from=builder --chown=vocero:vocero /app/public ./public
 COPY --from=builder --chown=vocero:vocero /app/migrate.bundle.mjs ./migrate.mjs
 COPY --from=builder --chown=vocero:vocero /app/seed-demo.bundle.mjs ./seed-demo.mjs
+COPY --from=builder --chown=vocero:vocero /app/superadmin.bundle.mjs ./superadmin.mjs
 COPY --from=builder --chown=vocero:vocero /app/drizzle ./drizzle
 # Nombre propio a propósito: la imagen de node ya trae su docker-entrypoint.sh
 # (antepone `node` si el primer argumento no es un comando) y el nuestro le

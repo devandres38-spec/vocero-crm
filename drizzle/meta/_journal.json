@@ -239,6 +239,13 @@
       "when": 1794411464967,
       "tag": "0033_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794420418045,
+      "tag": "0034_panel",
+      "breakpoints": true
     }
   ]
 }

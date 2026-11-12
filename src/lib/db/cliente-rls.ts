@@ -16,6 +16,11 @@ import { ConsultaSinNegocio, contextoActual } from "./contexto";
  * `is_local = true`: el valor muere con la transacción, así que una conexión
  * vuelve al pool SIN negocio y nunca lo pasa a la petición siguiente.
  *
+ * En el panel (076, `comoPanel`), lo mismo con `FIJAR_PANEL`: la transacción
+ * corre con el rol `vocero_panel`, que no puede leer ninguna tabla, y con el
+ * superadmin que llama (las funciones `vocero_panel_*` lo exigen). También
+ * local: la conexión vuelve al pool con el usuario de la app.
+ *
  * En modo sistema, la consulta va tal cual (por RLS no ve tablas de negocio).
  * Sin contexto: `ConsultaSinNegocio` en modo «lanzar»; en «avisar» (solo
  * mientras se migran los puntos de entrada, spec 075 T3 a T7) se registra y
@@ -28,6 +33,10 @@ export type ModoSinContexto = "avisar" | "lanzar";
 export const MODO_SIN_CONTEXTO: ModoSinContexto = "lanzar";
 
 export const FIJAR_NEGOCIO = "select set_config('app.organization_id', $1, true)";
+
+/** 076 — `set_config('role', …, true)` es `SET LOCAL ROLE`: muere con la transacción. */
+export const FIJAR_PANEL =
+  "select set_config('app.superadmin_id', $1, true), set_config('role', 'vocero_panel', true)";
 
 type Opciones = { modo?: ModoSinContexto; avisar?: (detalle: string) => void };
 
@@ -50,10 +59,14 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
   const modo = opciones.modo ?? MODO_SIN_CONTEXTO;
   const avisar = opciones.avisar ?? avisarUnaVez;
 
-  /** `null`: sin negocio (sistema, o sin contexto en modo avisar). */
-  function negocioOFallar(query: string): string | null {
+  /**
+   * Qué fijar antes de la consulta. `null`: nada (sistema, o sin contexto en
+   * modo avisar).
+   */
+  function negocioOFallar(query: string): { fijar: string; valor: string } | null {
     const ctx = contextoActual();
-    if (ctx?.tipo === "negocio") return ctx.organizationId;
+    if (ctx?.tipo === "negocio") return { fijar: FIJAR_NEGOCIO, valor: ctx.organizationId };
+    if (ctx?.tipo === "panel") return { fijar: FIJAR_PANEL, valor: ctx.superadminId };
     if (ctx?.tipo === "sistema") return null;
     if (modo === "lanzar") throw new ConsultaSinNegocio(resumen(query));
     avisar(resumen(query));
@@ -61,7 +74,7 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
   }
 
   function unsafe(query: string, params?: unknown[], opts?: unknown) {
-    let org: string | null;
+    let org: { fijar: string; valor: string } | null;
     try {
       org = negocioOFallar(query);
     } catch (err) {
@@ -75,7 +88,7 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
       sql.begin(async (tx) => {
         const t = tx as unknown as Tx;
         // Pipeline: las dos salen juntas, en este orden, por la misma conexión.
-        const fijar = t.unsafe(FIJAR_NEGOCIO, [org]).execute() as Promise<unknown>;
+        const fijar = t.unsafe(org.fijar, [org.valor]).execute() as Promise<unknown>;
         const q = t.unsafe(query, params as never, opts);
         const resultado = (valores ? q.values() : q) as Sentencia;
         const [, filas] = await Promise.all([fijar, resultado.execute() as Promise<unknown>]);
@@ -90,7 +103,7 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
   function begin(...args: unknown[]) {
     const fn = args[args.length - 1] as (tx: Sql) => unknown;
     const config = args.length > 1 ? [args[0] as string] : [];
-    let org: string | null;
+    let org: { fijar: string; valor: string } | null;
     try {
       org = negocioOFallar("begin");
     } catch (err) {
@@ -98,7 +111,7 @@ export function clienteConRls(sql: Sql, opciones: Opciones = {}): Sql {
     }
     if (org === null) return (sql.begin as (...a: unknown[]) => unknown)(...config, fn);
     return (sql.begin as (...a: unknown[]) => unknown)(...config, async (tx: Sql) => {
-      await (tx as unknown as Tx).unsafe(FIJAR_NEGOCIO, [org]);
+      await (tx as unknown as Tx).unsafe(org.fijar, [org.valor]);
       return fn(tx);
     });
   }

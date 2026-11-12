@@ -33,6 +33,14 @@ export const user = pgTable("user", {
   image: text("image"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  /** 076 — Del plugin `twoFactor` de Better Auth. Hoy solo lo activa el superadmin. */
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  /**
+   * 076 — La contraseña la puso otra persona (el alta, el dueño para su
+   * equipo o un restablecimiento de Andres): las páginas del negocio mandan a
+   * `/cuenta` hasta cambiarla. `/change-password` la limpia.
+   */
+  debeCambiarContrasena: boolean("debe_cambiar_contrasena").notNull().default(false),
 });
 
 export const session = pgTable("session", {
@@ -83,6 +91,12 @@ export const organization = pgTable("organization", {
   logo: text("logo"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   metadata: text("metadata"),
+  /**
+   * 076 — Pausado por Andres desde su panel: su personal no entra y el bot
+   * queda como apagado (salvo salud, D9). La ingesta, la retención y los
+   * borrados siguen. Solo lo escribe `vocero_panel_pausar`.
+   */
+  pausadoEn: timestamp("pausado_en"),
 });
 
 export const member = pgTable("member", {
@@ -1650,4 +1664,57 @@ export const avisoTraspaso = pgTable(
       sql`${t.status} in ('pendiente', 'enviado', 'fallido', 'omitido')`
     ),
   ]
+);
+
+/* ============================================================
+ * 076 — Panel de Andres (D16): segundo factor, superadmin y registro.
+ * Sin organization_id y sin RLS, como `user`: no son de ningún negocio.
+ * ============================================================ */
+
+/** Del plugin `twoFactor` de Better Auth: el secreto y los códigos van cifrados. */
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: text("id").primaryKey(),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    verified: boolean("verified").notNull().default(true),
+    failedVerificationCount: integer("failed_verification_count").notNull().default(0),
+    lockedUntil: timestamp("locked_until"),
+  },
+  (t) => [index("two_factor_user_id_idx").on(t.userId)]
+);
+
+/**
+ * Quién es superadministrador. La app solo la LEE: darlo o quitarlo exige al
+ * dueño de las tablas (`pnpm superadmin:alta`, con `DATABASE_MIGRATIONS_URL`).
+ */
+export const superadministrador = pgTable("superadministrador", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  creadoEn: timestamp("creado_en").notNull().defaultNow(),
+  /** Desde cuándo tiene el TOTP: una sesión anterior no sirve para el panel. */
+  totpActivadoEn: timestamp("totp_activado_en"),
+});
+
+/**
+ * Lo que hizo Andres desde el panel. Solo de adición: lo escriben y lo leen
+ * las funciones `vocero_panel_*`; la app no tiene permisos sobre ella.
+ * `negocio_id` sin llave foránea: el registro sobrevive al negocio.
+ */
+export const registroPanel = pgTable(
+  "registro_panel",
+  {
+    id: text("id").primaryKey(),
+    cuando: timestamp("cuando").notNull().defaultNow(),
+    superadminId: text("superadmin_id").notNull(),
+    accion: text("accion").notNull(),
+    negocioId: text("negocio_id"),
+    detalle: jsonb("detalle").notNull().default(sql`'{}'::jsonb`),
+  },
+  (t) => [index("registro_panel_cuando_idx").on(t.cuando)]
 );

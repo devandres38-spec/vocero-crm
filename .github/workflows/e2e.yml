@@ -192,6 +192,28 @@ jobs:
           set -o pipefail
           node scripts/e2e-alta.mjs 2>&1 | tee .tmp-e2e-alta.log
 
+      # 076 — El panel de Andres: superadmin por comando, TOTP, alta, pausa,
+      # contraseñas, el candado D16 con un mensaje centinela, el gasto firmado
+      # desde un cerebro de mentira y capturas a 390 y 1280 px.
+      - name: Chromium para las capturas del panel
+        if: ${{ !cancelled() }}
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: e2e-panel
+        if: ${{ !cancelled() }}
+        run: |
+          # Sin pipefail, `| tee` se quedaría con el código de tee y un E2E rojo saldría verde.
+          set -o pipefail
+          node scripts/e2e-panel.mjs 2>&1 | tee .tmp-e2e-panel.log
+
+      - name: capturas del panel
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: capturas-panel
+          path: e2e-capturas/
+          if-no-files-found: warn
+
       # 075 — Una consulta sin negocio (o un cruce) en cualquier punto, aunque
       # sea de un proceso de fondo que ningún arnés mira, rompe el E2E.
       - name: ninguna consulta sin negocio en el registro de la app
@@ -205,7 +227,7 @@ jobs:
       - name: resumen
         if: ${{ !cancelled() }}
         run: |
-          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log .tmp-e2e-multinegocio.log .tmp-e2e-alta.log; do
+          for log in .tmp-e2e-despacho.log .tmp-e2e-consentimiento.log .tmp-e2e-contrato-aliantis.log .tmp-e2e-retencion.log .tmp-e2e-multinegocio.log .tmp-e2e-alta.log .tmp-e2e-panel.log; do
             [ -f "$log" ] || continue
             echo "== $log: checks OK $(grep -cE '^\s+OK ' "$log" || true)"
             grep -E '^\s+(FAIL|FALLA)' "$log" || echo "sin fallas"

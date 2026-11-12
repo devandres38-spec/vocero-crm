@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getSessionOrNull = vi.hoisted(() => vi.fn());
 const guideStatus = vi.hoisted(() => vi.fn());
 const guideFirst = vi.hoisted(() => vi.fn());
+const esSesionDeSuperadmin = vi.hoisted(() => vi.fn(async () => false));
 
 vi.mock("@/lib/auth/session", () => ({
   getSessionOrNull,
@@ -15,6 +16,8 @@ vi.mock("@/lib/auth/session", () => ({
   paginaConSesion: <P,>(p: (props: P) => unknown) => p,
 }));
 vi.mock("@/server/onboarding/guide", () => ({ guideStatus, guideFirst }));
+// 076 — La raíz manda al superadmin (sin negocio) a su panel.
+vi.mock("@/server/panel/guard", () => ({ esSesionDeSuperadmin }));
 vi.mock("@/components/onboarding/onboarding-client", () => ({
   OnboardingClient: () => null,
 }));
@@ -82,6 +85,12 @@ describe("la raíz", () => {
     getSessionOrNull.mockResolvedValue(null);
     await expect(Home()).rejects.toThrow("redirect:/inbox");
     expect(guideFirst).not.toHaveBeenCalled();
+  });
+
+  it("076 — el superadmin (sin negocio) va a su panel", async () => {
+    getSessionOrNull.mockResolvedValue(null);
+    esSesionDeSuperadmin.mockResolvedValueOnce(true);
+    await expect(Home()).rejects.toThrow("redirect:/admin");
   });
 
   it("al dueño con pasos pendientes lo manda a la guía", async () => {

@@ -4,6 +4,7 @@
  */
 export { clienteConRls } from "@/lib/db/cliente-rls";
 export {
+  comoPanel,
   comoSistema,
   conNegocio,
   ConsultaSinNegocio,

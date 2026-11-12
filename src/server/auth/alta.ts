@@ -141,6 +141,8 @@ export async function crearNegocio(
       name: duenoNombre,
       email: correo,
       emailVerified: false,
+      // 076 — La contraseña la generó el alta: el dueño pone la suya al entrar.
+      debeCambiarContrasena: true,
     });
     await tx.insert(schema.account).values({
       id: newId("account"),
