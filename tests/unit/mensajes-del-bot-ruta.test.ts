@@ -16,6 +16,8 @@ const h = vi.hoisted(() => ({
   } as Record<string, unknown>,
   agente: true,
   saludPendiente: true,
+  /** 077 — Si no es null, `sendText` lanza ese SendError. */
+  fallo: null as string | null,
 }));
 
 vi.mock("@/server/bot/auth", () => ({
@@ -34,8 +36,9 @@ vi.mock("@/server/inbox/send", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/server/inbox/send")>();
   return {
     ...original,
-    sendText: vi.fn(async (input: { reservado?: string }) => {
-      h.orden.push(`meta:${input.reservado ?? "-"}`);
+    sendText: vi.fn(async (input: { reservado?: string; buttons?: unknown[] }) => {
+      if (h.fallo) throw new original.SendError(h.fallo as never, "Este canal no admite botones");
+      h.orden.push(`meta:${input.reservado ?? "-"}${input.buttons ? ":botones" : ""}`);
       return { messageId: input.reservado ?? "msg_n" };
     }),
   };
@@ -70,6 +73,8 @@ beforeEach(() => {
   h.reserva = { tipo: "nueva", messageId: "msg_r" };
   h.agente = true;
   h.saludPendiente = true;
+  h.fallo = null;
+  h.conv.channel = "whatsapp";
 });
 
 describe("071 — clientMessageId en la ruta", () => {
@@ -127,5 +132,38 @@ describe("071 (3.8) — el Agente apagado", () => {
   it("con el Agente encendido, motivo se acepta y no cambia nada", async () => {
     const r = await pedir({ motivo: "seguridad" });
     expect(r.status).toBe(200);
+  });
+});
+
+describe("077 — botones por canal", () => {
+  const BOTONES = [
+    { id: "consentimiento:acepto", title: "Acepto" },
+    { id: "consentimiento:no_acepto", title: "No acepto" },
+  ];
+
+  for (const canal of ["whatsapp", "instagram", "messenger"]) {
+    it(`${canal}: los botones llegan al envío`, async () => {
+      h.conv.channel = canal;
+      const r = await pedir({ buttons: BOTONES });
+      expect(r.status).toBe(200);
+      expect(h.orden).toEqual(["meta:-:botones"]);
+    });
+  }
+
+  it("tiktok: 409 canal_sin_botones sin reservar ni llamar a nadie", async () => {
+    h.conv.channel = "tiktok";
+    const r = await pedir({ buttons: BOTONES, clientMessageId: "k1" });
+    expect(r.status).toBe(409);
+    expect((await r.json()).error.code).toBe("canal_sin_botones");
+    expect(h.orden).toEqual([]);
+  });
+
+  it("por Zernio (lo decide el envío): 409 canal_sin_botones y la reserva queda fallida", async () => {
+    h.conv.channel = "instagram";
+    h.fallo = "canal_sin_botones";
+    const r = await pedir({ buttons: BOTONES, clientMessageId: "k1" });
+    expect(r.status).toBe(409);
+    expect((await r.json()).error.code).toBe("canal_sin_botones");
+    expect(h.orden).toEqual(["reservar", "fallida"]);
   });
 });

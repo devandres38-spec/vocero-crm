@@ -8,6 +8,7 @@ import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
 import { bodySchema } from "@/server/bot/mensaje-del-bot";
 import { marcarReservaFallida, reservarEnvio } from "@/server/bot/envio-idempotente";
 import { agenteEncendido, saludSinRespuesta } from "@/server/bot/seguridad";
+import { capabilitiesFor } from "@/server/channels/capabilities";
 
 export const dynamic = "force-dynamic";
 
@@ -58,9 +59,10 @@ async function postSinNegocio(req: Request) {
   if (!conv.aiEnabled || conv.handoffAt) {
     return apiError(409, "ai_paused", "La IA está en pausa en esta conversación");
   }
-  // 070 — Los botones son de WhatsApp: en otro canal no se envía nada (el
-  // cerebro manda el texto sin ellos). También en el Laboratorio.
-  if (body.data.buttons && conv.channel !== "whatsapp") {
+  // 070/077 — Botones en WhatsApp, Instagram y Messenger. En otro canal no se
+  // envía nada (el cerebro manda el texto sin ellos). También en el
+  // Laboratorio. Que la conexión sea directa con Meta lo comprueba `sendText`.
+  if (body.data.buttons && !capabilitiesFor(conv.channel).buttons) {
     return apiError(409, "canal_sin_botones", "Este canal no admite botones");
   }
   // 071 (3.8) — Con el Agente apagado, en una conversación real, solo pasa un

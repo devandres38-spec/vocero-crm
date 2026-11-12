@@ -19,7 +19,7 @@
   - `processMetaInstagramPayload` y `normalizeMetaPagePayload` leen `message.quick_reply.payload` y lo pasan como `botonId` (hasta 256 caracteres);
   - pruebas: con perfil, sin perfil (el título se conserva), un `payload` largo y los ecos.
   - **Sabotaje 2.**
-- [ ] T3 **La capacidad y el contrato:**
+- [x] T3 **La capacidad y el contrato:**
   - `botones` en `capabilities.ts`;
   - la ruta `/api/bot/messages` y `sendText` consultan la capacidad y la fuente (Meta sí, Zernio no);
   - el Laboratorio admite los botones en Instagram y Messenger;

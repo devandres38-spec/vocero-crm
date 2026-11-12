@@ -1,4 +1,15 @@
+import type { Channel } from "@/lib/channels";
 import { MAX_ID_BOTON } from "@/server/bot/mensaje-del-bot";
+import { capabilitiesFor } from "@/server/channels/capabilities";
+
+/**
+ * 077 — ¿Puede salir un mensaje con botones por esta conversación? El canal
+ * tiene que admitirlos y la conexión tiene que ser directa con Meta: por
+ * Zernio no (su API no documenta los Quick Replies), ni sin conexión.
+ */
+export function admiteBotones(canal: Channel, fuente: "meta" | "zernio" | null): boolean {
+  return capabilitiesFor(canal).buttons && fuente === "meta";
+}
 
 /**
  * 077 — El id del botón que tocó el cliente en Instagram o Messenger (Quick
