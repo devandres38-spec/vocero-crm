@@ -153,7 +153,8 @@ async function catalogo() {
         "agente_encendido boolean, whatsapp boolean, instagram boolean, messenger boolean, " +
         "tiktok boolean, usuarios bigint, conversaciones bigint, conversaciones_7d bigint, " +
         "entrantes_24h bigint, ultimo_entrante_en timestamp, despachos_pendientes bigint, " +
-        "a_humano_24h bigint, webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer"
+        "a_humano_24h bigint, webhooks_pendientes bigint, webhooks_agotados bigint, retencion_dias integer, " +
+        "lab_tope integer, lab_corridas_hoy bigint"
     ),
     vocero_panel_salud: tabla(
       "negocios bigint, pausados bigint, webhooks_pendientes bigint, webhooks_agotados bigint, " +
@@ -171,8 +172,9 @@ async function catalogo() {
     vocero_panel_registro: tabla(
       "cuando timestamp, accion text, negocio_id text, nombre text, detalle jsonb"
     ),
+    vocero_panel_tope_laboratorio: "integer",
   };
-  ok("las 23 funciones SECURITY DEFINER esperadas", funciones.length === 23, funciones.map((f) => f.nombre).join(", "));
+  ok("las 24 funciones SECURITY DEFINER esperadas", funciones.length === 24, funciones.map((f) => f.nombre).join(", "));
   const raras = funciones.filter(
     (f) =>
       !(f.config ?? []).includes("search_path=public, pg_temp") ||
