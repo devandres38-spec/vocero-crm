@@ -1,3 +1,4 @@
+import { getDb, schema } from "@/lib/db";
 import { isAiConfiguredByEnv } from "@/lib/env";
 import { last4, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 
@@ -61,6 +62,20 @@ export function resolver(env: AiProvider | null): AiResolution {
 }
 
 export async function resolveAiProvider(): Promise<AiResolution> {
+  // SABOTAJE 1: vuelve a preferir la fila de ai_credentials si existe.
+  const [fila] = await getDb().select().from(schema.aiCredentials).limit(1);
+  if (fila) {
+    return {
+      ok: true,
+      provider: {
+        source: "env",
+        baseUrl: fila.baseUrl,
+        model: fila.model,
+        judgeModel: fila.model,
+        token: fila.tokenCiphertext,
+      },
+    };
+  }
   return resolver(envAiProvider());
 }
 
