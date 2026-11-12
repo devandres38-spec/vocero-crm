@@ -121,7 +121,7 @@ El sistema es neutro para cualquier rubro: «salud» es solo el caso de los nego
 
 ### Orden y fallos (cerebro, spec 014)
 
-- **Nuevas acciones durables** `etapa` y `ficha`, **después** de `mensaje` y de `derivar`: lo que ve el paciente va primero.
+- **Nuevas acciones durables** `etapa` y `ficha`, **después** de `mensaje` y **antes** de `derivar`. Lo que ve el paciente va primero, y después del traspaso Vocero ya las rechazaría (`409 ai_paused`, con una persona atendiendo). Lo encontró la prueba de integración del cerebro.
 - **No son críticas:** si fallan (409, 422 o Vocero caído tras los reintentos), la acción queda `fallida` y el turno sigue. Nunca derivan, nunca reintentan el turno entero y nunca bloquean la respuesta.
 - **Antes del consentimiento,** nada: ni etapa ni ficha.
 - **Idempotentes:** mover a la misma etapa da `changed: false`, y el merge de la ficha con los mismos valores no cambia nada.
