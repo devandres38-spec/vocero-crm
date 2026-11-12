@@ -54,6 +54,8 @@ jobs:
       APP_DATABASE_URL: postgresql://vocero_e2e_app:clave-de-prueba-e2e@localhost:5432/vocero_e2e
       WA_MOCK_ENABLED: "true"
       META_GRAPH_BASE_URL: http://localhost:3260/api/dev/wa-mock/graph
+      # 077: el mismo mock hace de graph.instagram.com (Instagram por Meta).
+      IG_GRAPH_BASE_URL: http://localhost:3260/api/dev/wa-mock/graph/instagram
       OPENROUTER_BASE_URL: http://localhost:3260/api/dev/ai-mock
       OPENROUTER_MODEL: mock/agente
       ZERNIO_BASE_URL: http://localhost:3260/api/dev/zernio-mock

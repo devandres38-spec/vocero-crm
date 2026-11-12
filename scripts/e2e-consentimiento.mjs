@@ -2,6 +2,9 @@
  * 070 — Self-test E2E del bloque C: consentimiento con botones, «No acepto»
  * que borra, adjuntos por negocio y la reconciliación del olvido.
  *
+ * 077 — También por Instagram y Messenger (fuente Meta): el aviso sale con
+ * Quick Replies, el toque llega como `buttonId` y sin perfil se conserva.
+ *
  * Conduce la app real con los mocks de canal; el guion hace de cerebro por
  * `/api/bot/*` y el cerebro falso compartido (`scripts/lib/cerebro-falso.mjs`)
  * recibe los despachos y los avisos de olvido. Guion: tests/e2e/us-consentimiento.md.
@@ -24,6 +27,8 @@ import { cabecerasDelCerebro } from "./lib/credencial.mjs";
 
 const BASE = process.env.APP_BASE_URL ?? "http://localhost:3000";
 const BOT_KEY = process.env.BOT_API_KEY ?? "";
+const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN ?? "";
+const CHANNELS = (process.env.CHANNELS ?? "whatsapp").split(",").map((c) => c.trim());
 const COALESCE = Number(process.env.AGENT_COALESCE_MS ?? 6000);
 const PN = "PN-E2E-1";
 const RUN = Date.now().toString(36);
@@ -544,6 +549,205 @@ async function olvidoConCerebroCaido(cerebro) {
   ok("y la fila pendiente se borra", fila === "ok");
 }
 
+/**
+ * 077 — Un canal de Meta (Instagram o Messenger) conectado directo con Meta,
+ * contra el mock de Graph: Instagram por `IG_GRAPH_BASE_URL`
+ * (`/graph/instagram`) y Messenger por `META_GRAPH_BASE_URL`.
+ */
+const CANALES_META = {
+  instagram: {
+    cuenta: `17841400${DIGITOS}`,
+    prefijo: "ig:",
+    object: "instagram",
+    webhook: "ig",
+    conectar: (cuenta) => ({ source: "meta", igUserId: cuenta, token: "token-ig-demo" }),
+  },
+  messenger: {
+    cuenta: `page-consent-${DIGITOS}`,
+    prefijo: "fb:",
+    object: "page",
+    webhook: "messenger",
+    conectar: (cuenta) => ({ source: "meta", pageId: cuenta, token: "token-pagina-demo" }),
+  },
+};
+
+let nMeta = 0;
+async function entranteMeta(canal, usuario, message) {
+  const c = CANALES_META[canal];
+  nMeta++;
+  const mid = `m_${canal}_${RUN}_${nMeta}`;
+  const res = await fetch(`${BASE}/api/webhooks/${c.webhook}/${VERIFY_TOKEN}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      object: c.object,
+      entry: [
+        {
+          id: c.cuenta,
+          time: Date.now(),
+          messaging: [
+            {
+              sender: { id: usuario },
+              recipient: { id: c.cuenta },
+              timestamp: Date.now(),
+              message: { mid, ...message },
+            },
+          ],
+        },
+      ],
+    }),
+  });
+  return { status: res.status, waMessageId: `${canal === "instagram" ? "ig" : "fb"}_${mid}` };
+}
+
+/** La conversación de ese usuario en ese canal (por su identidad). */
+const convMeta = (canal, usuario) =>
+  hasta(() =>
+    conBase(async (sql) => {
+      const [f] = await sql`
+        select cv.id from conversation cv join contact ct on ct.id = cv.contact_id
+         where ct.wa_identity = ${CANALES_META[canal].prefijo + usuario}
+         order by cv.created_at desc limit 1`;
+      return f?.id ?? null;
+    }),
+  );
+
+/** Lo que salió al mock con el aviso, en ese canal. */
+async function avisoEnElMock(canal) {
+  const outbox = (await api("/api/dev/wa-mock/outbox")).json?.outbox ?? [];
+  return outbox
+    .filter((o) =>
+      canal === "instagram"
+        ? o.canal === "instagram"
+        : o.canal === undefined && o.phoneNumberId === CANALES_META.messenger.cuenta,
+    )
+    .find((o) => o.body?.message?.text === AVISO);
+}
+
+const QUICK = BOTONES.map((b) => ({ content_type: "text", title: b.title, payload: b.id }));
+
+async function botonesMeta(cerebro, canal) {
+  console.log(`\n== 077: el consentimiento por ${canal}, con botones nativos ==`);
+  if (!CHANNELS.includes(canal)) {
+    console.log(`  SKIP ${canal}: CHANNELS no lo incluye`);
+    return;
+  }
+  const c = CANALES_META[canal];
+  const con = await api(`/api/settings/${canal}`, {
+    method: "PUT",
+    body: JSON.stringify(c.conectar(c.cuenta)),
+  });
+  ok(`${canal} conectado directo con Meta (mock)`, con.res.ok, JSON.stringify(con.json));
+
+  // --- Acepta con el botón ---
+  const ana = `u-acepta-${canal}-${RUN}`;
+  const w1 = await entranteMeta(canal, ana, { text: `hola ${MARCA}` });
+  ok(`${canal}: el webhook respondió 200`, w1.status === 200, String(w1.status));
+  const conv = await convMeta(canal, ana);
+  ok(`${canal}: la conversación está en la bandeja`, Boolean(conv));
+  if (!conv) return;
+  await hasta(() => cerebro.de(conv)[0], COALESCE + 12000);
+  const aviso = await bot("/api/bot/messages", { conversationId: conv, text: AVISO, buttons: BOTONES });
+  ok(`${canal}: el aviso con botones sale (200, sin 409)`, aviso.res.status === 200, JSON.stringify(aviso.json));
+  const salio = await avisoEnElMock(canal);
+  ok(
+    `${canal}: a Meta salió el texto con los dos Quick Replies`,
+    JSON.stringify(salio?.body?.message?.quick_replies) === JSON.stringify(QUICK),
+    JSON.stringify(salio?.body ?? null),
+  );
+  const saliente = (await mensajesDe(conv)).find((m) => m.direction === "out" && m.text === AVISO);
+  ok(
+    `${canal}: la bandeja muestra el aviso con sus botones`,
+    JSON.stringify(saliente?.buttons) === JSON.stringify(BOTONES),
+    JSON.stringify(saliente),
+  );
+  const largo = await bot("/api/bot/messages", {
+    conversationId: conv,
+    text: AVISO,
+    buttons: [{ id: "x", title: "x".repeat(21) }],
+  });
+  ok(`${canal}: un título de 21: 422 invalid_body`, largo.res.status === 422, String(largo.res.status));
+
+  const antes = cerebro.de(conv).length;
+  await entranteMeta(canal, ana, { text: "Acepto", quick_reply: { payload: BOTONES[0].id } });
+  const turno = await hasta(() => cerebro.de(conv)[antes], COALESCE + 12000);
+  const ultimo = turno?.evento?.messages?.at(-1);
+  ok(
+    `${canal}: el despacho lleva el «Acepto» con su buttonId`,
+    ultimo?.text === "Acepto" && ultimo?.buttonId === BOTONES[0].id,
+    JSON.stringify(ultimo),
+  );
+  const cns = await bot("/api/bot/consent", {
+    conversationId: conv,
+    kind: "aviso_privacidad",
+    granted: true,
+    noticeVersion: "aviso-e2e-1",
+    sourceMessageId: ultimo?.id,
+  });
+  ok(`${canal}: consent registra la aceptación (201)`, cns.res.status === 201, JSON.stringify(cns.json));
+
+  const n = cerebro.de(conv).length;
+  await entranteMeta(canal, ana, { text: `me duele la muela ${MARCA}` });
+  await hasta(() => cerebro.de(conv)[n], COALESCE + 12000);
+  const escrito = (await mensajesDe(conv)).filter((m) => m.direction === "in").at(-1);
+  ok(`${canal}: lo que escribe se guarda filtrado`, escrito?.text === OMITIDO, JSON.stringify(escrito?.text));
+
+  // --- Rechaza con el botón, sin perfil de privacidad legible ---
+  const beto = `u-rechaza-${canal}-${RUN}`;
+  await entranteMeta(canal, beto, { text: `hola ${MARCA}` });
+  const conv2 = await convMeta(canal, beto);
+  ok(`${canal}: la segunda conversación está en la bandeja`, Boolean(conv2));
+  if (!conv2) return;
+  await hasta(() => cerebro.de(conv2)[0], COALESCE + 12000);
+  await bot("/api/bot/messages", { conversationId: conv2, text: AVISO, buttons: BOTONES });
+  // Una huella que no cuadra deja el perfil ilegible (068, D3): sin configuración.
+  const huella = await conBase(async (sql) => {
+    const [f] = await sql`select fingerprint from privacy_profile where organization_id = ${ORG}`;
+    if (f) await sql`update privacy_profile set fingerprint = 'roto' where organization_id = ${ORG}`;
+    return f?.fingerprint ?? null;
+  });
+  try {
+    const antes2 = cerebro.de(conv2).length;
+    const toque = await entranteMeta(canal, beto, { text: "No acepto", quick_reply: { payload: BOTONES[1].id } });
+    const t2 = await hasta(() => cerebro.de(conv2)[antes2], COALESCE + 12000);
+    const u2 = t2?.evento?.messages?.at(-1);
+    ok(
+      `${canal}: sin perfil, el «No acepto» llega con su título y su buttonId`,
+      u2?.text === "No acepto" && u2?.buttonId === BOTONES[1].id,
+      JSON.stringify(u2),
+    );
+    const guardado = await conBase(async (sql) => {
+      const [f] = await sql`
+        select text, button_id from message where wa_message_id = ${toque.waMessageId}`;
+      return f ?? null;
+    });
+    ok(
+      `${canal}: en la base, el texto del botón y button_id`,
+      guardado?.text === "No acepto" && guardado?.button_id === BOTONES[1].id,
+      JSON.stringify(guardado),
+    );
+    const rechazo = await bot("/api/bot/consent", {
+      conversationId: conv2,
+      kind: "aviso_privacidad",
+      granted: false,
+      noticeVersion: "aviso-e2e-1",
+    });
+    ok(`${canal}: consent registra el rechazo`, rechazo.res.status === 201, JSON.stringify(rechazo.json));
+    const f = await bot("/api/bot/forget", { conversationId: conv2, reason: "no_acepta" });
+    ok(
+      `${canal}: forget borra la conversación`,
+      f.res.status === 200 && f.json?.deleted >= 3,
+      JSON.stringify(f.json),
+    );
+  } finally {
+    if (huella) {
+      await conBase(async (sql) => {
+        await sql`update privacy_profile set fingerprint = ${huella} where organization_id = ${ORG}`;
+      });
+    }
+  }
+}
+
 async function main() {
   const url = urlDelDespacho();
   const cerebro = await levantarCerebroFalso({
@@ -559,6 +763,8 @@ async function main() {
     await noAcepto(cerebro);
     await adjuntosApagados(cerebro);
     await olvidoConCerebroCaido(cerebro);
+    await botonesMeta(cerebro, "instagram");
+    await botonesMeta(cerebro, "messenger");
   } finally {
     if (cookie) await apagarAgente(api).catch(() => {});
     await cerebro.apagar().catch(() => {});

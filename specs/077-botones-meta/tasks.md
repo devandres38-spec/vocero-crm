@@ -32,7 +32,7 @@
   - el saliente los guarda;
   - pruebas del cuerpo exacto en los dos canales.
   - **Sabotaje 1.**
-- [ ] T5 **El mock y el E2E:**
+- [x] T5 **El mock y el E2E:**
   - el mock de Graph valida `quick_replies` como Meta (pregunta 3);
   - `IG_GRAPH_BASE_URL` en `e2e.yml`;
   - `e2e-consentimiento` gana Instagram (fuente Meta) y Messenger, cada uno con:
