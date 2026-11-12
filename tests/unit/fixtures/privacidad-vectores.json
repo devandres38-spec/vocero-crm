@@ -76,6 +76,7 @@
           "hincho",
           "infeccion*",
           "infect*",
+          "maread*",
           "mareo*",
           "nausea*",
           "punzad*",
@@ -155,6 +156,7 @@
           "quimioterapia",
           "quiste*",
           "sida",
+          "sinusitis",
           "tiroid*",
           "tumor*",
           "vih",
@@ -162,6 +164,7 @@
           "hongo*",
           "tos",
           "bruxismo",
+          "carie",
           "caries",
           "gingivitis",
           "periodont*"
@@ -197,7 +200,7 @@
           "pastilla*"
         ]
       },
-      "huella": "678b2aee0a921aeb002a5af7c79cfc853e65e77cf2bdb03426630ef8a98fa5ce"
+      "huella": "3d4d35ded3ef47eede35acb883eb7dfa93dcd003d3d0d74061dc0baf24152d39"
     },
     "dental-ferula-co": {
       "formato": 1,
@@ -275,6 +278,7 @@
           "hincho",
           "infeccion*",
           "infect*",
+          "maread*",
           "mareo*",
           "nausea*",
           "punzad*",
@@ -354,6 +358,7 @@
           "quimioterapia",
           "quiste*",
           "sida",
+          "sinusitis",
           "tiroid*",
           "tumor*",
           "vih",
@@ -361,6 +366,7 @@
           "hongo*",
           "tos",
           "bruxismo",
+          "carie",
           "caries",
           "gingivitis",
           "periodont*"
@@ -396,7 +402,7 @@
           "pastilla*"
         ]
       },
-      "huella": "cc66fdaa8e081da6937f977fd64fe2da031e2d5443c08b3b62427922a7e8d78b"
+      "huella": "0c2eaee2c5e8cf7e26348b99819937ea4e077c3712d8e0ca339bbd06fe13746e"
     },
     "dental-mx": {
       "formato": 1,
@@ -472,6 +478,7 @@
           "hincho",
           "infeccion*",
           "infect*",
+          "maread*",
           "mareo*",
           "nausea*",
           "punzad*",
@@ -551,6 +558,7 @@
           "quimioterapia",
           "quiste*",
           "sida",
+          "sinusitis",
           "tiroid*",
           "tumor*",
           "vih",
@@ -558,6 +566,7 @@
           "hongo*",
           "tos",
           "bruxismo",
+          "carie",
           "caries",
           "gingivitis",
           "periodont*"
@@ -593,7 +602,7 @@
           "pastilla*"
         ]
       },
-      "huella": "73c40b205f4e51ba47739b323ac867de74ddfb69d1b78d89e953345e0365dfbf"
+      "huella": "dea05ec74ca0ba97df0c82b281caf3c698466bb2601d206223701940c2349804"
     },
     "generico-co": {
       "formato": 1,
@@ -644,6 +653,7 @@
           "hincho",
           "infeccion*",
           "infect*",
+          "maread*",
           "mareo*",
           "nausea*",
           "punzad*",
@@ -681,6 +691,7 @@
           "quimioterapia",
           "quiste*",
           "sida",
+          "sinusitis",
           "tiroid*",
           "tumor*",
           "vih"
@@ -715,7 +726,7 @@
           "warfarina"
         ]
       },
-      "huella": "a71a7aaacf65ebb2b272f578504dabd568567ab2988455d45639dc3e9a52d905"
+      "huella": "f1c070ee33759acd61a4441fd5d62a62767d044338a2a1cc179e2bdf5b2df82c"
     },
     "sin-salud-us": {
       "formato": 1,
@@ -3664,6 +3675,2060 @@
     },
     {
       "perfil": "dental-co",
+      "texto": "tengo una infesion en la encia",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo infesion",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "creo q tengo una infecsion",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo una imfeccion",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo dolr d muela",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo mucho dolr",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo la ensia inchada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo la cara inchada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia",
+            "sintoma"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo la ensia imflamada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me zangran las encias",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo un abseso",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo un apseso",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo absesso",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo karies",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo jinjivitis",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo gingivitiz",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi hijo tiene fievre",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "estoy embarasada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "estoy enbarazada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "estoy envarazada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "soy diavetico",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "soy alerjico a la penisilina",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion",
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me tome un ivuprofeno",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me tome un ibuprofen",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tomo asetaminofen",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo una muela pikada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo un diente pikado",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo bomito",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo nauceas",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo hipertencion",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me desmalle",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "le dan convulciones",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo una ulsera",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me dieron antiviotico",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tomo un medicamnto",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo herpez",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo asmma",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo cansser",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo canser",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo una yaga",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo brucsismo",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo epilepcia",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo hepatitiz",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo artritiz",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tomo loxartan",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tomo insulna",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo la precion alta",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo deprecion",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo grippa",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "no para de sangar",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "no deja de zangrar",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia",
+            "sintoma"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "no puedo respirrar",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "no puedo mastikar",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo sencibilidad",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo los dientes sencibles",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "estoy embarrazada",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "la embarraste parce",
+      "esperado": {
+        "text": "la embarraste parce",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "la embarraste parce",
+      "esperado": {
+        "text": "la embarraste parce",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "uy la embarre",
+      "esperado": {
+        "text": "uy la embarre",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "uy la embarre",
+      "esperado": {
+        "text": "uy la embarre",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "soy hincha del junior",
+      "esperado": {
+        "text": "soy hincha del junior",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "soy hincha del junior",
+      "esperado": {
+        "text": "soy hincha del junior",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "los hinchas llenaron el estadio",
+      "esperado": {
+        "text": "los hinchas llenaron el estadio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "los hinchas llenaron el estadio",
+      "esperado": {
+        "text": "los hinchas llenaron el estadio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "a que hora es el desayuno",
+      "esperado": {
+        "text": "a que hora es el desayuno",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "a que hora es el desayuno",
+      "esperado": {
+        "text": "a que hora es el desayuno",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "hay desayunito incluido?",
+      "esperado": {
+        "text": "hay desayunito incluido?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "hay desayunito incluido?",
+      "esperado": {
+        "text": "hay desayunito incluido?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "quiero un asesor",
+      "esperado": {
+        "text": "quiero un asesor",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "quiero un asesor",
+      "esperado": {
+        "text": "quiero un asesor",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "necesito acceso al curso",
+      "esperado": {
+        "text": "necesito acceso al curso",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "necesito acceso al curso",
+      "esperado": {
+        "text": "necesito acceso al curso",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el carro se deprecia mucho?",
+      "esperado": {
+        "text": "el carro se deprecia mucho?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "el carro se deprecia mucho?",
+      "esperado": {
+        "text": "el carro se deprecia mucho?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "pense que era mas barato",
+      "esperado": {
+        "text": "pense que era mas barato",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "pense que era mas barato",
+      "esperado": {
+        "text": "pense que era mas barato",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "lo tengo pensado",
+      "esperado": {
+        "text": "lo tengo pensado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "lo tengo pensado",
+      "esperado": {
+        "text": "lo tengo pensado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "con mucho honor",
+      "esperado": {
+        "text": "con mucho honor",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "con mucho honor",
+      "esperado": {
+        "text": "con mucho honor",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el router inalambrico no sirve",
+      "esperado": {
+        "text": "el router inalambrico no sirve",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "el router inalambrico no sirve",
+      "esperado": {
+        "text": "el router inalambrico no sirve",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el curso es en castellano",
+      "esperado": {
+        "text": "el curso es en castellano",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "el curso es en castellano",
+      "esperado": {
+        "text": "el curso es en castellano",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cual es el precio",
+      "esperado": {
+        "text": "cual es el precio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "cual es el precio",
+      "esperado": {
+        "text": "cual es el precio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me cuenta el precio",
+      "esperado": {
+        "text": "me cuenta el precio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "me cuenta el precio",
+      "esperado": {
+        "text": "me cuenta el precio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "se me daño el computador",
+      "esperado": {
+        "text": "se me daño el computador",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "se me daño el computador",
+      "esperado": {
+        "text": "se me daño el computador",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el computador esta dañado",
+      "esperado": {
+        "text": "el computador esta dañado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "el computador esta dañado",
+      "esperado": {
+        "text": "el computador esta dañado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi portatil no prende",
+      "esperado": {
+        "text": "mi portatil no prende",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "mi portatil no prende",
+      "esperado": {
+        "text": "mi portatil no prende",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "quiero un corte desvanecido",
+      "esperado": {
+        "text": "quiero un corte desvanecido",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "quiero un corte desvanecido",
+      "esperado": {
+        "text": "quiero un corte desvanecido",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me arreglan la barba?",
+      "esperado": {
+        "text": "me arreglan la barba?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "me arreglan la barba?",
+      "esperado": {
+        "text": "me arreglan la barba?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cuanto vale el curso de ingles",
+      "esperado": {
+        "text": "cuanto vale el curso de ingles",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "cuanto vale el curso de ingles",
+      "esperado": {
+        "text": "cuanto vale el curso de ingles",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tienen clases virtuales?",
+      "esperado": {
+        "text": "tienen clases virtuales?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "tienen clases virtuales?",
+      "esperado": {
+        "text": "tienen clases virtuales?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "que chimba de servicio",
+      "esperado": {
+        "text": "que chimba de servicio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "que chimba de servicio",
+      "esperado": {
+        "text": "que chimba de servicio",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "estoy enguayabado",
+      "esperado": {
+        "text": "estoy enguayabado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "estoy enguayabado",
+      "esperado": {
+        "text": "estoy enguayabado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "ese man es muy berraco",
+      "esperado": {
+        "text": "ese man es muy berraco",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "ese man es muy berraco",
+      "esperado": {
+        "text": "ese man es muy berraco",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me regala un tinto",
+      "esperado": {
+        "text": "me regala un tinto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "me regala un tinto",
+      "esperado": {
+        "text": "me regala un tinto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "traje el mecato",
+      "esperado": {
+        "text": "traje el mecato",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "traje el mecato",
+      "esperado": {
+        "text": "traje el mecato",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "dele pues",
+      "esperado": {
+        "text": "dele pues",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "dele pues",
+      "esperado": {
+        "text": "dele pues",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "hagale",
+      "esperado": {
+        "text": "hagale",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "hagale",
+      "esperado": {
+        "text": "hagale",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "listo parcero",
+      "esperado": {
+        "text": "listo parcero",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "listo parcero",
+      "esperado": {
+        "text": "listo parcero",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me pulsa el boton",
+      "esperado": {
+        "text": "me pulsa el boton",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "me pulsa el boton",
+      "esperado": {
+        "text": "me pulsa el boton",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "esta pulsado",
+      "esperado": {
+        "text": "esta pulsado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "esta pulsado",
+      "esperado": {
+        "text": "esta pulsado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "quedo bonita",
+      "esperado": {
+        "text": "quedo bonita",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "quedo bonita",
+      "esperado": {
+        "text": "quedo bonita",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "la boleta del concierto",
+      "esperado": {
+        "text": "la boleta del concierto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "la boleta del concierto",
+      "esperado": {
+        "text": "la boleta del concierto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi mamá cumple años",
+      "esperado": {
+        "text": "mi mamá cumple años",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "mi mamá cumple años",
+      "esperado": {
+        "text": "mi mamá cumple años",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo una duda",
+      "esperado": {
+        "text": "tengo una duda",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "tengo una duda",
+      "esperado": {
+        "text": "tengo una duda",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo una pregunta",
+      "esperado": {
+        "text": "tengo una pregunta",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "tengo una pregunta",
+      "esperado": {
+        "text": "tengo una pregunta",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo tiempo el martes",
+      "esperado": {
+        "text": "tengo tiempo el martes",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "tengo tiempo el martes",
+      "esperado": {
+        "text": "tengo tiempo el martes",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo moto",
+      "esperado": {
+        "text": "tengo moto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "tengo moto",
+      "esperado": {
+        "text": "tengo moto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "la clase de pintura",
+      "esperado": {
+        "text": "la clase de pintura",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "la clase de pintura",
+      "esperado": {
+        "text": "la clase de pintura",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el profe es muy bueno",
+      "esperado": {
+        "text": "el profe es muy bueno",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "el profe es muy bueno",
+      "esperado": {
+        "text": "el profe es muy bueno",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "la matricula vale cuanto",
+      "esperado": {
+        "text": "la matricula vale cuanto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "la matricula vale cuanto",
+      "esperado": {
+        "text": "la matricula vale cuanto",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "hay cupo para mi hijo",
+      "esperado": {
+        "text": "hay cupo para mi hijo",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "hay cupo para mi hijo",
+      "esperado": {
+        "text": "hay cupo para mi hijo",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo la inscripcion",
+      "esperado": {
+        "text": "tengo la inscripcion",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "tengo la inscripcion",
+      "esperado": {
+        "text": "tengo la inscripcion",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "quiero inscribirme",
+      "esperado": {
+        "text": "quiero inscribirme",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "quiero inscribirme",
+      "esperado": {
+        "text": "quiero inscribirme",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cuando empiezan las clases",
+      "esperado": {
+        "text": "cuando empiezan las clases",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "cuando empiezan las clases",
+      "esperado": {
+        "text": "cuando empiezan las clases",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "el certificado tiene costo",
+      "esperado": {
+        "text": "el certificado tiene costo",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "el certificado tiene costo",
+      "esperado": {
+        "text": "el certificado tiene costo",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "que embarrada",
+      "esperado": {
+        "text": "que embarrada",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "que embarrada",
+      "esperado": {
+        "text": "que embarrada",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "quiero hablar con un asesor",
+      "esperado": {
+        "text": "quiero hablar con un asesor",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "quiero hablar con un asesor",
+      "esperado": {
+        "text": "quiero hablar con un asesor",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "cual es el precio?",
+      "esperado": {
+        "text": "cual es el precio?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "cual es el precio?",
+      "esperado": {
+        "text": "cual es el precio?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me cuenta cuanto vale?",
+      "esperado": {
+        "text": "me cuenta cuanto vale?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "generico-co",
+      "texto": "me cuenta cuanto vale?",
+      "esperado": {
+        "text": "me cuenta cuanto vale?",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
       "texto": "Hola, me duele mucho una muela desde ayer",
       "esperado": {
         "text": "[mensaje con información de salud omitido]",
@@ -6093,6 +8158,210 @@
         ],
         "flags": [
           "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "tengo una infesion en la encia",
+      "esperado": {
+        "text": "tengo una infesion en la encia",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "tengo dolr d muela, mi cel 300 123 4567",
+      "esperado": {
+        "text": "tengo dolr d muela, mi cel [telefono]",
+        "health": null,
+        "masked": [
+          "telefono"
+        ],
+        "flags": [
+          "telefono"
+        ]
+      }
+    },
+    {
+      "perfil": "sin-salud-us",
+      "texto": "estoy embarasada",
+      "esperado": {
+        "text": "estoy embarasada",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo puz",
+      "esperado": {
+        "text": "tengo puz",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo grypa",
+      "esperado": {
+        "text": "tengo grypa",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo el diente ifectado",
+      "esperado": {
+        "text": "tengo el diente ifectado",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo infesionalidades",
+      "esperado": {
+        "text": "tengo infesionalidades",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo dolrosisimo",
+      "esperado": {
+        "text": "tengo dolrosisimo",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo fiebr",
+      "esperado": {
+        "text": "tengo fiebr",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "mi hijo es hincha del junior",
+      "esperado": {
+        "text": "mi hijo es hincha del junior",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo un flemom",
+      "esperado": {
+        "text": "tengo un flemom",
+        "health": null,
+        "masked": [],
+        "flags": []
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo infesiones",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo dolres",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "sintoma"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "sintoma"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me tome un ibuprofen",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "medicamento"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "medicamento"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "tengo deprecion",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "condicion"
+          ],
+          "urgent": false
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "condicion"
+        ]
+      }
+    },
+    {
+      "perfil": "dental-co",
+      "texto": "me desmalle",
+      "esperado": {
+        "text": "[mensaje con información de salud omitido]",
+        "health": {
+          "categories": [
+            "urgencia"
+          ],
+          "urgent": true
+        },
+        "masked": [],
+        "flags": [
+          "salud",
+          "urgencia"
         ]
       }
     },
