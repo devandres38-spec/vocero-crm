@@ -536,9 +536,9 @@ export async function sendText(input: {
   const cita = await resolverMensajeCitado(target, input.replyToMessageId);
 
   const waMessageId = target.instagram
-    ? await callInstagramSend(target, text)
+    ? await callInstagramSend(target, text, buttons)
     : target.messenger
-      ? await callMessengerSend(target, text)
+      ? await callMessengerSend(target, text, buttons)
       : target.tiktok
         ? await callTiktokSend(target, text)
         : await callGraphSend(
@@ -848,7 +848,9 @@ export async function callGraphSend(
  */
 async function callInstagramSend(
   target: SendTarget,
-  text: string
+  text: string,
+  /** 077: los botones, como Quick Replies de Meta. */
+  botones: BotonSaliente[] | null = null
 ): Promise<string> {
   const creds = target.instagram!;
 
@@ -872,6 +874,7 @@ async function callInstagramSend(
       threadRef: target.conversation.channelThreadRef,
       text,
       humanAgentTag,
+      botones,
     });
     return res.platformMessageId;
   } catch (err) {
@@ -901,7 +904,9 @@ async function callInstagramSend(
  */
 async function callMessengerSend(
   target: SendTarget,
-  text: string
+  text: string,
+  /** 077: los botones, como Quick Replies de Meta. */
+  botones: BotonSaliente[] | null = null
 ): Promise<string> {
   const creds = target.messenger!;
 
@@ -927,6 +932,7 @@ async function callMessengerSend(
       threadRef: target.conversation.channelThreadRef,
       text,
       humanAgentTag,
+      botones,
     });
     return res.platformMessageId;
   } catch (err) {

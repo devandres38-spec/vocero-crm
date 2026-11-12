@@ -1,6 +1,7 @@
 import { graphRequest, MetaApiError } from "@/lib/meta/client";
 import type { MessengerCredentials } from "@/server/messenger/credentials";
 import { sendZernioMessage } from "@/server/zernio";
+import { quickReplies, type BotonDeMeta } from "@/server/instagram/send";
 
 /**
  * 017 — Frontera de salida del canal de Messenger (Constitución II: todo
@@ -25,10 +26,14 @@ export function buildMessengerSendBody(input: {
   recipient: string;
   text: string;
   humanAgentTag: boolean;
+  /** 077 — Botones como Quick Replies de Meta. */
+  botones?: readonly BotonDeMeta[] | null;
 }): Record<string, unknown> {
+  const message: Record<string, unknown> = { text: input.text };
+  if (input.botones?.length) message.quick_replies = quickReplies(input.botones);
   const body: Record<string, unknown> = {
     recipient: { id: input.recipient },
-    message: { text: input.text },
+    message,
     // RESPONSE dentro de la ventana estándar de 24 h. Fuera, Messenger no
     // tiene plantillas: la única vía es la etiqueta HUMAN_AGENT (7 días).
     messaging_type: input.humanAgentTag ? "MESSAGE_TAG" : "RESPONSE",
@@ -51,7 +56,12 @@ export async function sendMessengerText(input: {
   humanAgentTag?: boolean;
   /** Id del mensaje en Vocero: llave natural de idempotencia en Zernio. */
   idempotencyKey?: string;
+  /** 077 — Solo por Meta: por Zernio, `sendText` ya lo rechazó. */
+  botones?: readonly BotonDeMeta[] | null;
 }): Promise<MessengerSendResult> {
+  if (input.botones?.length && input.credentials.source !== "meta") {
+    throw new MetaApiError("Zernio no envía botones", { status: 400 });
+  }
   if (input.credentials.source === "zernio") {
     return sendZernioMessage({
       token: input.credentials.token,
@@ -75,6 +85,7 @@ async function sendViaMeta(input: {
   recipient: string;
   text: string;
   humanAgentTag?: boolean;
+  botones?: readonly BotonDeMeta[] | null;
 }): Promise<MessengerSendResult> {
   const { pageId } = input.credentials;
   if (!pageId) {
@@ -93,6 +104,7 @@ async function sendViaMeta(input: {
       recipient: input.recipient,
       text: input.text,
       humanAgentTag: input.humanAgentTag ?? false,
+      botones: input.botones ?? null,
     }),
   });
   const id = res.message_id ?? res.messages?.[0]?.id;

@@ -26,7 +26,7 @@
   - `docs/openapi.json` al día;
   - pruebas de la ruta: el `409` sigue en TikTok y en Zernio.
   - **Sabotaje 3.**
-- [ ] T4 **El envío:**
+- [x] T4 **El envío:**
   - `quick_replies` en `sendViaMeta` de Instagram y en `buildMessengerSendBody`;
   - `callInstagramSend` y `callMessengerSend` reciben los botones;
   - el saliente los guarda;
