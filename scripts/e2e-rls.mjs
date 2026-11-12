@@ -568,6 +568,57 @@ async function panel(tablas) {
   }
 }
 
+/**
+ * 078 (D18) — El mapeo evento → etapa en la base, con el usuario de la app:
+ * uno por evento en cada negocio (otro negocio puede usar el mismo), solo en
+ * etapas abiertas (CHECK) y un negocio no toca las etapas de otro.
+ */
+async function etapaPorEventos() {
+  console.log("\n== 078: el mapeo evento → etapa ==");
+  const etapa = (org, id, kind) =>
+    dueno`insert into pipeline_stage (id, organization_id, name, position, kind)
+          values (${id}, ${org}, ${id}, 90, ${kind}) on conflict (id) do nothing`;
+  await etapa(A, "st_rls_a1", "open");
+  await etapa(A, "st_rls_a2", "open");
+  await etapa(A, "st_rls_aw", "won");
+  await etapa(B, "st_rls_b1", "open");
+  try {
+    const marcar = (tx, id, ev) =>
+      tx`update pipeline_stage set evento_bot = ${ev} where id = ${id} returning id`;
+    ok(
+      "A mapea un evento a su etapa abierta",
+      (await comoApp(A, async (tx) => (await marcar(tx, "st_rls_a1", "primera_respuesta")).length)) === 1
+    );
+    ok(
+      "el mismo evento dos veces en A: 23505 (único por negocio)",
+      (await codigoDe(A, async (tx) => {
+        await marcar(tx, "st_rls_a1", "primera_respuesta");
+        await marcar(tx, "st_rls_a2", "primera_respuesta");
+      })) === "23505"
+    );
+    ok(
+      "en una etapa ganada: 23514 (solo abiertas)",
+      (await codigoDe(A, (tx) => marcar(tx, "st_rls_aw", "primera_respuesta"))) === "23514"
+    );
+    ok(
+      "un evento fuera del catálogo: 23514",
+      (await codigoDe(A, (tx) => marcar(tx, "st_rls_a1", "ganar"))) === "23514"
+    );
+    ok(
+      "B puede usar el mismo evento que A",
+      (await codigoDe(B, async (tx) => {
+        await marcar(tx, "st_rls_b1", "primera_respuesta");
+      })) === null
+    );
+    ok(
+      "A no toca las etapas de B (0 filas)",
+      (await comoApp(A, async (tx) => (await marcar(tx, "st_rls_b1", "pidio_cita")).length)) === 0
+    );
+  } finally {
+    await dueno`delete from pipeline_stage where id in ('st_rls_a1', 'st_rls_a2', 'st_rls_aw', 'st_rls_b1')`;
+  }
+}
+
 async function main() {
   const tablas = await catalogo();
   const sembradas = await sembrar(tablas);
@@ -576,6 +627,7 @@ async function main() {
   await envoltorio();
   await funcionesDeSoloIds();
   await panel(tablas);
+  await etapaPorEventos();
 }
 
 main()

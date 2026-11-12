@@ -9,6 +9,8 @@
  * Guion: tests/e2e/us-contrato-aliantis.md. Lo corre `.github/workflows/e2e.yml`
  * (con `AVISOS=on`); no se corre en el PC de Andres.
  *
+ * 078 — También la etapa por eventos y la ficha con lista blanca (D18, D12).
+ *
  * Sale con código 1 si algún check falla.
  */
 import postgres from "postgres";
@@ -455,6 +457,125 @@ async function traspasoYAvisos() {
   );
 }
 
+/**
+ * 078 (D18, D12) — La etapa por eventos y la ficha con lista blanca. El mapeo
+ * se elige como lo haría el dueño (la pantalla de etapas: `/api/pipeline/stages`).
+ */
+async function etapaYFicha() {
+  console.log("\n== 078: la etapa por eventos y la ficha con lista blanca ==");
+  const etapas = (await api("/api/pipeline/stages")).json?.stages ?? [];
+  const abiertas = etapas.filter((e) => e.kind === "open").sort((a, b) => a.position - b.position);
+  const ganada = etapas.find((e) => e.kind === "won");
+  ok("el Pipeline tiene al menos 3 etapas abiertas y una ganada", abiertas.length >= 3 && Boolean(ganada), JSON.stringify(etapas.map((e) => e.name)));
+  if (abiertas.length < 3 || !ganada) return;
+  const [inicial, conversando, interesado] = abiertas;
+
+  const mapear = (id, eventoBot) =>
+    api(`/api/pipeline/stages/${id}`, { method: "PATCH", body: JSON.stringify({ eventoBot }) });
+  ok("el dueño mapea primera_respuesta", (await mapear(conversando.id, "primera_respuesta")).res.ok);
+  ok("y servicio_consultado", (await mapear(interesado.id, "servicio_consultado")).res.ok);
+  for (const e of etapas.filter((x) => x.eventoBot === "pidio_cita")) await mapear(e.id, null);
+  const cerrada = await mapear(ganada.id, "pidio_cita");
+  ok(
+    "a una etapa ganada no: 409 etapa_cerrada",
+    cerrada.res.status === 409 && cerrada.json?.error?.code === "etapa_cerrada",
+    JSON.stringify(cerrada.json),
+  );
+
+  const nombre = `Cliente Etapa ${MARCA}`;
+  await entranteWa(telefono(7), nombre, { text: `hola, quisiera información ${MARCA}` });
+  const conv = await convDe(nombre);
+  ok("la conversación está en la bandeja", Boolean(conv));
+  if (!conv) return;
+  const etapaDelLead = () =>
+    conBase(async (sql) => {
+      const [f] = await sql`
+        select l.stage_id from lead l join conversation c on c.contact_id = l.contact_id
+         where c.id = ${conv.id}`;
+      return f?.stage_id ?? null;
+    });
+  ok("el lead nace en la primera etapa abierta", (await etapaDelLead()) === inicial.id);
+
+  const evento = (ev) => bot("/api/bot/stage", { conversationId: conv.id, evento: ev });
+  const r1 = await evento("primera_respuesta");
+  ok(
+    "primera_respuesta lo mueve a su etapa",
+    r1.json?.changed === true && r1.json?.lead?.stageName === conversando.name,
+    JSON.stringify(r1.json),
+  );
+  const r2 = await evento("primera_respuesta");
+  ok("repetirlo: changed false, ya_esta", r2.json?.changed === false && r2.json?.motivo === "ya_esta", JSON.stringify(r2.json));
+  const r3 = await evento("servicio_consultado");
+  ok("servicio_consultado lo adelanta", r3.json?.changed === true && r3.json?.lead?.stageName === interesado.name, JSON.stringify(r3.json));
+  const r4 = await evento("primera_respuesta");
+  ok(
+    "un evento de una etapa anterior: nunca hacia atrás",
+    r4.json?.motivo === "ya_esta" && (await etapaDelLead()) === interesado.id,
+    JSON.stringify(r4.json),
+  );
+  const r5 = await evento("pidio_cita");
+  ok("un evento sin etapa: sin_etapa", r5.json?.changed === false && r5.json?.motivo === "sin_etapa", JSON.stringify(r5.json));
+  const r6 = await bot("/api/bot/stage", { conversationId: conv.id, evento: "pidio_cita", stage: interesado.name });
+  ok("evento y stage a la vez: 422", r6.res.status === 422, String(r6.res.status));
+
+  const ficha = (f) => api("/api/bot/ficha", {
+    method: "PUT",
+    body: JSON.stringify({ conversationId: conv.id, ficha: f }),
+    headers: cabecerasDelCerebro(BOT_KEY, ORG),
+  });
+  const f1 = await ficha({ servicio_interes: "Inglés básico", quiere_cita: true });
+  ok(
+    "la ficha del cerebro: servicio_interes y quiere_cita",
+    f1.res.ok && f1.json?.ficha?.servicio_interes === "Inglés básico" && f1.json?.ficha?.quiere_cita === true,
+    JSON.stringify(f1.json),
+  );
+  const f2 = await ficha({ sintoma: "dolor" });
+  ok(
+    "una clave fuera de la lista blanca: 422 clave_no_permitida",
+    f2.res.status === 422 && f2.json?.error?.code === "clave_no_permitida",
+    JSON.stringify(f2.json),
+  );
+  const f3 = await ficha({ servicio_interes: "me duele mucho la muela" });
+  ok(
+    "un valor con salud no se guarda: queda el anterior",
+    f3.res.ok && f3.json?.ficha?.servicio_interes === "Inglés básico",
+    JSON.stringify(f3.json?.ficha),
+  );
+  const sinSalud = await conBase(async (sql) => {
+    const [f] = await sql`
+      select ct.ficha::text as ficha from contact ct join conversation c on c.contact_id = ct.id
+       where c.id = ${conv.id}`;
+    return f?.ficha ?? "";
+  });
+  ok("en la base, la ficha no tiene salud ni el marcador", !/muela|omitido/.test(sinSalud), sinSalud);
+
+  // Una persona toma la conversación: ni etapa ni ficha.
+  await conBase((sql) => sql`update conversation set handoff_at = now() where id = ${conv.id}`);
+  const p1 = await evento("pidio_cita");
+  const p2 = await ficha({ quiere_cita: false });
+  ok(
+    "con una persona atendiendo: 409 ai_paused en la etapa y en la ficha",
+    p1.res.status === 409 && p1.json?.error?.code === "ai_paused" && p2.res.status === 409,
+    JSON.stringify([p1.json, p2.json]),
+  );
+  // El Laboratorio: ni etapa ni ficha.
+  await conBase((sql) => sql`update conversation set handoff_at = null, is_test = true where id = ${conv.id}`);
+  const l1 = await evento("pidio_cita");
+  const l2 = await ficha({ quiere_cita: false });
+  ok(
+    "en una conversación de prueba: 200 con prueba, sin escribir",
+    l1.json?.motivo === "prueba" && l2.json?.prueba === true,
+    JSON.stringify([l1.json, l2.json]),
+  );
+  await conBase((sql) => sql`update conversation set is_test = false where id = ${conv.id}`);
+  const fin = await conBase(async (sql) => {
+    const [f] = await sql`
+      select ct.ficha from contact ct join conversation c on c.contact_id = ct.id where c.id = ${conv.id}`;
+    return f?.ficha ?? null;
+  });
+  ok("la ficha no cambió con la persona ni en prueba", fin?.quiere_cita === true, JSON.stringify(fin));
+}
+
 async function main() {
   const url = urlDelDespacho();
   const cerebro = await levantarCerebroFalso({
@@ -471,6 +592,7 @@ async function main() {
     const omitida = await omision(cerebro);
     if (omitida) await idempotente(omitida);
     await traspasoYAvisos();
+    await etapaYFicha();
   } finally {
     if (cookie) await apagarAgente(api).catch(() => {});
     await cerebro.apagar().catch(() => {});

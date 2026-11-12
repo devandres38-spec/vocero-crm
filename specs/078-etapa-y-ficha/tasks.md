@@ -39,7 +39,7 @@
   - `docs/openapi.json`;
   - pruebas.
   - **Sabotajes 2 y 3.**
-- [ ] T6 **E2E y RLS:**
+- [x] T6 **E2E y RLS:**
   - `e2e-contrato-aliantis` gana etapa y ficha: el evento mueve; `ya_esta`; `sin_etapa`; con una persona, 409; `is_test` no escribe; la clave libre da 422; salud en un valor se omite;
   - `e2e-rls`: la columna y el índice; un negocio no mueve etapas de otro;
   - `tests/e2e/us-contrato-aliantis.md`.
