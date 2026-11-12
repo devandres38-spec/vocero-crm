@@ -42,7 +42,15 @@
     - lo que se escribe se guarda filtrado;
   - `tests/e2e/us-consentimiento.md`.
 - [x] T6 **Documentación:** `AGENTS.md`, el mapa de canales y la guía de prueba real (confirmar en vivo el host de Instagram y `messaging_type`). Revisión: CI en verde, `e2e.yml` en verde y los sabotajes en PRs borrador que se cierran sin merge.
-- [ ] T7 **Core:**
+- [x] T7 **Core:**
   - `decisiones.md`: los límites de Meta, lo escrito que cuenta y Zernio;
   - `estado.md`: el bloque I2 listo;
   - `RELEVO_ARQUITECTURA.md` corrige lo de «tras 3 avisos» (en el espacio, PR aparte).
+
+**Resultado (12-nov-2026, sobre `ddd0eb0`):**
+- **CI** en verde: las dos configuraciones, «RLS contra Postgres», Docker e Imagen.
+- **`e2e.yml`:** consentimiento 63/63 (antes 33, ahora con 15 checks por Instagram y 15 por Messenger), despacho 146/146, contrato 31/31, retención 60/60, multinegocio 15/15, alta 18/18 y panel 51/51. La migración sobre datos está bien y no hay consultas fuera de su negocio. `e2e-despacho` tarda 383 s (387 s en el bloque I).
+- **Sabotajes** en PRs borrador, cerrados sin merge, cada uno detectado por su prueba:
+  - **#33:** Instagram sin `quick_replies`;
+  - **#34:** Messenger no guarda el botón;
+  - **#35:** botones por Zernio.
