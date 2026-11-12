@@ -1,4 +1,5 @@
-import { apiError } from "@/lib/api";
+import { apiError, withAuth } from "@/lib/api";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +12,9 @@ export const dynamic = "force-dynamic";
 const fuera = async (_req: Request) => apiError(404, "not_found", "No encontrado");
 
 export const GET = fuera;
-export const PUT = fuera;
+// SABOTAJE 5: PUT /api/settings/ai vuelve a responder a un owner.
+export const PUT = withAuth(async (session) => {
+  if (!canConfigure(session.role)) return apiError(403, "forbidden", "Sin permiso");
+  return Response.json({ ok: true });
+});
 export const DELETE = fuera;
