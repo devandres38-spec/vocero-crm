@@ -173,8 +173,8 @@ La ráfaga del despacho es lo posterior al último saliente más lo que el despa
 | `POST /api/bot/messages` | Responder; sale por `inbox/send.ts` marcado como IA |
 | `GET /api/bot/profile` | Perfil del agente, knowledge base, `role`, `tools` y `llm` (`{path, model}`, o `null` sin IA) |
 | `POST /api/bot/llm/{ruta}` | 036 — Proxy compatible con OpenAI hacia el proveedor de Ajustes → IA; cuerpo y respuesta tal cual. 402 `sin_credencial` sin IA, 504 `proveedor_sin_respuesta` si no contesta |
-| `PUT /api/bot/ficha` | Guardar lo que el bot descubre del lead (claves libres) |
-| `POST /api/bot/stage` | 038 — Mover al lead a una etapa abierta siguiente (`lead.nextStages` del contexto), con la herramienta `etapa` encendida. 409 `etapa_no_permitida`, `herramienta_apagada`, `ai_paused` |
+| `PUT /api/bot/ficha` | 078 (D12) — Solo la lista blanca del cerebro (`FICHA_DEL_CEREBRO` en `src/server/bot/ficha-del-cerebro.ts`: `servicio_interes`, `quiere_cita`); `422 clave_no_permitida`. Un texto que el filtro marca no se guarda. 409 `ai_paused` y `herramienta_apagada`; en `is_test`, 200 `prueba`. El dueño escribe claves libres por `upsertFicha` |
+| `POST /api/bot/stage` | 038 — Mover al lead a una etapa abierta siguiente (`lead.nextStages` del contexto), con la herramienta `etapa` encendida. 409 `etapa_no_permitida`, `herramienta_apagada`, `ai_paused`. 078 (D18) — Con `evento` (catálogo en `src/lib/eventos-etapa.ts`), la etapa sale del mapeo del negocio (`pipeline_stage.evento_bot`: solo abiertas —CHECK—, una por evento, elegida en `stage-manager.tsx`); `sin_etapa`, `ya_esta` (nunca hacia atrás) y `prueba` son 200 `changed: false` (`moverEtapaPorEvento`) |
 | `POST /api/bot/handoff` | Devolver la conversación a un humano |
 | `POST /api/bot/typing` | Marcar leído y «escribiendo…» |
 | `GET /api/bot/media/{mediaId}` | Descargar un adjunto entrante sin tocar Meta |
