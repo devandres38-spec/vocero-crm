@@ -14,10 +14,14 @@ const bodySchema = z.object({
 });
 
 /**
- * Reinicio de UNA conversación para la línea de pruebas del operador: IA
- * reactivada (sale del handoff) y lead de vuelta a la primera etapa. El
- * historial del inbox NO se borra: es auditoría. Lo invoca el cerebro externo
- * cuando un número de su allowlist manda `/reset`.
+ * Reinicio de UNA conversación del Laboratorio: IA reactivada (sale del
+ * handoff) y lead de vuelta a la primera etapa. El historial del inbox NO se
+ * borra: es auditoría.
+ *
+ * 079 (N3 de Aliantis) — Solo vale en una conversación de prueba (`is_test`).
+ * Sobre una conversación real responde `409 solo_laboratorio` sin tocar nada:
+ * con la llave del cerebro, una conversación que atiende una persona no puede
+ * volver al bot sin que nadie lo decida. El 404 va antes que el 409.
  */
 async function postSinNegocio(req: Request) {
   const auth = await requireBot(req);
@@ -33,6 +37,7 @@ async function postSinNegocio(req: Request) {
     .select({
       id: schema.conversation.id,
       contactId: schema.conversation.contactId,
+      isTest: schema.conversation.isTest,
     })
     .from(schema.conversation)
     .where(
@@ -44,6 +49,13 @@ async function postSinNegocio(req: Request) {
     .limit(1);
   const conv = rows[0];
   if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
+  if (!conv.isTest) {
+    return apiError(
+      409,
+      "solo_laboratorio",
+      "El reinicio solo vale en una conversación del Laboratorio"
+    );
+  }
 
   await db
     .update(schema.conversation)

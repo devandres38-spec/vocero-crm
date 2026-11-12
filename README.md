@@ -117,7 +117,17 @@ otro sitio.
 
 El interruptor de esa pantalla dice si el CRM le pasa las conversaciones a tu
 agente. Solo se enciende con un agente conectado y en línea; apagado, todo se
-queda en la bandeja para tu equipo.
+queda en la bandeja para tu equipo. Cambiar el agente (encenderlo, escribirlo o
+la lista de abajo) es cosa de quien administra: un miembro del equipo recibe 403.
+
+**Solo estos números (piloto).** En la misma pantalla puedes encender una lista
+de hasta 50 teléfonos: el agente atiende solo a esos, y los demás quedan en la
+bandeja para una persona, como con el agente apagado. Pega los números como
+vengan (con `+`, espacios o guiones), siempre con el código de país. Con la
+lista encendida, Instagram, Messenger y TikTok no reciben respuesta del agente.
+La única excepción es la seguridad del paciente: un mensaje con salud de un
+número fuera de la lista le llega igual al agente, para que salga la frase de
+seguridad. El Laboratorio no se filtra.
 
 ### 🔌 Tu agente al lado del CRM
 
@@ -151,7 +161,7 @@ Mientras se publica la imagen 2.0.0 de Nea, el servicio va detrás del perfil
 | `POST /api/bot/handoff` | Devolver la conversación a un humano |
 | `POST /api/bot/typing` | Marcar leído y mostrar "escribiendo…" |
 | `GET /api/bot/media/{id}` | Descargar un adjunto entrante sin tocar Meta |
-| `POST /api/bot/reset` | Reiniciar una conversación de pruebas |
+| `POST /api/bot/reset` | Reiniciar una conversación del Laboratorio. Sobre una conversación real da `409 solo_laboratorio` y no toca nada |
 | `GET /api/bot/availability` | Con la agenda encendida: los horarios para ofrecer, que quedan registrados como ofrecidos. Con `date=AAAA-MM-DD`, todas las horas libres de ese día; `query` dice hasta dónde llega lo consultado |
 | `POST` · `PATCH /api/bot/bookings` | Con la agenda encendida: reservar (201) o mover (200) una cita, solo en un horario que se ofreció |
 

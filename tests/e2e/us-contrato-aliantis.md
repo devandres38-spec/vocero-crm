@@ -22,3 +22,16 @@ Arnés: `scripts/e2e-contrato-aliantis.mjs`, en `.github/workflows/e2e.yml` (eti
    - un valor con salud no se guarda (ni el marcador) y queda el anterior.
 4. **Con una persona atendiendo:** `409 ai_paused` en la etapa y en la ficha.
 5. **En el Laboratorio:** `200` con `prueba`, sin escribir nada.
+
+## 079 — `reset` solo en el Laboratorio y «Solo estos números» (N3, 5.5)
+
+1. **`reset` fuera de prueba:** sobre una conversación real traspasada, `POST /api/bot/reset` da `409 solo_laboratorio` y la conversación sigue traspasada (IA apagada, `handoff_at` puesto).
+2. **`reset` en el Laboratorio:** con `is_test`, `200`, y la conversación vuelve al bot (IA encendida, sin traspaso).
+3. **La lista:**
+   - encenderla vacía da `422 lista_vacia`;
+   - un número pegado con `+`, espacios y guiones se guarda limpio, y `GET /api/agent/profile` lo devuelve así;
+   - un número de la lista llega al cerebro;
+   - otro número no llega: queda en la bandeja;
+   - uno fuera de la lista con salud sí llega (D9);
+   - al apagarla, el otro número vuelve a llegar.
+4. **Aislamiento (`scripts/e2e-rls.mjs`):** la lista de un negocio no se lee ni se cambia desde otro (0 filas), y más de 50 números dan `23514` (CHECK).

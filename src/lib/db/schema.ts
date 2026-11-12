@@ -798,10 +798,24 @@ export const agentProfile = pgTable(
      * todas: lo que tiene una instalación que actualiza.
      */
     tools: jsonb("tools").$type<string[]>(),
+    /**
+     * 079 (5.5 de Aliantis) — «Solo estos números» (piloto): encendida, el
+     * cerebro atiende solo a los teléfonos de la lista (ya normalizados con
+     * `normalizeMx`); lo demás queda para una persona. Regla:
+     * `src/server/dispatch/solo-numeros.ts`.
+     */
+    soloNumerosActivo: boolean("solo_numeros_activo").notNull().default(false),
+    soloNumeros: text("solo_numeros")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("agent_profile_org_uq").on(t.organizationId)]
+  (t) => [
+    uniqueIndex("agent_profile_org_uq").on(t.organizationId),
+    check("agent_profile_solo_numeros_max_chk", sql`cardinality(${t.soloNumeros}) <= 50`),
+  ]
 );
 
 export const kbEntry = pgTable(

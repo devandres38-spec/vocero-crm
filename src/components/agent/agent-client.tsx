@@ -28,6 +28,8 @@ type Profile = {
   /** 034 */
   role: string;
   tools: ClaveHerramienta[];
+  /** 079 — «Solo estos números» (piloto). */
+  soloNumeros: { activo: boolean; numeros: string[] };
 };
 
 type KbEntry = {
@@ -217,6 +219,14 @@ export function AgentClient() {
           onPreset={() => void cargarPreset()}
         />
         <ProfileSection profile={profile} onSave={saveProfile} />
+        <SoloNumerosSection
+          lista={profile.soloNumeros}
+          onSaved={() => {
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+            void refetch();
+          }}
+        />
         <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
       </div>
     </div>
@@ -363,6 +373,91 @@ function ProfileSection({
           }}
         >
           Guardar comportamiento
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * 079 (5.5 de Aliantis) — «Solo estos números» (piloto): con la lista
+ * encendida, el agente atiende solo a esos teléfonos; lo demás queda en la
+ * bandeja para una persona. El servidor limpia y valida cada número.
+ */
+function SoloNumerosSection({
+  lista,
+  onSaved,
+}: {
+  lista: { activo: boolean; numeros: string[] };
+  onSaved: () => void;
+}) {
+  const [activo, setActivo] = useState(lista.activo);
+  const [texto, setTexto] = useState(lista.numeros.join("\n"));
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  useEffect(() => {
+    setActivo(lista.activo);
+    setTexto(lista.numeros.join("\n"));
+  }, [lista]);
+
+  async function guardar() {
+    setGuardando(true);
+    const res = await fetch("/api/agent/profile", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ soloNumeros: { activo, numeros: texto.split("\n") } }),
+    }).catch(() => null);
+    setGuardando(false);
+    if (!res?.ok) {
+      const data = (await res?.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      setError(data?.error?.message ?? "No se pudo guardar la lista.");
+      return;
+    }
+    setError(null);
+    onSaved();
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle>Solo estos números (piloto)</CardTitle>
+          <Switch checked={activo} label="Solo estos números" onCheckedChange={setActivo} />
+        </div>
+        <CardDescription>
+          Encendida, el agente responde solo a los números de la lista. Los demás quedan en la
+          bandeja para una persona.
+        </CardDescription>
+        {activo && (
+          <p className="text-xs font-medium text-warning-text">
+            Con la lista encendida, Instagram, Messenger y TikTok no reciben respuesta del agente:
+            quedan en la bandeja para una persona.
+          </p>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="agent-solo-numeros">Números (uno por línea, máximo 50)</Label>
+          <Textarea
+            id="agent-solo-numeros"
+            rows={5}
+            placeholder={"+57 300 111 2233\n+52 1 55 1234 5678"}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Pégalo como venga, con espacios, guiones o «+», pero siempre con el código de país.
+          </p>
+        </div>
+        {error && (
+          <p role="alert" className="text-xs text-danger-text">
+            {error}
+          </p>
+        )}
+        <Button disabled={guardando} onClick={() => void guardar()}>
+          Guardar lista
         </Button>
       </CardContent>
     </Card>

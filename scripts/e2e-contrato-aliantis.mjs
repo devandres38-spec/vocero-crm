@@ -11,6 +11,8 @@
  *
  * 078 — También la etapa por eventos y la ficha con lista blanca (D18, D12).
  *
+ * 079 — Y el `reset` solo en el Laboratorio (N3) y «Solo estos números» (5.5).
+ *
  * Sale con código 1 si algún check falla.
  */
 import postgres from "postgres";
@@ -576,6 +578,94 @@ async function etapaYFicha() {
   ok("la ficha no cambió con la persona ni en prueba", fin?.quiere_cita === true, JSON.stringify(fin));
 }
 
+/**
+ * 079 (N3 y 5.5) — `reset` solo en el Laboratorio, y «Solo estos números»
+ * con sus dos excepciones: salud (D9) y apagarla.
+ */
+const soloNumeros = (activo, numeros) =>
+  api("/api/agent/profile", {
+    method: "PUT",
+    body: JSON.stringify({ soloNumeros: { activo, numeros } }),
+  });
+
+async function resetYSoloNumeros(cerebro) {
+  console.log("\n== 079: reset solo en el Laboratorio ==");
+  const nombre = `Paciente Reset ${MARCA}`;
+  await entranteWa(telefono(20), nombre, { text: `hola ${MARCA}` });
+  const conv = await convDe(nombre);
+  if (!conv) return ok("la conversación está en la bandeja", false);
+  const h = await bot("/api/bot/handoff", { conversationId: conv.id, reason: "pedido" });
+  ok("la conversación queda traspasada", h.res.status === 200, JSON.stringify(h.json));
+  const real = await bot("/api/bot/reset", { conversationId: conv.id });
+  ok(
+    "reset sobre una conversación real: 409 solo_laboratorio",
+    real.res.status === 409 && real.json?.error?.code === "solo_laboratorio",
+    JSON.stringify(real.json),
+  );
+  const tras = await conBase(
+    async (sql) => (await sql`select ai_enabled, handoff_at from conversation where id = ${conv.id}`)[0],
+  );
+  ok(
+    "y la conversación sigue traspasada",
+    Boolean(tras?.handoff_at) && tras?.ai_enabled === false,
+    JSON.stringify(tras),
+  );
+  await conBase((sql) => sql`update conversation set is_test = true where id = ${conv.id}`);
+  const prueba = await bot("/api/bot/reset", { conversationId: conv.id });
+  ok("reset sobre una conversación de prueba: 200", prueba.res.status === 200, JSON.stringify(prueba.json));
+  const limpia = await conBase(
+    async (sql) => (await sql`select ai_enabled, handoff_at from conversation where id = ${conv.id}`)[0],
+  );
+  ok(
+    "y vuelve al bot (IA encendida, sin traspaso)",
+    limpia?.ai_enabled === true && limpia?.handoff_at === null,
+    JSON.stringify(limpia),
+  );
+
+  console.log("\n== 079: solo estos números ==");
+  const vacia = await soloNumeros(true, []);
+  ok("encenderla vacía: 422 lista_vacia", vacia.json?.error?.code === "lista_vacia", JSON.stringify(vacia.json));
+  const tel = telefono(21);
+  // Pegado como venga: con «+», espacios y guiones.
+  const pegado = `+${tel.slice(0, 2)} ${tel.slice(2, 5)}-${tel.slice(5)}`;
+  const on = await soloNumeros(true, [pegado]);
+  ok("encenderla con un número pegado como venga", on.res.ok, JSON.stringify(on.json));
+  const leida = (await api("/api/agent/profile")).json?.profile?.soloNumeros;
+  ok(
+    "GET la devuelve limpia",
+    leida?.activo === true && JSON.stringify(leida?.numeros) === JSON.stringify([tel]),
+    JSON.stringify(leida),
+  );
+
+  const enLista = `Piloto Dentro ${MARCA}`;
+  await entranteWa(tel, enLista, { text: `hola, ¿abren el sábado? ${MARCA}` });
+  const cDentro = await convDe(enLista);
+  const llego = cDentro && (await hasta(() => cerebro.de(cDentro.id)[0], COALESCE + 12000));
+  ok("un número de la lista llega al cerebro", Boolean(llego));
+
+  const fuera = `Piloto Fuera ${MARCA}`;
+  await entranteWa(telefono(22), fuera, { text: `hola, ¿abren el sábado? ${MARCA}` });
+  const cFuera = await convDe(fuera);
+  await sleep(TRAS_LA_VENTANA);
+  ok(
+    "otro número no llega: queda en la bandeja",
+    Boolean(cFuera) && cerebro.de(cFuera.id).length === 0,
+    String(cFuera ? cerebro.de(cFuera.id).length : "sin conversación"),
+  );
+
+  const urgencia = `Piloto Urgencia ${MARCA}`;
+  await entranteWa(telefono(23), urgencia, { text: "me duele mucho la muela desde ayer" });
+  const cUrg = await convDe(urgencia);
+  const salud = cUrg && (await hasta(() => cerebro.de(cUrg.id)[0], COALESCE + 12000));
+  ok("fuera de la lista, con salud, sí llega (D9)", Boolean(salud));
+
+  const off = await soloNumeros(false, [tel]);
+  ok("apagarla", off.res.ok, JSON.stringify(off.json));
+  await entranteWa(telefono(22), fuera, { text: `¿hola? ${MARCA}` });
+  const vuelve = cFuera && (await hasta(() => cerebro.de(cFuera.id)[0], COALESCE + 12000));
+  ok("al apagarla, el otro número vuelve a llegar", Boolean(vuelve));
+}
+
 async function main() {
   const url = urlDelDespacho();
   const cerebro = await levantarCerebroFalso({
@@ -593,7 +683,9 @@ async function main() {
     if (omitida) await idempotente(omitida);
     await traspasoYAvisos();
     await etapaYFicha();
+    await resetYSoloNumeros(cerebro);
   } finally {
+    if (cookie) await soloNumeros(false, []).catch(() => {});
     if (cookie) await apagarAgente(api).catch(() => {});
     await cerebro.apagar().catch(() => {});
   }

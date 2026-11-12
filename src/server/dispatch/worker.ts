@@ -23,6 +23,13 @@ import {
   type FilaDespacho,
 } from "@/server/dispatch/outbox";
 import { reintentarOlvidos } from "@/server/dispatch/olvidos";
+import {
+  leerListaDeNumeros,
+  MOTIVO_FUERA_DE_LISTA,
+  permitidoPorLista,
+  type ListaDeNumeros,
+} from "@/server/dispatch/solo-numeros";
+import type { EventoDespacho } from "@/server/brains/contract";
 
 /**
  * 021 — El worker del despachador.
@@ -258,28 +265,13 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     await descartarDespacho(fila, "la conversación ya no existe");
     return;
   }
-  /**
-   * 025 — Un despacho sin mensajes no se entrega.
-   *
-   * Pasa cuando lo que lo provocó ya lo contestó una persona dentro de la
-   * ventana. No es una caída del cerebro: mandárselo vacío sería pedirle un
-   * turno sobre nada —Nea lo rechaza con 422—, y un 4xx no se reintenta: la
-   * conversación acabaría con un humano por un fallo que no existió.
-   */
-  if (evento.messages.length === 0) {
-    await descartarDespacho(fila, "sin mensajes por despachar");
-    return;
-  }
-  /**
-   * 071 (3.8) — Con el Agente apagado solo viaja un despacho que traiga algo
-   * marcado con salud. El interruptor se lee al entregar: pudo apagarse
-   * durante la ventana de agrupado.
-   */
-  if (
-    evento.conversation.agentEnabled === false &&
-    !evento.messages.some((m) => m.privacyFlags?.includes("salud"))
-  ) {
-    await descartarDespacho(fila, "el agente está apagado");
+  // 079 — La lista se lee al entregar (el Laboratorio no la necesita).
+  const lista = evento.conversation.test
+    ? null
+    : await leerListaDeNumeros(fila.organizationId);
+  const motivo = motivoDeDescarte(evento, lista);
+  if (motivo) {
+    await descartarDespacho(fila, motivo);
     return;
   }
 
@@ -325,4 +317,38 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     ? await reintentarOCaducar(fila, resultado.detalle)
     : await caducarAHumano(fila, resultado.detalle);
   if (caduco) await pasarAHumano(fila.organizationId, fila.conversationId);
+}
+
+/**
+ * Pura: por qué un evento ya armado NO se entrega, o `null` si va.
+ *
+ * - 025 — Sin mensajes: lo que lo provocó ya lo contestó una persona dentro
+ *   de la ventana. No es una caída del cerebro: mandárselo vacío sería pedirle
+ *   un turno sobre nada —Nea lo rechaza con 422—, y un 4xx no se reintenta: la
+ *   conversación acabaría con un humano por un fallo que no existió.
+ * - 071 (3.8) — Con el Agente apagado solo viaja un despacho que traiga algo
+ *   marcado con salud. El interruptor se lee al entregar: pudo apagarse
+ *   durante la ventana de agrupado.
+ * - 079 (5.5) — «Solo estos números»: se vuelve a mirar al entregar, por lo
+ *   mismo. Fuera de la lista solo viaja lo marcado con salud (D9). El
+ *   Laboratorio (`test`, `lista` en `null`) no se filtra.
+ */
+export function motivoDeDescarte(
+  evento: Pick<EventoDespacho, "conversation" | "contact" | "messages">,
+  lista: ListaDeNumeros | null
+): string | null {
+  if (evento.messages.length === 0) return "sin mensajes por despachar";
+  const conSalud = evento.messages.some((m) => m.privacyFlags?.includes("salud"));
+  if (evento.conversation.agentEnabled === false && !conSalud) {
+    return "el agente está apagado";
+  }
+  if (
+    !evento.conversation.test &&
+    lista &&
+    !conSalud &&
+    !permitidoPorLista(lista, evento.contact.identity)
+  ) {
+    return MOTIVO_FUERA_DE_LISTA;
+  }
+  return null;
 }

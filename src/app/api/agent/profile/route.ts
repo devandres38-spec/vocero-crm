@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
+import { canConfigure } from "@/lib/auth/roles";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
@@ -12,6 +13,7 @@ import {
 import { agendaEnabled } from "@/server/agenda/flag";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
+import { validarListaDeNumeros } from "@/server/dispatch/solo-numeros";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,8 @@ export const GET = withAuth(async (session) => {
       // 034
       role: rolDe(p.role).clave,
       tools: herramientasEfectivas(p.tools),
+      // 079 — «Solo estos números» (piloto).
+      soloNumeros: { activo: p.soloNumerosActivo, numeros: p.soloNumeros },
     },
     // 034 — Sin la bandera, la pantalla no ofrece agendar ni reprogramar.
     agendaEnabled: agendaEnabled(),
@@ -58,11 +62,30 @@ const putSchema = z.object({
     .array(z.enum(CLAVES_HERRAMIENTA as [ClaveHerramienta, ...ClaveHerramienta[]]))
     .max(CLAVES_HERRAMIENTA.length)
     .optional(),
+  // 079 — «Solo estos números» (piloto): la ruta limpia y valida cada número.
+  soloNumeros: z
+    .object({
+      activo: z.boolean(),
+      numeros: z.array(z.string().max(40)).max(50),
+    })
+    .optional(),
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
+  // 079 — Encender el Agente, escribirlo o cambiar la lista es configurar,
+  // como cargar un rol (`preset`): un miembro del equipo atiende la Bandeja.
+  if (!canConfigure(session.role)) {
+    return apiError(403, "forbidden", "Solo quien administra puede cambiar el agente");
+  }
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
+
+  let lista: { activo: boolean; numeros: string[] } | null = null;
+  if (body.data.soloNumeros) {
+    const v = validarListaDeNumeros(body.data.soloNumeros);
+    if (!v.ok) return apiError(422, v.code, v.message);
+    lista = v.lista;
+  }
 
   // 036 — El interruptor decide si el CRM le despacha al cerebro. Encenderlo
   // sin un cerebro que conteste dejaría a los clientes sin respuesta creyendo
@@ -73,12 +96,13 @@ export const PUT = withAuth(async (session, req: Request) => {
   }
 
   const db = getDb();
-  const { tools, ...resto } = body.data;
+  const { tools, soloNumeros: _lista, ...resto } = body.data;
   const updated = await db
     .update(schema.agentProfile)
     .set({
       ...resto,
       ...(tools ? { tools: herramientasEfectivas(tools) } : {}),
+      ...(lista ? { soloNumerosActivo: lista.activo, soloNumeros: lista.numeros } : {}),
       updatedAt: new Date(),
     })
     .where(scoped(schema.agentProfile.organizationId, session.organizationId))
