@@ -147,7 +147,8 @@ describe("075 — funciones SECURITY DEFINER", () => {
 
   /**
    * 076 — Las únicas que escriben: el panel (pausar, restablecer, quitar,
-   * anotar) y marcar el TOTP del superadmin. Cualquier otra, solo SELECT.
+   * anotar; 080: el tope del Laboratorio) y marcar el TOTP del superadmin.
+   * Cualquier otra, solo SELECT.
    */
   const ESCRIBEN = [
     "vocero_superadmin_marcar_totp",
@@ -155,6 +156,7 @@ describe("075 — funciones SECURITY DEFINER", () => {
     "vocero_panel_restablecer",
     "vocero_panel_quitar_usuario",
     "vocero_panel_anotar",
+    "vocero_panel_tope_laboratorio",
   ];
 
   it("ninguna escribe (solo SELECT), salvo las declaradas", () => {

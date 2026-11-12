@@ -313,7 +313,9 @@ async function cruzados(tablas, sembradas) {
     });
     if (visto.ajenas !== 0 || visto.total !== deA) anotar(t, `SELECT con A: ${JSON.stringify(visto)} (de A: ${deA})`);
 
-    const upd = await comoApp(A, async (tx) => (await tx`update ${tx(t)} set ${tx(col)} = ${tx(col)} where ${tx(col)} = ${B}`).count);
+    // 080: en organization la app solo tiene UPDATE en name, slug, logo y metadata.
+    const colUpd = t === "organization" ? "name" : col;
+    const upd = await comoApp(A, async (tx) => (await tx`update ${tx(t)} set ${tx(colUpd)} = ${tx(colUpd)} where ${tx(col)} = ${B}`).count);
     if (upd !== 0) anotar(t, `UPDATE de filas de B con A: ${upd}`);
     const del = await comoApp(A, async (tx) => (await tx`delete from ${tx(t)} where ${tx(col)} = ${B}`).count);
     if (del !== 0) anotar(t, `DELETE de filas de B con A: ${del}`);

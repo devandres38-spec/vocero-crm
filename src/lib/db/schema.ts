@@ -98,7 +98,18 @@ export const organization = pgTable("organization", {
    * borrados siguen. Solo lo escribe `vocero_panel_pausar`.
    */
   pausadoEn: timestamp("pausado_en"),
-});
+  /**
+   * 080 (D20) — Cuántas corridas del Laboratorio puede crear este negocio al
+   * día (en su zona). `0` lo apaga. Solo lo escribe el panel de Andres
+   * (`vocero_panel_tope_laboratorio`): `vocero_app` no tiene UPDATE sobre ella.
+   */
+  labCorridasPorDia: integer("lab_corridas_por_dia").notNull().default(3),
+}, (t) => [
+  check(
+    "organization_lab_corridas_por_dia_chk",
+    sql`${t.labCorridasPorDia} BETWEEN 0 AND 20`
+  ),
+]);
 
 export const member = pgTable("member", {
   id: text("id").primaryKey(),
