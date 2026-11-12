@@ -61,9 +61,8 @@ edita el dueño (Agente y su knowledge base). Este endpoint es el contrato.
 16. `profile.enabled` NO viene, ni con el interruptor encendido ni apagado:
     ese flag decide si el CRM despacha (036), y el cerebro se pausa por
     conversación (`aiEnabled` y los handoffs).
-    036 — `llm` viene con `{path: "/api/bot/llm", model: <el de Ajustes →
-    IA>}`; sin IA configurada (ni en Ajustes → IA ni en el entorno), `llm:
-    null`.
+    080 — `llm` viene siempre `null`: el proxy `/api/bot/llm` está apagado
+    (P7) y el cerebro piensa con su propia llave.
 17. Editar el tono en la pantalla Agente y volver a pedir el perfil → el cambio
     ya está: la respuesta no se cachea.
 
@@ -175,17 +174,13 @@ de prueba en la URL).
     conectado pero apagado: contestas tú»; sin cerebro, «Bandeja manual: sin
     agente conectado, contestas tú». En ningún caso pide la clave de IA.
 
-## Pensar por el CRM (`/api/bot/llm`, 036)
+## El proxy `/api/bot/llm`, apagado (080, P7)
 
-El cerebro apunta el `base_url` de su SDK de OpenAI a `/api/bot/llm` y el CRM
-le pone la llave de Ajustes → IA. Con `OPENROUTER_BASE_URL` → ai-mock.
+Antes (036) el cerebro podía pensar por el CRM con la llave del negocio. Desde
+080 la llave de IA es de Aliantis y el proxy está apagado: sería gasto sin tope
+y sin los proveedores fijos. Lo prueba `scripts/e2e-despacho.mjs`.
 
-46. `POST /api/bot/llm/chat/completions` sin llave → **401**.
-47. Con `X-API-Key` y, aparte, con `Authorization: Bearer <BOT_API_KEY>` → la
-    respuesta del ai-mock tal cual, con su código. El mock recibió la llave de
-    Ajustes → IA, no la `BOT_API_KEY`.
-48. Con el proveedor respondiendo 401: la respuesta vuelve con 401 y Ajustes →
-    IA queda pausada (el banner lo dice). Guardar la llave otra vez la
-    reactiva.
-49. Sin IA configurada (o pausada) → **402** `sin_credencial`.
-50. La llave de IA no aparece en ninguna respuesta ni en el log de la app.
+46. `POST /api/bot/llm/chat/completions`, con o sin llave → **404**
+    `proxy_apagado`, sin llamar al proveedor.
+47. La respuesta no trae ni `BOT_API_KEY` ni la llave de Aliantis.
+48. `GET /api/bot/profile` → `llm: null`.

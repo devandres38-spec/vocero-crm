@@ -15,10 +15,9 @@
  *       · texto con «humano» o «asesor» → avisa al cliente por
  *         `/api/bot/messages` y traspasa con `POST /api/bot/handoff`
  *         (motivo `cliente`), como Nea;
- *       · lo demás → piensa por `POST /api/bot/llm/chat/completions` con
- *         `Authorization: Bearer` (el proxy del CRM; en pruebas contesta el
- *         ai-mock con «Respuesta de prueba sobre: <texto>») y manda eso por
- *         `/api/bot/messages`;
+ *       · lo demás → contesta «Respuesta de prueba a «<texto>»» por
+ *         `/api/bot/messages`. 080 (P7): el proxy `/api/bot/llm` está
+ *         apagado; como el cerebro de Aliantis, este piensa por su cuenta;
  *       · un caso del Laboratorio que termina en «sale» → calla (el candado de
  *         cierre de Nea).
  *       · 038 — texto con «califica» → lee el contexto por `conversationId`
@@ -70,7 +69,7 @@ export const SALUD_FALSA = {
   commit: "abc1234",
   commitVerified: true,
   mode: "estándar",
-  llm: "crm",
+  llm: "propia",
   relay: { pendientes: 0, masViejoSegundos: null, ultimoErrorEn: null },
 };
 
@@ -124,7 +123,6 @@ function firmaValida(secreto, crudo, cabecera) {
  * @param {"todas"|"prueba"|"ninguna"} [o.responder]
  *   a qué despachos contesta: a todos, solo a los del Laboratorio
  *   (`conversation.test`), o a ninguno (solo acusa y registra).
- * @param {boolean} [o.pensarPorElCrm]  pasa por `/api/bot/llm` (si no, eco fijo)
  * @param {number}  [o.demoraMs]        cuánto «piensa» antes de contestar
  * @param {boolean} [o.escuchar]        `false`: se crea apagado (`encender()`)
  */
@@ -133,7 +131,6 @@ export async function levantarCerebroFalso({
   botKey,
   url = urlDelDespacho(),
   responder = "todas",
-  pensarPorElCrm = true,
   demoraMs = 150,
   escuchar = true,
 } = {}) {
@@ -144,13 +141,10 @@ export async function levantarCerebroFalso({
     /** El `/health`: "ok" | "503" | "colgada". */
     salud: "ok",
     responder,
-    pensarPorElCrm,
     demoraMs,
     recibidos: [],
     /** Lo que contestó el CRM a lo que este cerebro mandó por `/api/bot/*`. */
     respuestas: [],
-    /** Las llamadas al proxy `/api/bot/llm`. */
-    llm: [],
     /** 038 — Lo que el contexto le dijo antes de mover la etapa. */
     contextos: [],
     saludPedidos: 0,
@@ -177,35 +171,9 @@ export async function levantarCerebroFalso({
     }
   };
 
-  async function pensar(texto, convId) {
-    const eco = `Respuesta de prueba a «${texto.slice(0, 40)}»`;
-    if (!estado.pensarPorElCrm) return eco;
-    try {
-      const r = await fetch(`${base}/api/bot/llm/chat/completions`, {
-        method: "POST",
-        // Como el SDK de OpenAI de Nea: la llave como Bearer.
-        headers: {
-          "content-type": "application/json",
-          ...(({ "x-api-key": k, ...resto }) => ({ ...resto, authorization: `Bearer ${k}` }))(
-            cabeceras(convId),
-          ),
-        },
-        body: JSON.stringify({
-          model: "mock/agente",
-          messages: [
-            { role: "system", content: "Eres el agente de prueba del arnés E2E." },
-            { role: "user", content: texto },
-          ],
-        }),
-      });
-      const json = await r.json().catch(() => null);
-      const contenido = json?.choices?.[0]?.message?.content;
-      estado.llm.push({ status: r.status, ok: typeof contenido === "string" });
-      return typeof contenido === "string" && contenido.trim() ? contenido : eco;
-    } catch (err) {
-      estado.llm.push({ status: 0, error: String(err) });
-      return eco;
-    }
+  /** 080 (P7) — Piensa por su cuenta (el proxy del CRM está apagado). */
+  async function pensar(texto) {
+    return `Respuesta de prueba a «${texto.slice(0, 40)}»`;
   }
 
   /** 038 — Como la herramienta `move_stage` de Nea: el contexto dice a dónde. */

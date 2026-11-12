@@ -660,6 +660,67 @@ async function soloNumerosRls() {
   );
 }
 
+/**
+ * 080 (D20, P1) — El tope del Laboratorio y la pausa los escribe solo el
+ * panel: la app tiene UPDATE en organization solo para name, slug, logo y
+ * metadata; la función del panel exige superadmin, valida 0-20 y anota.
+ */
+async function laboratorioTopeRls() {
+  console.log("\n== 080: el tope del Laboratorio, solo desde el panel ==");
+  for (const [col, valor] of [
+    ["lab_corridas_por_dia", 5],
+    ["pausado_en", new Date()],
+  ]) {
+    ok(
+      `la app no cambia ${col} de su propio negocio (42501)`,
+      (await codigoDe(A, (tx) => tx`update organization set ${tx(col)} = ${valor} where id = ${A}`)) === "42501"
+    );
+  }
+  const nombre = await comoApp(A, async (tx) =>
+    (await tx`update organization set name = name, metadata = metadata where id = ${A} returning id`).length
+  );
+  ok("la app sí cambia name y metadata (Marca, Apariencia, Better Auth)", nombre === 1, String(nombre));
+  ok(
+    "sin SET ROLE, la app no ejecuta vocero_panel_tope_laboratorio",
+    (await codigoDe(null, (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 5)`)) === "42501"
+  );
+  ok(
+    "con el rol del panel pero sin superadmin: se niega",
+    (await codigoPanel(null, (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 5)`)) === "42501"
+  );
+  ok(
+    "con un usuario de negocio: se niega",
+    (await codigoPanel("usr_rls_a", (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 5)`)) === "42501"
+  );
+  ok(
+    "fuera de 0 a 20: 22023",
+    (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_tope_laboratorio(${A}, 21)`)) === "22023"
+  );
+  ok(
+    "un negocio que no existe: P0002",
+    (await codigoPanel(SUPER, (tx) => tx`select vocero_panel_tope_laboratorio('org_que_no_existe', 3)`)) === "P0002"
+  );
+  const cambio = await comoPanelCrudo(SUPER, async (tx) => {
+    const [t] = await tx`select vocero_panel_tope_laboratorio(${A}, 5) as tope`;
+    const [n] = (await tx`select * from vocero_panel_negocios()`).filter((x) => x.id === A);
+    const [r] = await tx`select * from vocero_panel_registro(1)`;
+    return { tope: t?.tope, lab_tope: n?.lab_tope, corridas: n?.lab_corridas_hoy, accion: r?.accion, detalle: r?.detalle };
+  });
+  ok(
+    "el superadmin lo cambia, vocero_panel_negocios lo muestra y queda en el registro",
+    cambio.tope === 5 && cambio.lab_tope === 5 && cambio.corridas !== undefined &&
+      cambio.accion === "tope_laboratorio" && Number(cambio.detalle?.tope) === 5,
+    JSON.stringify(cambio)
+  );
+  let check = null;
+  try {
+    await dueno`update organization set lab_corridas_por_dia = 21 where id = ${A}`;
+  } catch (err) {
+    check = err?.code;
+  }
+  ok("ni el dueño de la base pasa de 20 (CHECK: 23514)", check === "23514", String(check));
+}
+
 async function main() {
   const tablas = await catalogo();
   const sembradas = await sembrar(tablas);
@@ -670,6 +731,7 @@ async function main() {
   await panel(tablas);
   await etapaPorEventos();
   await soloNumerosRls();
+  await laboratorioTopeRls();
 }
 
 main()

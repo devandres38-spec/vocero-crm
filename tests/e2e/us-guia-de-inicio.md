@@ -38,15 +38,9 @@ solo la raíz; el menú lleva a cualquier pantalla.
    ✅ `profile` pasa a `ready`; en la pantalla, check verde y «Listo · revisar».
    Antes, con el nombre de fábrica y sin instrucciones ni conocimiento, el paso
    decía qué faltaba («Dale un nombre y escribe sus instrucciones…»).
-5. Paso 2 — Ajustes → IA: `PUT /api/settings/ai {provider, baseUrl, model,
-   token}`.
-   ✅ `ai` → `ready` con «Llave guardada en Ajustes → IA». Si el entorno trae
-   `OPENROUTER_API_TOKEN`, el paso ya estaba listo como «Respaldo del entorno»
-   (la fila manda; el entorno es respaldo) y al borrar la fila
-   (`DELETE /api/settings/ai`) vuelve a él. Una llave pausada por 401/402 se
-   ve como pendiente con la pista en ámbar («El proveedor rechazó tu llave…»;
-   unit: `onboarding-status.test.ts`).
-6. Paso 3 — Ajustes → WhatsApp: `PUT /api/settings/whatsapp` con IDs de prueba
+5. 080 — Ya no hay paso de IA: la llave es de Aliantis (entorno) y Ajustes →
+   IA no existe para el negocio (`GET /api/settings/ai` → 404).
+6. Paso 2 — Ajustes → WhatsApp: `PUT /api/settings/whatsapp` con IDs de prueba
    (wa-mock).
    ✅ `whatsapp` → `ready`. Tras `DELETE /api/settings/whatsapp` vuelve a
    `pending`; con `reconnect_required` la pista dice que hay que reconectar.
@@ -87,6 +81,6 @@ solo la raíz; el menú lleva a cualquier pantalla.
     `/inbox`; su `GET /` → `/inbox` siempre; en su menú no hay «Guía de
     inicio».
 13. Un negocio demo recién sembrado («Cargar datos de demostración»): el seed
-    deja configurado el agente (paso 1 listo) pero no puede vincular una llave
-    de IA, un número ni un agente → la guía sigue siendo la primera pantalla y
+    deja configurado el agente (paso 1 listo) pero no puede vincular un número
+    ni un agente → la guía sigue siendo la primera pantalla y
     lo dice; la Bandeja con la demo está a un clic en el menú.

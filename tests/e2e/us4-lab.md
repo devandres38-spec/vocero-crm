@@ -8,14 +8,15 @@
 > `/api/bot/messages`, que guarda la respuesta sin enviarla. Hace falta la app
 > con `BRAIN_DISPATCH_URL` + `BOT_API_KEY` hacia un cerebro (Nea apuntando al
 > ai-mock, o el cerebro del arnés de `scripts/e2e-despacho.mjs`). El juez usa
-> la llave de Ajustes → IA. El score esperado depende del cerebro; los números
-> de abajo son los del cerebro del arnés.
+> la llave de Aliantis (`OPENROUTER_*` del entorno, 080) y, hacia OpenRouter,
+> los proveedores fijos. El score esperado depende del cerebro; los números de
+> abajo son los del cerebro del arnés.
 
 ## Preparación
 
 1. `DELETE /api/dev/wa-mock/outbox` — el outbox debe seguir VACÍO al final.
-2. Agente configurado (US3), proveedor de IA (mock) activo y un cerebro
-   conectado y sano.
+2. Agente configurado (US3), la llave del entorno apuntando al ai-mock, un
+   cerebro conectado y sano, y la sesión de un `owner` o `admin`.
 
 ## Corrida 1
 
@@ -46,3 +47,14 @@
 9. **036** Sin cerebro (app sin `BRAIN_DISPATCH_URL`): `POST /api/lab/runs` →
    409 `sin_cerebro`, no se crea ninguna corrida y `/lab` explica que hay que
    conectar un agente primero, con el enlace a la receta.
+10. **080** Sin la llave de Aliantis en el entorno: `POST /api/lab/runs` → 409
+    `laboratorio_sin_llave` y `/lab` dice «El Laboratorio no está disponible
+    ahora. Avísale a Aliantis», sin enlace a Ajustes → IA.
+11. **080 (D20)** El tope diario (3 por defecto, lo cambia Andres desde su
+    panel, de 0 a 20): `/lab` dice «Te quedan N corridas hoy»; con el tope
+    alcanzado, el botón queda deshabilitado con «Vuelve a estar disponible
+    mañana» y `POST /api/lab/runs` → **429** `tope_laboratorio` sin crear
+    corrida. Cuenta toda corrida creada desde la medianoche del negocio, también
+    las fallidas. Con el tope en 0, 429 con «apagado».
+12. **080 (P3)** Un `member` ve el historial pero no corre: `POST /api/lab/runs`
+    → **403** `forbidden` y el botón está deshabilitado con la explicación.

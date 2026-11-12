@@ -1,7 +1,8 @@
 /**
  * Self-test E2E de comportamiento — 021: despacho estándar (#89), 025: el
- * despacho recuerda qué debe, y 036: sin agente incluido, el interruptor
- * decide y el cerebro piensa por `/api/bot/llm`.
+ * despacho recuerda qué debe, 036: sin agente incluido, el interruptor
+ * decide, y 080: el Laboratorio con la llave de Aliantis y su tope diario
+ * (el proxy `/api/bot/llm` y Ajustes → IA, apagados).
  *
  * Conduce la app real con los mocks de canal y hace de CEREBRO con el cerebro
  * falso compartido (`scripts/lib/cerebro-falso.mjs`): un servidor HTTP en
@@ -9,9 +10,8 @@
  * `/health`, recibe los despachos y verifica la firma sobre el cuerpo crudo
  * como debe hacerlo un cerebro de verdad. A los turnos REALES no contesta
  * solo (`responder: "prueba"`): este guion contesta a mano por
- * `/api/bot/messages` cuando el caso lo pide; a los del Laboratorio sí,
- * pensando por el proxy `/api/bot/llm`. Así el turno cruza HTTP de verdad en
- * las dos direcciones.
+ * `/api/bot/messages` cuando el caso lo pide; a los del Laboratorio sí, con
+ * su eco fijo. Así el turno cruza HTTP de verdad en las dos direcciones.
  *
  * Uso (configuración estándar de la 036, ver `scripts/lib/cerebro-falso.mjs`):
  *   1) app corriendo (`pnpm dev`) sobre una base migrada, con
@@ -356,7 +356,7 @@ async function guion(cerebro, url) {
   }
 
   await interruptor(cerebro);
-  await proxyLlm();
+  await proxyApagado();
   await unMensaje(cerebro);
   await privacidad(cerebro);
   await rafaga(cerebro);
@@ -467,19 +467,17 @@ async function interruptor(cerebro) {
 }
 
 // ---------------------------------------------------------------------------
-// 036 — El cerebro piensa por el CRM
+// 080 (P7, D3) — El proxy del CRM y Ajustes → IA, apagados
 // ---------------------------------------------------------------------------
 
-async function proxyLlm() {
-  console.log("\n== 036·AC3: POST /api/bot/llm/{ruta}, compatible con OpenAI ==");
-  const pregunta = `¿qué tal? ${MARCA}`;
-  const llamar = (cabeceras) =>
-    fetch(`${BASE}/api/bot/llm/chat/completions`, {
+async function proxyApagado() {
+  console.log("\n== 080: POST /api/bot/llm/{ruta} apagado (404 proxy_apagado) ==");
+  const llamar = async (cabeceras) => {
+    const r = await fetch(`${BASE}/api/bot/llm/chat/completions`, {
       method: "POST",
       headers: { "content-type": "application/json", ...cabeceras },
-      body: JSON.stringify({ model: "mock/agente", messages: [{ role: "user", content: pregunta }] }),
+      body: JSON.stringify({ model: "mock/agente", messages: [{ role: "user", content: `hola ${MARCA}` }] }),
     });
-  const leer = async (r) => {
     const crudo = await r.text();
     let json = null;
     try {
@@ -487,81 +485,36 @@ async function proxyLlm() {
     } catch {}
     return { status: r.status, crudo, json };
   };
-  const bearer = { authorization: `Bearer ${BOT_KEY}` };
-
-  const sinLlave = await leer(await llamar({}));
-  ok("sin llave → 401", sinLlave.status === 401, String(sinLlave.status));
-  const mala = await leer(await llamar({ authorization: `Bearer ${"x".repeat(BOT_KEY.length)}` }));
-  ok("con un Bearer equivocado → 401", mala.status === 401, String(mala.status));
-  const conBearer = await leer(await llamar(bearer));
+  const conLlave = await llamar({ authorization: `Bearer ${BOT_KEY}` });
   ok(
-    "con Authorization: Bearer (lo que manda el SDK) → 200 con la respuesta del proveedor",
-    conBearer.status === 200 &&
-      conBearer.json?.choices?.[0]?.message?.content === `Respuesta de prueba sobre: ${pregunta}`,
-    `${conBearer.status} ${conBearer.crudo.slice(0, 200)}`
+    "con BOT_API_KEY → 404 proxy_apagado, sin llamar al proveedor",
+    conLlave.status === 404 && conLlave.json?.error?.code === "proxy_apagado",
+    `${conLlave.status} ${conLlave.crudo.slice(0, 160)}`
   );
-  const conXKey = await leer(await llamar({ "x-api-key": BOT_KEY }));
-  ok("con X-API-Key → 200 también", conXKey.status === 200, String(conXKey.status));
-  // 073: la credencial derivada del negocio también entra como Bearer (el
-  // SDK de OpenAI manda la cabecera de organización fija).
-  const derivada = await leer(
-    await llamar({
-      "x-vocero-organization": ORG,
-      authorization: `Bearer ${cabecerasDelCerebro(BOT_KEY, ORG)["x-api-key"]}`,
-    }),
-  );
-  ok("con la credencial derivada del negocio como Bearer → 200", derivada.status === 200, String(derivada.status));
+  const sinLlave = await llamar({});
+  ok("sin llave → el mismo 404", sinLlave.status === 404, String(sinLlave.status));
   const tokenEntorno = process.env.OPENROUTER_API_TOKEN ?? "";
   ok(
-    "ni la llave del proveedor ni BOT_API_KEY vuelven en la respuesta",
-    !conBearer.crudo.includes(BOT_KEY) && (!tokenEntorno || !conBearer.crudo.includes(tokenEntorno))
+    "ni la llave de Aliantis ni BOT_API_KEY vuelven en la respuesta",
+    !conLlave.crudo.includes(BOT_KEY) && (!tokenEntorno || !conLlave.crudo.includes(tokenEntorno))
   );
   const perfil = await bot("/api/bot/profile");
-  ok(
-    "el perfil le dice al cerebro por dónde y con qué modelo pensar (`llm`)",
-    perfil.json?.llm?.path === "/api/bot/llm" &&
-      perfil.json.llm.model === (process.env.OPENROUTER_MODEL ?? perfil.json.llm.model),
-    JSON.stringify(perfil.json?.llm)
-  );
+  ok("el perfil del cerebro anuncia `llm: null`", perfil.res.ok && perfil.json?.llm === null, JSON.stringify(perfil.json?.llm));
 
-  console.log("\n== 036·AC3: un 401 del proveedor pausa la llave de Ajustes → IA ==");
-  const TOKEN_MALO = `tok-ia-despacho-${RUN}-invalid`;
-  const guardar = await api("/api/settings/ai", {
-    method: "PUT",
-    body: JSON.stringify({
-      provider: "openai_compatible",
-      baseUrl: process.env.OPENROUTER_BASE_URL ?? `${BASE}/api/dev/ai-mock`,
-      model: "mock/agente",
-      token: TOKEN_MALO,
-    }),
-  });
-  ok("llave de prueba guardada en Ajustes → IA", guardar.res.ok, `${guardar.res.status} ${JSON.stringify(guardar.json)}`);
-  try {
-    const rechazada = await leer(await llamar(bearer));
-    ok(
-      "el 401 del proveedor vuelve tal cual, sin la llave",
-      rechazada.status === 401 && !rechazada.crudo.includes(TOKEN_MALO),
-      `${rechazada.status} ${rechazada.crudo.slice(0, 160)}`
-    );
-    const ajustes = (await api("/api/settings/ai")).json;
-    ok(
-      "y la llave queda pausada en Ajustes → IA",
-      ajustes?.activa === false,
-      JSON.stringify({ activa: ajustes?.activa, credencial: ajustes?.credencial, mensaje: ajustes?.mensaje })
-    );
-    const pausada = await leer(await llamar(bearer));
-    ok(
-      "con la llave pausada → 402 sin_credencial",
-      pausada.status === 402 && pausada.json?.error?.code === "sin_credencial",
-      `${pausada.status} ${pausada.crudo.slice(0, 160)}`
-    );
-    const perfilSin = await bot("/api/bot/profile");
-    ok("y el perfil dice `llm: null` (no hay con qué pensar)", perfilSin.json?.llm === null, JSON.stringify(perfilSin.json?.llm));
-  } finally {
-    await api("/api/settings/ai", { method: "DELETE" });
+  console.log("\n== 080: Ajustes → IA en 404 para el dueño ==");
+  const pedidos = [
+    ["GET", "/api/settings/ai", undefined],
+    ["PUT", "/api/settings/ai", { provider: "openrouter", model: "mock/agente", token: `tok-ia-${RUN}-larga` }],
+    ["DELETE", "/api/settings/ai", undefined],
+    ["POST", "/api/settings/ai/test", { provider: "openrouter", model: "mock/agente" }],
+    ["POST", "/api/settings/ai/models", { provider: "openrouter" }],
+  ];
+  for (const [method, ruta, cuerpo] of pedidos) {
+    const r = await api(ruta, { method, ...(cuerpo ? { body: JSON.stringify(cuerpo) } : {}) });
+    ok(`${method} ${ruta} → 404`, r.res.status === 404, `${r.res.status} ${JSON.stringify(r.json)}`);
   }
-  const vuelve = await leer(await llamar(bearer));
-  ok("sin la fila, el respaldo del entorno vuelve a pensar → 200", vuelve.status === 200, String(vuelve.status));
+  const pantalla = await fetch(`${BASE}/settings/ai`, { headers: { cookie }, redirect: "manual" });
+  ok("la pantalla /settings/ai → 404", pantalla.status === 404, String(pantalla.status));
 }
 
 // ---------------------------------------------------------------------------
@@ -1264,9 +1217,61 @@ async function pausas(cerebro) {
   ok("no queda nada en espera", (await estadoCerebro())?.dispatch?.pending === 0);
 }
 
+/**
+ * 080 (D20) — El tope lo escribe el panel de Andres; aquí, como dueño de la
+ * base, lo fija el guion. Se repite sobre la misma base: arranca holgado.
+ */
+async function topeDelLaboratorio(n) {
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    await sql`update organization set lab_corridas_por_dia = ${n} where id = ${ORG}`;
+  } finally {
+    await sql.end();
+  }
+}
+
+/** 080 (P3) — El rol del operador, para probar a un `member` sin otra cuenta. */
+async function rolDelOperador(rol) {
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    await sql`
+      update member set role = ${rol}
+       where organization_id = ${ORG}
+         and user_id = (select id from "user" where email = 'e2e@vocero.test')`;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function corridasDelNegocio() {
+  const sql = postgres(process.env.DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const [{ n }] = await sql`select count(*)::int as n from agent_test_run where organization_id = ${ORG}`;
+    return n;
+  } finally {
+    await sql.end();
+  }
+}
+
 async function laboratorio(cerebro) {
+  try {
+    await laboratorioConTope(cerebro);
+  } finally {
+    await rolDelOperador("owner").catch(() => {});
+    await topeDelLaboratorio(3).catch(() => {});
+  }
+}
+
+async function laboratorioConTope(cerebro) {
   console.log("\n== 033: el Laboratorio prueba al cerebro por el contrato ==");
+  await topeDelLaboratorio(20);
   await api("/api/dev/wa-mock/outbox", { method: "DELETE" });
+  const vista = (await api("/api/lab/runs")).json;
+  ok(
+    "080: GET /api/lab/runs trae el tope del día y que el dueño puede correr",
+    vista?.laboratorio?.topeDiario === 20 && vista?.laboratorio?.disponible === true && vista?.puedeCorrer === true,
+    JSON.stringify({ laboratorio: vista?.laboratorio, puedeCorrer: vista?.puedeCorrer })
+  );
   const total = cerebro.estado.recibidos.length;
   const run = await api("/api/lab/runs", { method: "POST" });
   if (!run.res.ok) {
@@ -1316,11 +1321,6 @@ async function laboratorio(cerebro) {
     respuestas.length > 0 && respuestas.every((r) => r.status === 200 && r.json?.messageId),
     JSON.stringify(respuestas.filter((r) => r.status !== 200).slice(0, 3))
   );
-  ok(
-    "036: el cerebro pensó cada respuesta por /api/bot/llm (Bearer → 200)",
-    cerebro.estado.llm.length > 0 && cerebro.estado.llm.every((l) => l.status === 200 && l.ok),
-    JSON.stringify(cerebro.estado.llm.filter((l) => l.status !== 200).slice(0, 3))
-  );
   const casos = final?.cases ?? [];
   ok(
     "un silencio del cerebro con el despacho entregado no es una falla (sin_rumbo)",
@@ -1330,7 +1330,7 @@ async function laboratorio(cerebro) {
   const delCerebro = (t) =>
     t.role === "agente" && (t.text.startsWith("Respuesta de prueba") || t.text === ACUSE_TRASPASO);
   ok(
-    "las transcripciones traen lo que contestó el cerebro (lo pensado por el proxy, o el acuse del traspaso)",
+    "las transcripciones traen lo que contestó el cerebro (su respuesta, o el acuse del traspaso)",
     casos.length >= 8 && casos.every((c) => (c.transcript ?? []).some(delCerebro)),
     JSON.stringify(casos.map((c) => [c.persona, (c.transcript ?? []).length]))
   );
@@ -1365,6 +1365,39 @@ async function laboratorio(cerebro) {
     JSON.stringify({ status: runCaida?.status, error: runCaida?.error })
   );
   ok("sin colgarse (menos de 2 min por caso)", Date.now() - t0 < 8 * 120000, `${Math.round((Date.now() - t0) / 1000)} s`);
+
+  console.log("\n== 080: el tope diario del Laboratorio (D20) ==");
+  // Ya corrieron dos hoy: con el tope en 1, la siguiente no se crea.
+  await topeDelLaboratorio(1);
+  const antes = await corridasDelNegocio();
+  const topada = await api("/api/lab/runs", { method: "POST" });
+  ok(
+    "con el tope en 1 y dos corridas hoy → 429 tope_laboratorio",
+    topada.res.status === 429 && topada.json?.error?.code === "tope_laboratorio",
+    `${topada.res.status} ${JSON.stringify(topada.json)}`
+  );
+  ok("y no se creó ninguna corrida", (await corridasDelNegocio()) === antes);
+  const vistaTope = (await api("/api/lab/runs")).json;
+  ok(
+    "la pantalla sabe que no hay corridas hoy",
+    vistaTope?.laboratorio?.disponible === false && vistaTope?.laboratorio?.topeDiario === 1,
+    JSON.stringify(vistaTope?.laboratorio)
+  );
+  await topeDelLaboratorio(0);
+  const apagado = await api("/api/lab/runs", { method: "POST" });
+  ok("con el tope en 0 → 429 (Laboratorio apagado)", apagado.res.status === 429, String(apagado.res.status));
+
+  console.log("\n== 080: solo quien administra corre el Laboratorio (P3) ==");
+  await topeDelLaboratorio(20);
+  await rolDelOperador("member");
+  const comoMiembro = await api("/api/lab/runs", { method: "POST" });
+  ok(
+    "un member → 403 forbidden, sin crear corrida",
+    comoMiembro.res.status === 403 && comoMiembro.json?.error?.code === "forbidden",
+    `${comoMiembro.res.status} ${JSON.stringify(comoMiembro.json)}`
+  );
+  ok("…y sigue pudiendo leer el historial", (await api("/api/lab/runs")).json?.puedeCorrer === false);
+  await rolDelOperador("owner");
 }
 
 // ---------------------------------------------------------------------------

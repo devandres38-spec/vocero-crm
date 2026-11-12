@@ -6,7 +6,7 @@
  * 036 — El CRM ya no trae agente. Donde antes se encendía el agente incluido
  * y se esperaba su respuesta, ahora contesta el cerebro falso compartido
  * (`scripts/lib/cerebro-falso.mjs`), que escucha en `BRAIN_DISPATCH_URL`,
- * sirve su `/health`, piensa por el proxy `/api/bot/llm` (el ai-mock) y
+ * sirve su `/health`, contesta con su eco fijo (080: el proxy está apagado) y
  * contesta por `/api/bot/*`; y el interruptor del Agente se enciende con él
  * sano. Lo que solo existía dentro del agente incluido (el patrón de
  * respaldo de «humano», la reserva desde el prompt, el aviso
@@ -478,9 +478,8 @@ async function main() {
     prof.json?.profile && !("enabled" in prof.json.profile)
   );
   ok(
-    "036: el perfil trae `llm` (por dónde y con qué modelo pensar)",
-    Boolean(prof.json) && "llm" in prof.json &&
-      (prof.json.llm === null || prof.json.llm.path === "/api/bot/llm"),
+    "080: el perfil trae `llm: null` (el proxy /api/bot/llm está apagado)",
+    Boolean(prof.json) && "llm" in prof.json && prof.json.llm === null,
     JSON.stringify(prof.json?.llm)
   );
   ok("`resources` presente y vacío", Array.isArray(prof.json?.resources));
@@ -1364,7 +1363,7 @@ async function respuestasDeBotonChecks() {
       20000
     );
     ok(
-      "y le llega al cerebro como cualquier texto (contestó pensando por /api/bot/llm)",
+      "y le llega al cerebro como cualquier texto (y contestó)",
       contesto,
       JSON.stringify((await mensajesDe(conv.id)).map((m) => [m.direction, m.text]))
     );
@@ -1591,7 +1590,6 @@ async function guiaChecks() {
   const agenda = /^(on|1|true|si|sí|yes)$/i.test((process.env.AGENDA ?? "").trim());
   // La app lee el mismo .env que este guion: si trae la llave, el paso 2 ya
   // está listo «por el respaldo del entorno» y la guía lo dice así.
-  const respaldoEnv = Boolean((process.env.OPENROUTER_API_TOKEN ?? "").trim());
 
   const estado = async () => (await api("/api/onboarding/status")).json;
   const paso = async (key) => (await estado())?.steps?.find((s) => s.key === key);
@@ -1610,7 +1608,6 @@ async function guiaChecks() {
     texto(await (await fetch(`${BASE}/onboarding`, { headers: { cookie } })).text());
 
   // --- Punto de partida reproducible ---
-  await api("/api/settings/ai", { method: "DELETE" });
   await api("/api/settings/whatsapp", { method: "DELETE" });
   await api("/api/agent/profile", {
     method: "PUT",
@@ -1639,20 +1636,18 @@ async function guiaChecks() {
     JSON.stringify(inicial)
   );
   ok(
-    "los pasos de la raíz: agente, IA, WhatsApp, cerebro y agenda",
+    "los pasos de la raíz: agente, WhatsApp, cerebro y agenda (080: sin IA)",
     JSON.stringify(inicial?.steps?.map((s) => s.key)) ===
-      JSON.stringify(["profile", "ai", "whatsapp", "brain", "calendar"]),
+      JSON.stringify(["profile", "whatsapp", "brain", "calendar"]),
     JSON.stringify(inicial?.steps?.map((s) => s.key))
   );
   const guiaKeys = inicial?.guide?.steps?.map((s) => s.key) ?? [];
   ok(
     agenda
-      ? "con la agenda encendida la guía tiene 5 pasos (con «Conecta tu agente»)"
-      : "sin agenda la guía tiene 4 pasos (el de agenda ni se pinta)",
+      ? "con la agenda encendida la guía tiene 4 pasos (con «Conecta tu agente»)"
+      : "sin agenda la guía tiene 3 pasos (el de agenda ni se pinta)",
     JSON.stringify(guiaKeys) ===
-      JSON.stringify(
-        agenda ? ["agent", "ai", "whatsapp", "brain", "calendar"] : ["agent", "ai", "whatsapp", "brain"]
-      ),
+      JSON.stringify(agenda ? ["agent", "whatsapp", "brain", "calendar"] : ["agent", "whatsapp", "brain"]),
     JSON.stringify(guiaKeys)
   );
   const perfil0 = inicial?.steps?.find((s) => s.key === "profile");
@@ -1665,17 +1660,6 @@ async function guiaChecks() {
     "WhatsApp sin número → pendiente",
     inicial?.steps?.find((s) => s.key === "whatsapp")?.status === "pending"
   );
-  const ia0 = inicial?.steps?.find((s) => s.key === "ai");
-  ok(
-    respaldoEnv
-      ? "IA: sin fila guardada cuenta el respaldo del entorno (OPENROUTER_*)"
-      : "IA: sin fila ni entorno → pendiente",
-    respaldoEnv
-      ? ia0?.status === "ready" && /entorno/.test(ia0?.nextAction ?? "")
-      : ia0?.status === "pending",
-    JSON.stringify(ia0)
-  );
-
   // 036 — El cerebro falso aún no escucha. El CRM guarda el /health 15 s: si
   // otro guion lo vio sano hace poco, se espera a que la caché venza.
   let cerebro0 = null;
@@ -1731,28 +1715,12 @@ async function guiaChecks() {
     perfilOk.res.ok && (await paso("profile"))?.status === "ready"
   );
 
-  const guardarIa = await api("/api/settings/ai", {
-    method: "PUT",
-    body: JSON.stringify({
-      provider: "openai_compatible",
-      baseUrl: process.env.OPENROUTER_BASE_URL ?? `${BASE}/api/dev/ai-mock`,
-      model: "mock/modelo-e2e",
-      token: "tok-ia-e2e-0001",
-    }),
-  });
-  const iaFila = await paso("ai");
-  ok(
-    "paso 2: la llave guardada en Ajustes → IA lo deja listo (la fila manda)",
-    guardarIa.res.ok && iaFila?.status === "ready" && /Ajustes/.test(iaFila?.nextAction ?? ""),
-    `status=${guardarIa.res.status} ${JSON.stringify(iaFila)}`
-  );
-
   const conectar = await api("/api/settings/whatsapp", {
     method: "PUT",
     body: JSON.stringify({ wabaId: "WABA-E2E", phoneNumberId: PN, token: "tok-e2e" }),
   });
   ok(
-    "paso 3: conectar el número lo deja listo",
+    "paso 2: conectar el número lo deja listo",
     conectar.res.ok && (await paso("whatsapp"))?.status === "ready",
     `status=${conectar.res.status}`
   );
@@ -1880,9 +1848,6 @@ async function guiaChecks() {
 
   // --- Como estaba, para lo que sigue (el cerebro falso sigue escuchando) ---
   await apagarAgente(api);
-  // Sin la fila, el resto del guion sigue hablando con el ai-mock por el
-  // respaldo del entorno, como antes de esta sección.
-  await api("/api/settings/ai", { method: "DELETE" });
 }
 
 /* ============================================================
