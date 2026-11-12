@@ -128,12 +128,12 @@
     "/api/bot/ficha": {
       "put": {
         "summary": "Guardar lo que el cerebro aprende del cliente",
-        "description": "Claves libres, mezcladas con las que ya hay; `null` borra una clave. Guardar la ficha no mueve la etapa: para eso está `POST /api/bot/stage`.",
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "ficha"], "properties": { "conversationId": { "type": "string" }, "ficha": { "type": "object", "additionalProperties": true } } } } } },
+        "description": "078 (D12 de Aliantis) — Solo la lista blanca del cerebro: `servicio_interes` (el nombre del servicio del catálogo, hasta 80) y `quiere_cita` (booleano). Otra clave da 422 `clave_no_permitida`; un tipo equivocado, 422 `invalid_body`. Se mezcla con lo que ya hay; `null` borra una clave. Un texto que el filtro de privacidad marca (salud o sin revisar) no se guarda. Con una persona atendiendo, 409 `ai_paused`; con la herramienta `ficha` apagada, 409 `herramienta_apagada`; en una conversación del Laboratorio, 200 `{ prueba: true }` sin escribir. Guardar la ficha no mueve la etapa: para eso está `POST /api/bot/stage`.",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["conversationId", "ficha"], "properties": { "conversationId": { "type": "string" }, "ficha": { "type": "object", "additionalProperties": false, "properties": { "servicio_interes": { "type": ["string", "null"], "maxLength": 80 }, "quiere_cita": { "type": ["boolean", "null"] } } } } } } } },
         "responses": {
-          "200": { "description": "Ficha resultante", "content": { "application/json": { "schema": { "type": "object", "properties": { "ficha": { "type": "object", "additionalProperties": true } } } } } },
+          "200": { "description": "Ficha resultante (la completa, también lo que escribió el dueño), o `{ prueba: true }` en el Laboratorio", "content": { "application/json": { "schema": { "type": "object", "properties": { "ficha": { "type": "object", "additionalProperties": true }, "prueba": { "const": true } } } } } },
           "404": { "$ref": "#/components/responses/NoEncontrada" },
-          "409": { "$ref": "#/components/responses/SinOrganizacion" },
+          "409": { "description": "`ai_paused` (una persona tomó la conversación), `herramienta_apagada` (`ficha` no está en `tools`) o `no_org`.", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
           "422": { "$ref": "#/components/responses/Invalido" }
         }
       }

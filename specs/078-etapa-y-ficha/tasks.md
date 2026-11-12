@@ -31,7 +31,7 @@
 - [x] T4 **El mapeo en la interfaz:**
   - `stage-manager.tsx` y `/api/pipeline/stages`: elegir el evento de cada etapa, único por negocio, con el texto «El agente mueve aquí al cliente cuando…»;
   - pruebas de la ruta.
-- [ ] T5 **La ficha estricta del cerebro:**
+- [x] T5 **La ficha estricta del cerebro:**
   - `FICHA_DEL_CEREBRO` y su validación (`422 clave_no_permitida` e `invalid_body`);
   - `ai_paused`, la herramienta `ficha` y `prueba`;
   - el filtro de privacidad se queda (con salud, el valor no se guarda);

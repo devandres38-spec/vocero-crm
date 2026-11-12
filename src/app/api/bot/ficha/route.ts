@@ -1,25 +1,28 @@
-import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
 import { requireBot } from "@/server/bot/auth";
 import { rutaDelCerebro } from "@/server/bot/ruta";
-import { upsertFicha } from "@/server/bot/ficha";
+import { escribirFichaDelCerebro, validarFichaDelCerebro } from "@/server/bot/ficha-del-cerebro";
 
 export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   conversationId: z.string().min(1),
-  // Objeto libre a propósito: las claves las define el negocio, y el servidor
-  // tolera el drift del LLM en vez de castigarlo con un 422 (ver server/bot/ficha).
+  // 078 (D12): la lista blanca se valida abajo, para distinguir una clave
+  // ajena (`clave_no_permitida`) de un tipo equivocado (`invalid_body`).
   ficha: z.record(z.string(), z.unknown()),
 });
 
 /**
- * Ficha de calificación del lead, escrita por un cerebro externo.
+ * Ficha de calificación del lead, escrita por el cerebro.
  * Merge campo a campo contra lo que ya había; `null` explícito borra la clave.
  * Devuelve la ficha COMPLETA resultante, no solo el parche, para que el bot no
  * tenga que llevar su propia copia sincronizada.
+ *
+ * 078 (D12 de Aliantis) — Solo las claves de la lista blanca
+ * (`FICHA_DEL_CEREBRO`): otra da 422 `clave_no_permitida`. Nunca con una
+ * persona atendiendo (409 `ai_paused`), solo con la herramienta `ficha`
+ * (409 `herramienta_apagada`) y nunca en el Laboratorio (200 `prueba: true`).
  */
 async function putSinNegocio(req: Request) {
   const auth = await requireBot(req);
@@ -30,26 +33,16 @@ async function putSinNegocio(req: Request) {
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
 
-  const db = getDb();
-  const rows = await db
-    .select({ contactId: schema.conversation.contactId })
-    .from(schema.conversation)
-    .where(
-      and(
-        eq(schema.conversation.organizationId, organizationId),
-        eq(schema.conversation.id, body.data.conversationId)
-      )
-    )
-    .limit(1);
-  if (!rows[0]) return apiError(404, "not_found", "Conversación no encontrada");
+  const valida = validarFichaDelCerebro(body.data.ficha);
+  if (!valida.ok) return apiError(422, valida.code, valida.message);
 
-  const result = await upsertFicha({
+  const res = await escribirFichaDelCerebro({
     organizationId,
-    contactId: rows[0].contactId,
-    ficha: body.data.ficha,
+    conversationId: body.data.conversationId,
+    ficha: valida.ficha,
   });
-  if (!result) return apiError(404, "not_found", "Contacto no encontrado");
-  return Response.json(result);
+  if (!res.ok) return apiError(res.status, res.code, res.message);
+  return Response.json("prueba" in res ? { prueba: true } : { ficha: res.ficha });
 }
 
 // 075 — Autentica el negocio y corre la ruta dentro de él (RLS).

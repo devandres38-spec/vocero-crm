@@ -100,22 +100,25 @@ ok(
 );
 
 console.log("\n== El agente la llena y el dueño la ve ==");
+// 078 (D12): el agente solo escribe la lista blanca (servicio_interes y
+// quiere_cita); las claves libres son del dueño. Necesita perfil de privacidad
+// legible: sin él, el texto no se guarda.
 const escrita = await bot("/api/bot/ficha", {
   conversationId: conv.id,
-  ficha: { presupuesto: 50000, zona: "Roma", calificado: true },
+  ficha: { servicio_interes: "Inglés básico", quiere_cita: true },
 });
 ok("PUT /api/bot/ficha → 200", escrita.res.ok, JSON.stringify(escrita.json));
 const vista = await fichaDe(contactId);
 ok(
   "lo que guardó el agente llega a la pantalla del dueño",
-  vista?.presupuesto === 50000 && vista?.zona === "Roma" && vista?.calificado === true,
+  vista?.servicio_interes === "Inglés básico" && vista?.quiere_cita === true,
   JSON.stringify(vista)
 );
 
 console.log("\n== El dueño corrige sin cambiar el tipo ==");
 await api(`/api/contacts/${contactId}`, {
   method: "PATCH",
-  body: JSON.stringify({ ficha: { presupuesto: 60000 } }),
+  body: JSON.stringify({ ficha: { presupuesto: 60000, zona: "Roma" } }),
 });
 const corregida = await fichaDe(contactId);
 ok(
@@ -125,19 +128,19 @@ ok(
 );
 ok(
   "corregir una clave NO borra las demás",
-  corregida?.zona === "Roma" && corregida?.calificado === true
+  corregida?.servicio_interes === "Inglés básico" && corregida?.quiere_cita === true
 );
 
 console.log("\n== Nadie le pisa el trabajo al otro ==");
 // El agente sigue conversando y descubre algo nuevo mientras el dueño edita.
 await bot("/api/bot/ficha", {
   conversationId: conv.id,
-  ficha: { urgencia: "esta semana" },
+  ficha: { servicio_interes: "Inglés avanzado" },
 });
 const convive = await fichaDe(contactId);
 ok(
   "lo nuevo del agente entra sin borrar la corrección del dueño",
-  convive?.urgencia === "esta semana" && convive?.presupuesto === 60000,
+  convive?.servicio_interes === "Inglés avanzado" && convive?.presupuesto === 60000,
   JSON.stringify(convive)
 );
 
@@ -153,13 +156,13 @@ ok("y no se lleva a las vecinas", sinZona?.presupuesto === 60000);
 console.log("\n== La cadena vacía NO borra ==");
 await api(`/api/contacts/${contactId}`, {
   method: "PATCH",
-  body: JSON.stringify({ ficha: { urgencia: "" } }),
+  body: JSON.stringify({ ficha: { servicio_interes: "" } }),
 });
 const tras = await fichaDe(contactId);
 ok(
   "vaciar sin querer no se lleva un dato que costó una conversación",
-  tras?.urgencia === "esta semana",
-  JSON.stringify(tras?.urgencia)
+  tras?.servicio_interes === "Inglés avanzado",
+  JSON.stringify(tras?.servicio_interes)
 );
 
 console.log("\n== Camino infeliz ==");
