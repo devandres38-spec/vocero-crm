@@ -15,7 +15,7 @@
 - mientras tanto, el `409` sigue.
 
 - [x] T1 Spec y estas tareas, con las respuestas de Andres.
-- [ ] T2 **La ingesta guarda el botón:**
+- [x] T2 **La ingesta guarda el botón:**
   - `processMetaInstagramPayload` y `normalizeMetaPagePayload` leen `message.quick_reply.payload` y lo pasan como `botonId` (hasta 256 caracteres);
   - pruebas: con perfil, sin perfil (el título se conserva), un `payload` largo y los ecos.
   - **Sabotaje 2.**

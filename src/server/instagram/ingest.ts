@@ -1,5 +1,6 @@
 import { IG_PREFIX } from "@/server/inbox/identity";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
+import { botonDeQuickReply } from "@/server/channels/botones";
 import { marcasDe } from "@/server/privacy/webhook";
 import {
   getInstagramCredentialsByAccountRef,
@@ -107,6 +108,8 @@ type MetaIgPayload = {
         mid?: string;
         text?: string;
         is_echo?: boolean;
+        /** 077: el botón que tocó (Quick Reply de Meta). */
+        quick_reply?: { payload?: string };
       };
     }>;
   }>;
@@ -170,6 +173,8 @@ export async function processMetaInstagramPayload(
         threadRef: null,
         // 069: las marcas que dejó guardarEvento (null si no pasó por él).
         marcas: marcasDe(m.message),
+        // 077: el botón que tocó (Quick Reply de Meta).
+        botonId: botonDeQuickReply(m.message),
       });
     }
   }

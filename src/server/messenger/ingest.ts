@@ -3,6 +3,7 @@ import { getDb, schema } from "@/lib/db";
 import { FB_PREFIX } from "@/server/inbox/identity";
 import { marcasDe } from "@/server/privacy/webhook";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
+import { botonDeQuickReply } from "@/server/channels/botones";
 import {
   getMessengerCredentialsByAccountRef,
   getMessengerCredentialsByPageId,
@@ -44,6 +45,8 @@ export type MessengerInbound = {
   marcas: string[] | null;
   /** Hilo en la plataforma de origen: hace falta para responder por Zernio. */
   threadRef: string | null;
+  /** 077 — Id del botón tocado (Quick Reply de Meta); null si no tocó ninguno. */
+  botonId?: string | null;
 };
 
 type MetaPagePayload = {
@@ -128,6 +131,8 @@ export function normalizeMetaPagePayload(payload: unknown): MessengerInbound[] {
         profileName: null,
         marcas: marcasDe(msg),
         threadRef: null,
+        // 077: el botón que tocó (Quick Reply de Meta).
+        botonId: botonDeQuickReply(msg),
       });
     }
   }
@@ -274,6 +279,7 @@ async function ingestAll(
       timestamp: evt.timestamp,
       threadRef: evt.threadRef,
       marcas: evt.marcas,
+      botonId: evt.botonId ?? null,
     });
   }
 }
