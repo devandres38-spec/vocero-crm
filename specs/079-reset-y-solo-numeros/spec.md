@@ -33,13 +33,13 @@ Fase 5 de Aliantis, pasos 5.4 (N3) y 5.5. Seguridad: va aparte del resto. Solo t
 
 ### 2. «Solo estos números» (5.5)
 
-- **Dónde vive:** en Vocero, en `agent_profile` (respuesta pendiente 1). Migración `0036`:
+- **Dónde vive (decidido por Andres, 12-nov-2026):** en Vocero, en `agent_profile`, filtrando antes del cerebro. Migración `0036`:
   - `solo_numeros_activo boolean NOT NULL DEFAULT false`;
   - `solo_numeros text[] NOT NULL DEFAULT '{}'`;
   - `CHECK (cardinality(solo_numeros) <= 50)`.
 
   Ya está bajo la RLS de `agent_profile`.
-- **Formato de los números:** solo dígitos, con código de país, de 11 a 15 dígitos y normalizados con `normalizeMx`. Se guardan sin repetidos.
+- **Formato de los números:** al recibirlos, `PUT /api/agent/profile` limpia primero lo que trae un teléfono pegado (espacios, `+`, guiones, puntos y paréntesis); después valida que queden solo dígitos, con código de país, de 11 a 15, y aplica `normalizeMx`. Se guardan sin repetidos (comparados ya normalizados). La pantalla dice que se puede pegar el número como venga, siempre con el código de país.
 - **Quién la cambia:** `PUT /api/agent/profile` recibe `soloNumeros: { activo, numeros }`, y solo un rol con `canConfigure` puede cambiarla (403 si no).
   - Cada número inválido da `422 numero_invalido`, con el número en el mensaje.
   - Encenderla con la lista vacía da `422 lista_vacia`.
@@ -47,18 +47,18 @@ Fase 5 de Aliantis, pasos 5.4 (N3) y 5.5. Seguridad: va aparte del resto. Solo t
 - **La regla:** una función pura `permitidoPorLista(lista, identidad)` en `src/server/dispatch/solo-numeros.ts`.
   - Con la lista apagada, todo pasa.
   - Con la lista encendida, pasa solo una identidad que es un teléfono (solo dígitos, ya normalizado) y está en la lista.
-  - `ig:`, Messenger, TikTok y `bsuid:` no pasan (respuesta pendiente 2).
+  - `ig:`, Messenger, TikTok y `bsuid:` no pasan (decidido por Andres): no reciben respuesta del agente y quedan en la bandeja para una persona.
 - **Las dos puertas:**
   - **al encolar:** `despacharAlCerebro` lee `wa_identity` del contacto y el perfil; fuera de la lista no encola;
   - **al entregar:** `procesar` vuelve a revisar con lo que trae el evento (`contact.identity`) y la lista leída en `construirEvento`. Si ya no pasa, descarta con el motivo «fuera de la lista de números».
 - **El Laboratorio (`is_test`) no se filtra:** no tiene número real.
-- **Salud (respuesta pendiente 3):** igual que con el Agente apagado (D9), lo marcado con salud de un número fuera de la lista **sí** se despacha, para que salga la frase de seguridad. Todo lo demás de ese número no le llega al cerebro.
+- **Excepción explícita de salud (D9, decidida por Andres):** igual que con el Agente apagado, lo marcado con salud de un número fuera de la lista **sí** se despacha, en las dos puertas, para que salga la frase fija de seguridad. Todo lo demás de ese número no le llega al cerebro. Es la única excepción a la lista.
 - **Fuera de la lista no pasa nada más:** el mensaje queda en la bandeja para una persona. No hay aviso de privacidad ni consentimiento, porque el bot no habló.
-- **La pantalla:** en la configuración del Agente, un interruptor «Solo estos números (piloto)» y un campo con un número por línea. Explica que con la lista encendida Instagram, Messenger y TikTok no reciben respuesta del agente.
+- **La pantalla:** en la configuración del Agente, un interruptor «Solo estos números (piloto)» y un campo con un número por línea. Avisa claro, junto al interruptor, que con la lista encendida Instagram, Messenger y TikTok no reciben respuesta del agente y quedan en la bandeja para una persona.
 
-### 3. Permiso de `PUT /api/agent/profile` (respuesta pendiente 4)
+### 3. Permiso de `PUT /api/agent/profile` (decidido por Andres)
 
-Hallazgo fuera del plan: hoy cualquier miembro del negocio puede encender o apagar el Agente, porque la ruta no revisa `canConfigure`; `preset` sí lo revisa. Se propone exigir `canConfigure` a toda la ruta (`403 forbidden`), como `preset`.
+Hallazgo de la planeación: hoy cualquier miembro del negocio puede encender o apagar el Agente, porque la ruta no revisa `canConfigure`; `preset` sí lo revisa. En este bloque se exige `canConfigure` a **toda** la ruta (`403 forbidden`), como `preset`. Antes de cambiarla se revisan las pruebas existentes (unitarias y guiones E2E) que llamen a la ruta con un rol sin ese permiso, y se ajustan.
 
 ## El cerebro
 
@@ -74,7 +74,7 @@ No hay PR en `aliantis-brain`. No cambian el prompt ni el decisor, así que no h
 - **`docs/openapi.json`:** `/api/bot/reset` con el 409, y `soloNumeros` en el perfil del Agente.
 - **`README.md` y `AGENTS.md`:** la regla de la lista y el `reset` del Laboratorio.
 - **`aliantis-core`:** `decisiones.md` y `estado.md`, en el último PR del bloque.
-- **`RELEVO_ARQUITECTURA.md`:** N3 queda cerrada, en un PR del espacio solo si la tabla de brechas lo necesita.
+- **`RELEVO_ARQUITECTURA.md`:** si N3 queda cerrada, se actualiza su fila en la tabla de brechas, en un PR del espacio (`aliantis-espacio`).
 
 ## Pruebas
 
@@ -82,7 +82,7 @@ No hay PR en `aliantis-brain`. No cambian el prompt ni el decisor, así que no h
   - la ruta de `reset` (409 fuera de prueba sin tocar nada, 200 en prueba, 404 antes que 409);
   - `permitidoPorLista` (apagada, encendida, `521` contra `52`, `ig:` y `bsuid:`);
   - `despacharAlCerebro` y `procesar` con la lista (incluidas salud e `is_test`);
-  - la validación del perfil (`numero_invalido`, `lista_vacia`, 403 sin `canConfigure`, sin repetidos);
+  - la validación del perfil (limpieza de `+`, espacios y guiones al pegar, `numero_invalido`, `lista_vacia`, 403 sin `canConfigure` en toda la ruta, sin repetidos);
   - la migración.
 - **E2E en `e2e.yml`:**
   - en `e2e-contrato-aliantis.mjs`, una sección `resetYSoloNumeros()`:

@@ -2,7 +2,7 @@
 
 Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera del plan, se para y se pregunta.
 
-- [x] **T1 — Spec y tareas** (este commit, local hasta la aprobación).
+- [x] **T1 — Spec y tareas** (aprobados por Andres el 12-nov-2026, con sus cuatro respuestas ya dentro del spec).
 - [ ] **T2 — `reset` solo en el Laboratorio:**
   - `src/app/api/bot/reset/route.ts` lee `isTest`; fuera de prueba, `409 solo_laboratorio` sin escribir nada;
   - prueba `tests/unit/reset-laboratorio.test.ts`;
@@ -18,9 +18,10 @@ Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera d
   - salud y `is_test` como dice la spec;
   - pruebas.
 - [ ] **T6 — El perfil del Agente:**
-  - `PUT /api/agent/profile` con `soloNumeros`, normalización y errores, y `canConfigure` en toda la ruta (respuesta 4);
+  - antes de tocar la ruta, revisar las pruebas y guiones E2E que llamen a `PUT /api/agent/profile` con un rol sin `canConfigure`;
+  - `PUT /api/agent/profile` con `soloNumeros`: limpia espacios, `+`, guiones, puntos y paréntesis, valida 11-15 dígitos, aplica `normalizeMx`, quita repetidos y da los errores; `canConfigure` en toda la ruta;
   - `GET` la devuelve;
-  - la pantalla del Agente (interruptor y campo);
+  - la pantalla del Agente (interruptor, campo y aviso de que Instagram, Messenger y TikTok quedan para una persona);
   - pruebas de la ruta.
 - [ ] **T7 — E2E:**
   - `resetYSoloNumeros()` en `scripts/e2e-contrato-aliantis.mjs`;
@@ -29,7 +30,7 @@ Un commit por tarea, cada uno con sus pruebas unitarias. Si aparece algo fuera d
 - [ ] **T8 — Documentación:**
   - `README.md` y `AGENTS.md`;
   - en `aliantis-core`, `decisiones.md` y `estado.md` (último PR del bloque);
-  - el espacio, solo si cambia la tabla de brechas.
+  - el espacio: la fila de N3 en la tabla de brechas de `RELEVO_ARQUITECTURA.md`, si queda cerrada.
 - [ ] **T9 — Verificación:**
   - el CI y `e2e.yml` (etiqueta `e2e`) en verde;
   - los 4 sabotajes en borrador, uno por uno con pausa, cerrados sin merge;
