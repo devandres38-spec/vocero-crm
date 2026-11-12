@@ -71,6 +71,13 @@ export type ChannelCapabilities = {
    * Instagram con Instagram Login no la documenta (spec 039 · D5).
    */
   quoteReplies: boolean;
+  /**
+   * 077 — ¿Admite botones de respuesta (de 1 a 3, `/api/bot/messages`)?
+   * WhatsApp con su interactivo `button`; Instagram y Messenger con los Quick
+   * Replies de Meta, SOLO por la conexión directa con Meta: por Zernio no
+   * (su API no los documenta) y lo decide el envío (`sendText`).
+   */
+  buttons: boolean;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -92,6 +99,7 @@ export const CHANNEL_CAPABILITIES: Record<Channel, ChannelCapabilities> = {
     structuredMessages: true,
     deliveryReceipts: true,
     quoteReplies: true,
+    buttons: true,
   },
   instagram: {
     label: CHANNEL_LABEL.instagram,
@@ -108,6 +116,7 @@ export const CHANNEL_CAPABILITIES: Record<Channel, ChannelCapabilities> = {
     structuredMessages: false,
     deliveryReceipts: false,
     quoteReplies: false,
+    buttons: true,
   },
   // 017: Messenger comparte la plataforma de mensajería de Meta con Instagram
   // (misma ventana de 24 h, misma etiqueta HUMAN_AGENT fuera de ella, sin
@@ -126,6 +135,7 @@ export const CHANNEL_CAPABILITIES: Record<Channel, ChannelCapabilities> = {
     structuredMessages: false,
     deliveryReceipts: false,
     quoteReplies: false,
+    buttons: true,
   },
   /**
    * 022: lo que TikTok impone a los mensajes directos de una cuenta de
@@ -147,6 +157,7 @@ export const CHANNEL_CAPABILITIES: Record<Channel, ChannelCapabilities> = {
     structuredMessages: false,
     deliveryReceipts: false,
     quoteReplies: false,
+    buttons: false,
   },
 };
 

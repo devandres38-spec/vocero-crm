@@ -24,6 +24,39 @@ export function fitsInstagramText(text: string): boolean {
 
 export type InstagramSendResult = { platformMessageId: string };
 
+/** 077 — Un botón de respuesta (Quick Reply de Meta): `title` hasta 20, `id` hasta 256. */
+export type BotonDeMeta = { id: string; title: string };
+
+/**
+ * 077 — Los botones como Quick Replies de Meta. Instagram solo admite los de
+ * texto (`content_type: "text"`); el `payload` es nuestro id y vuelve en el
+ * webhook como `message.quick_reply.payload`. Lo comparte Messenger.
+ */
+export function quickReplies(botones: readonly BotonDeMeta[]): Record<string, string>[] {
+  return botones.map((b) => ({ content_type: "text", title: b.title, payload: b.id }));
+}
+
+/**
+ * Cuerpo del envío por Meta (graph.instagram.com). Separado para afirmarlo en
+ * una prueba sin red. Sin `messaging_type`, como en la documentación de
+ * «Instagram API with Instagram Login» (por confirmar en vivo, spec 077).
+ */
+export function buildInstagramSendBody(input: {
+  recipient: string;
+  text: string;
+  humanAgentTag?: boolean;
+  botones?: readonly BotonDeMeta[] | null;
+}): Record<string, unknown> {
+  const message: Record<string, unknown> = { text: input.text };
+  if (input.botones?.length) message.quick_replies = quickReplies(input.botones);
+  const body: Record<string, unknown> = { recipient: { id: input.recipient }, message };
+  if (input.humanAgentTag) {
+    body.messaging_type = "MESSAGE_TAG";
+    body.tag = "HUMAN_AGENT";
+  }
+  return body;
+}
+
 /**
  * Envía texto por el transporte que corresponda.
  *
@@ -37,7 +70,12 @@ export async function sendInstagramText(input: {
   text: string;
   /** Fuera de la ventana de 24 h Instagram solo admite HUMAN_AGENT. */
   humanAgentTag?: boolean;
+  /** 077 — Solo por Meta: por Zernio, `sendText` ya lo rechazó. */
+  botones?: readonly BotonDeMeta[] | null;
 }): Promise<InstagramSendResult> {
+  if (input.botones?.length && input.credentials.source !== "meta") {
+    throw new MetaApiError("Zernio no envía botones", { status: 400 });
+  }
   return input.credentials.source === "zernio"
     ? sendViaZernio(input)
     : sendViaMeta(input);
@@ -90,16 +128,10 @@ async function sendViaMeta(input: {
   recipient: string;
   text: string;
   humanAgentTag?: boolean;
+  botones?: readonly BotonDeMeta[] | null;
 }): Promise<InstagramSendResult> {
   const { credentials } = input;
-  const body: Record<string, unknown> = {
-    recipient: { id: input.recipient },
-    message: { text: input.text },
-  };
-  if (input.humanAgentTag) {
-    body.messaging_type = "MESSAGE_TAG";
-    body.tag = "HUMAN_AGENT";
-  }
+  const body = buildInstagramSendBody(input);
 
   // El host es graph.instagram.com, NO graph.facebook.com: es el error mas
   // comun de esta integracion y devuelve un fallo de permisos que despista.

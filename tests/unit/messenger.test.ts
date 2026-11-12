@@ -105,6 +105,8 @@ describe("017 · normalizeMetaPagePayload (qué entra y qué se descarta)", () =
       // 069: sin pasar por guardarEvento no hay marcas: la ingesta filtra.
       marcas: null,
       threadRef: null,
+      // 077: no tocó ningún botón.
+      botonId: null,
     });
   });
 

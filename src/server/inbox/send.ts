@@ -47,6 +47,7 @@ import {
   aiWindowClosedMessage,
 } from "@/server/channels/capabilities";
 import { isChannelEnabled } from "@/server/channels/enabled";
+import { admiteBotones } from "@/server/channels/botones";
 import { serializeMessage } from "@/server/inbox/ingest";
 import { conCita, type CitaEncontrada } from "@/server/inbox/quotes";
 import {
@@ -479,6 +480,14 @@ async function persistOutbound(input: {
   return message.id;
 }
 
+/** 077 — Por dónde sale el envío: Meta directo, Zernio o ninguna conexión. */
+function fuenteDelEnvio(target: SendTarget): "meta" | "zernio" | null {
+  if (target.instagram) return target.instagram.source;
+  if (target.messenger) return target.messenger.source;
+  if (target.tiktok) return "zernio";
+  return target.credentials ? "meta" : null;
+}
+
 /** 070 — Un botón de respuesta rápida (límites en `/api/bot/messages`). */
 export type BotonSaliente = { id: string; title: string };
 
@@ -490,7 +499,7 @@ export async function sendText(input: {
   aiGenerated?: boolean;
   /** 039: id local del mensaje al que se responde citando. */
   replyToMessageId?: string;
-  /** 070: botones de respuesta rápida (solo WhatsApp, de 1 a 3). */
+  /** 070/077: botones de respuesta (de 1 a 3): WhatsApp, Instagram y Messenger por Meta. */
   buttons?: BotonSaliente[];
   /** 071: el id del mensaje reservado con su `clientMessageId` (envío idempotente). */
   reservado?: string;
@@ -503,7 +512,8 @@ export async function sendText(input: {
   const { credentials } = target;
   const canal = target.conversation.channel;
   const buttons = input.buttons?.length ? input.buttons : null;
-  if (buttons && (canal !== "whatsapp" || !credentials)) {
+  // 077: WhatsApp, y también Instagram y Messenger conectados directo con Meta.
+  if (buttons && !admiteBotones(canal, fuenteDelEnvio(target))) {
     throw new SendError("canal_sin_botones", "Este canal no admite botones; manda el texto");
   }
 
@@ -526,9 +536,9 @@ export async function sendText(input: {
   const cita = await resolverMensajeCitado(target, input.replyToMessageId);
 
   const waMessageId = target.instagram
-    ? await callInstagramSend(target, text)
+    ? await callInstagramSend(target, text, buttons)
     : target.messenger
-      ? await callMessengerSend(target, text)
+      ? await callMessengerSend(target, text, buttons)
       : target.tiktok
         ? await callTiktokSend(target, text)
         : await callGraphSend(
@@ -838,7 +848,9 @@ export async function callGraphSend(
  */
 async function callInstagramSend(
   target: SendTarget,
-  text: string
+  text: string,
+  /** 077: los botones, como Quick Replies de Meta. */
+  botones: BotonSaliente[] | null = null
 ): Promise<string> {
   const creds = target.instagram!;
 
@@ -862,6 +874,7 @@ async function callInstagramSend(
       threadRef: target.conversation.channelThreadRef,
       text,
       humanAgentTag,
+      botones,
     });
     return res.platformMessageId;
   } catch (err) {
@@ -891,7 +904,9 @@ async function callInstagramSend(
  */
 async function callMessengerSend(
   target: SendTarget,
-  text: string
+  text: string,
+  /** 077: los botones, como Quick Replies de Meta. */
+  botones: BotonSaliente[] | null = null
 ): Promise<string> {
   const creds = target.messenger!;
 
@@ -917,6 +932,7 @@ async function callMessengerSend(
       threadRef: target.conversation.channelThreadRef,
       text,
       humanAgentTag,
+      botones,
     });
     return res.platformMessageId;
   } catch (err) {

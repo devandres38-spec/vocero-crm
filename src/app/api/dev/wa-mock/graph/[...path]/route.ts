@@ -155,6 +155,29 @@ function cuentaSinPlantillasResponse(): Response {
   );
 }
 
+/** 077 — Lo que Meta rechazaría (o cortaría) de unos Quick Replies; null si están bien. */
+function validarQuickReplies(message: unknown, instagram: boolean): string | null {
+  if (!message || typeof message !== "object") return null;
+  const qr = (message as { quick_replies?: unknown }).quick_replies;
+  if (qr === undefined) return null;
+  if (!Array.isArray(qr) || qr.length === 0) return "(#100) quick_replies must be a non-empty array";
+  if (qr.length > 13) return "(#100) A maximum of 13 quick replies are supported";
+  for (const r of qr as { content_type?: unknown; title?: unknown; payload?: unknown }[]) {
+    if (instagram && r.content_type !== "text") {
+      return "(#100) Only plain text quick replies are supported";
+    }
+    if (r.content_type === "text") {
+      if (typeof r.title !== "string" || r.title.length === 0 || r.title.length > 20) {
+        return "(#100) quick_replies title has a 20 character limit";
+      }
+      if (typeof r.payload !== "string" || r.payload.length === 0 || r.payload.length > 1000) {
+        return "(#100) quick_replies payload has a 1000 character limit";
+      }
+    }
+  }
+  return null;
+}
+
 /** Un teléfono de Meta es solo dígitos; un BSUID lleva prefijo y punto. */
 function esSoloDigitos(valor: string): boolean {
   return /^[0-9]+$/.test(valor);
@@ -351,7 +374,11 @@ export async function GET(req: Request, ctx: Params) {
 export async function POST(req: Request, ctx: Params) {
   const guard = mockGuard();
   if (guard) return guard;
-  const path = normalizePath((await ctx.params).path);
+  // 077 — `IG_GRAPH_BASE_URL` apunta a `/graph/instagram`: el mismo mock hace
+  // de graph.instagram.com, y lo que llega por ahí queda marcado.
+  const cruda = (await ctx.params).path;
+  const instagram = cruda[0] === "instagram";
+  const path = normalizePath(instagram ? cruda.slice(1) : cruda);
   const token = bearerToken(req);
   if (token.endsWith("-invalid")) return invalidTokenResponse();
 
@@ -470,6 +497,18 @@ export async function POST(req: Request, ctx: Params) {
   if (path.length === 2 && path[1] === "messages") {
     const state = getWaMockState();
 
+    // 077 — Los Quick Replies de Instagram y Messenger, con los límites que
+    // documenta Meta: hasta 13, títulos de hasta 20 y, en Instagram, solo de
+    // texto. Meta corta los títulos largos; el mock los rechaza para que un
+    // error nuestro no pase en verde.
+    const errorDeBotones = validarQuickReplies(body.message, instagram);
+    if (errorDeBotones) {
+      return Response.json(
+        { error: { message: errorDeBotones, type: "OAuthException", code: 100 } },
+        { status: 400 }
+      );
+    }
+
     /**
      * Meta espera un TELEFONO en `to`. Un BSUID ahi devuelve 131026 — «el
      * destinatario no puede recibir mensajes» — y el mock lo replica.
@@ -539,8 +578,11 @@ export async function POST(req: Request, ctx: Params) {
       type: String(body.type ?? "text"),
       body,
       at: new Date().toISOString(),
+      ...(instagram ? { canal: "instagram" as const } : {}),
     });
     return Response.json({
+      // 077: Instagram y Messenger responden `message_id`.
+      message_id: waMessageId,
       messaging_product: "whatsapp",
       contacts: [{ input: body.to, wa_id: body.to }],
       messages: [{ id: waMessageId }],

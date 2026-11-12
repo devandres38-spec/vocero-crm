@@ -23,6 +23,12 @@ export type OutboxEntry = {
    * pueda mandarle un webhook de estado a ESE mensaje sin adivinar el formato.
    */
   waMessageId?: string;
+  /**
+   * 077 — `"instagram"` cuando llegó por `IG_GRAPH_BASE_URL` (el mock monta
+   * graph.instagram.com en `/graph/instagram/...`). Sin él: graph.facebook.com
+   * (WhatsApp o Messenger).
+   */
+  canal?: "instagram";
 };
 
 export type MockTemplate = {
