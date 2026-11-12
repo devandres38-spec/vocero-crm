@@ -113,3 +113,7 @@ Fuentes:
    Rechazar borra la conversación, por eso solo vale lo exacto. Vale en los tres canales, también en WhatsApp.
 3. **El mock de Instagram en el E2E.** Recomiendo reutilizar el mock de Graph existente (`/api/dev/wa-mock/graph`) apuntando `IG_GRAPH_BASE_URL` a él en `e2e.yml`. Ya quita la versión, guarda en el *outbox* y está detrás del `dev-guard` (404 en producción). Le añadiría lo mismo que hace Meta con `quick_replies`: rechazar más de 13, títulos de más de 20 y un `content_type` distinto de `text` en Instagram, para que un error nuestro no pase en verde. La otra opción es un mock propio de Instagram: más código, sin ganar nada.
 4. **Canales sin botones (TikTok y Zernio).** Recomiendo que el cerebro, ante `409 canal_sin_botones`, reenvíe el mismo aviso sin botones (con la misma `clientMessageId` más un sufijo) y deje valer lo escrito, en vez de derivar al primer aviso. Hoy no se usan, pero así ningún canal deja al paciente sin aviso.
+
+## Pendiente de la prueba real (pedido de Andres)
+
+Confirmar en vivo, con una cuenta real de Instagram conectada por Meta, que el aviso con botones sale por `graph.instagram.com` **sin** `messaging_type`, y que el toque llega con `quick_reply.payload`. Si Meta lo rechaza, la otra forma documentada es `graph.facebook.com` con `messaging_type: "RESPONSE"`. Está anotado en el README (canal de Instagram), en `estado.md` y en el bloque Z (piloto) del relevo.

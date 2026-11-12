@@ -710,6 +710,17 @@ cliente ya solo puede contestar una persona, hasta 7 días (etiqueta
 app propia solo recibe mensajes de perfiles con un rol en la app. El detalle
 del canal está en [`specs/014-canal-instagram`](specs/014-canal-instagram/spec.md).
 
+**Botones (077):** con la app propia de Meta, el aviso de privacidad del
+cerebro sale con botones nativos (Quick Replies) en Instagram y Messenger, y
+el toque llega como `button_id`, igual que en WhatsApp. Por Zernio no: el
+cerebro manda el aviso sin botones y vale lo escrito («acepto», «no acepto»).
+Instagram no muestra los botones en escritorio. **Pendiente de la prueba
+real:** confirmar con una cuenta real de Instagram que el envío con botones
+funciona por `graph.instagram.com` y sin `messaging_type`. La documentación de
+Meta se contradice en eso: la de Messenger Platform usa `graph.facebook.com`
+con `messaging_type: RESPONSE`. Detalle en
+[`specs/077-botones-meta`](specs/077-botones-meta/spec.md).
+
 ### TikTok (mensajes directos de una cuenta de negocio)
 
 TikTok no entrega mensajes a una app propia: llegan por

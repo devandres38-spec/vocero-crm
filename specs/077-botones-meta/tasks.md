@@ -41,7 +41,7 @@
     - el de «No acepto» sin perfil borra la conversación;
     - lo que se escribe se guarda filtrado;
   - `tests/e2e/us-consentimiento.md`.
-- [ ] T6 **Documentación:** `AGENTS.md`, el mapa de canales y la guía de prueba real (confirmar en vivo el host de Instagram y `messaging_type`). Revisión: CI en verde, `e2e.yml` en verde y los sabotajes en PRs borrador que se cierran sin merge.
+- [x] T6 **Documentación:** `AGENTS.md`, el mapa de canales y la guía de prueba real (confirmar en vivo el host de Instagram y `messaging_type`). Revisión: CI en verde, `e2e.yml` en verde y los sabotajes en PRs borrador que se cierran sin merge.
 - [ ] T7 **Core:**
   - `decisiones.md`: los límites de Meta, lo escrito que cuenta y Zernio;
   - `estado.md`: el bloque I2 listo;
