@@ -8,7 +8,7 @@ import { capabilitiesFor } from "@/server/channels/capabilities";
  * Zernio no (su API no documenta los Quick Replies), ni sin conexión.
  */
 export function admiteBotones(canal: Channel, fuente: "meta" | "zernio" | null): boolean {
-  return capabilitiesFor(canal).buttons && fuente === "meta";
+  return capabilitiesFor(canal).buttons && fuente !== null;
 }
 
 /**
