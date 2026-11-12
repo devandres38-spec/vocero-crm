@@ -52,7 +52,7 @@ vi.mock("@/server/brains/deliver", async (orig) => ({
       windowExpiresAt: null,
     },
     contact: { id: "ct_1", displayName: "Ana", identity: h.identidad },
-    messages: [{ id: "msg_1", type: "text", text: "hola", createdAt: "2026-11-12T00:00:00.000Z" }],
+    messages: [{ id: "msg_1", at: "2026-11-12T00:00:00.000Z", type: "text", text: "hola", mediaId: null }],
     firstMessageAt: "2026-11-12T00:00:00.000Z",
     lastMessageAt: "2026-11-12T00:00:00.000Z",
   }),

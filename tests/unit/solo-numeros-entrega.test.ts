@@ -30,11 +30,12 @@ const evento = (o: {
     : [
         {
           id: "msg_1",
+          at: "2026-11-12T00:00:00.000Z",
           type: "text",
           text: "hola",
-          createdAt: "2026-11-12T00:00:00.000Z",
+          mediaId: null,
           ...(o.salud ? { privacyFlags: ["salud"] } : {}),
-        } as Evento["messages"][number],
+        },
       ],
 });
 
