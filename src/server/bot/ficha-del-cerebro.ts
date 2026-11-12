@@ -23,7 +23,7 @@ export const FICHA_DEL_CEREBRO = z
     /** Pidió una cita o reserva. */
     quiere_cita: z.boolean().nullable().optional(),
   })
-  .strict();
+  .strip();
 
 export const CLAVES_FICHA_DEL_CEREBRO = Object.keys(FICHA_DEL_CEREBRO.shape);
 
