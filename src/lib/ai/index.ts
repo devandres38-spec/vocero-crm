@@ -29,13 +29,12 @@ export const OPENROUTER_FIJOS = {
 
 /** El cuerpo hacia el proveedor: con base OpenRouter, más los fijos. */
 export function cuerpoHaciaProveedor(
-  baseUrl: string,
+  _baseUrl: string,
   model: string,
   messages: ChatMessage[]
 ): Record<string, unknown> {
-  return presetDeBaseUrl(baseUrl) === "openrouter"
-    ? { model, messages, ...OPENROUTER_FIJOS }
-    : { model, messages };
+  // SABOTAJE 4: quitar provider/reasoning del cuerpo hacia OpenRouter.
+  return { model, messages };
 }
 
 export type ChatMessage = {
