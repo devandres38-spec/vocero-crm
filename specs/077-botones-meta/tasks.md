@@ -14,7 +14,7 @@
 - después se abre el envío (T3 y T4);
 - mientras tanto, el `409` sigue.
 
-- [ ] T1 Spec y estas tareas, con las respuestas de Andres.
+- [x] T1 Spec y estas tareas, con las respuestas de Andres.
 - [ ] T2 **La ingesta guarda el botón:**
   - `processMetaInstagramPayload` y `normalizeMetaPagePayload` leen `message.quick_reply.payload` y lo pasan como `botonId` (hasta 256 caracteres);
   - pruebas: con perfil, sin perfil (el título se conserva), un `payload` largo y los ecos.
@@ -41,7 +41,7 @@
     - el de «No acepto» sin perfil borra la conversación;
     - lo que se escribe se guarda filtrado;
   - `tests/e2e/us-consentimiento.md`.
-- [ ] T6 **Documentación:** `AGENTS.md` y el mapa de canales. Revisión: CI en verde, `e2e.yml` en verde y los sabotajes en PRs borrador que se cierran sin merge.
+- [ ] T6 **Documentación:** `AGENTS.md`, el mapa de canales y la guía de prueba real (confirmar en vivo el host de Instagram y `messaging_type`). Revisión: CI en verde, `e2e.yml` en verde y los sabotajes en PRs borrador que se cierran sin merge.
 - [ ] T7 **Core:**
   - `decisiones.md`: los límites de Meta, lo escrito que cuenta y Zernio;
   - `estado.md`: el bloque I2 listo;

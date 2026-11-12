@@ -1,6 +1,6 @@
 # 077 — Botones nativos en Instagram y Messenger (bloque I2, paso 4.7)
 
-**Estado:** propuesta, en espera del visto bueno de Andres.
+**Estado:** aprobada por Andres el 11-nov-2026, con sus 4 respuestas: las 4 recomendaciones tal como están. Pidió además anotar en las guías de prueba real que falta confirmar en vivo el host (`graph.instagram.com`) y `messaging_type` con una cuenta real de Instagram.
 **Repos:** `vocero-crm` (esta spec), `aliantis-brain` (`specs/013-botones-meta/`) y `aliantis-core` (`decisiones.md` y `estado.md`).
 **Contrato:** sí cambia `POST /api/bot/messages` (`buttons` deja de ser solo de WhatsApp). Sin migración, sin RLS nueva.
 
