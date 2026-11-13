@@ -486,11 +486,13 @@ código. Si pierdes el teléfono y los códigos:
 1. Crea tu negocio y su dueño desde la terminal del servidor (no hay registro
    público): `pnpm negocio:alta -- --nombre "Mi negocio" --dueno-correo tu@correo.co --dueno-nombre "Tu nombre"`.
    Muestra la contraseña una sola vez; entra con ese correo y esa contraseña.
-2. Lo primero que ves es la **Guía de inicio**: configura tu agente, vincula
-   tu proveedor de IA, conecta tu número de WhatsApp y, opcional, **conecta tu
-   agente** (Nea u otro; su dirección va en las variables de entorno, el paso
+   En Aliantis, el alta completa de un negocio (Vocero y el cerebro) sigue
+   `docs/alta-negocio.md` del repo `aliantis-espacio`.
+2. Lo primero que ves es la **Guía de inicio**: configura tu agente, conecta
+   tu número de WhatsApp y, opcional, **conecta tu agente** (en Aliantis,
+   `aliantis-brain`; su dirección va en las variables de entorno, el paso
    te lleva a la receta y se marca solo cuando el agente contesta su
-   `/health`). Con la agenda encendida (`AGENDA=on`), uno más para tus
+   `/health`). La llave de IA no es un paso: la pone quien instala (080). Con la agenda encendida (`AGENDA=on`), uno más para tus
    horarios. Cada botón te lleva a la pantalla que toca y al volver ves tu
    avance; cada paso se marca solo cuando la pieza de verdad funciona. Con un
    agente conectado aparece **Encender**: hasta entonces nadie le contesta a

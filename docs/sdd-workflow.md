@@ -1,5 +1,7 @@
 # El flujo SDD (Spec-Driven Development)
 
+> **En este fork (Aliantis) no se usan el «Modo Objetivo» ni `/loop-sdd`.** El método es por bloques y está en `aliantis-core/docs/trabajo/procedimiento.md`; este documento queda como referencia de upstream.
+
 La regla de oro: **specs antes de código**. Ninguna feature se implementa sin una
 especificación previa que describa el **comportamiento observable**, no la implementación.
 

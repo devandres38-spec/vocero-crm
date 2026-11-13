@@ -24,7 +24,7 @@ viven ahí; este archivo solo añade lo específico de Claude Code.
 
 Vocero es un CRM de WhatsApp open source (MIT), self-hosted, con el perfil y el
 conocimiento del agente y un Laboratorio de auto-evaluación. Desde la 2.0 no
-trae agente: contesta un cerebro conectado al lado (Nea u otro). Una
+trae agente: contesta un cerebro conectado al lado (en Aliantis, `aliantis-brain`). Una
 instancia = un negocio. Este archivo guía a Claude Code (u otro asistente)
 para operar y **modificar** este repositorio —
 el caso típico: una agencia adaptando Vocero para un cliente.
@@ -55,7 +55,7 @@ es in-process.
 |---|---|
 | El proveedor LLM (juez del Laboratorio) | `src/lib/ai/` (adaptador OpenRouter-compatible, `chatJson<T>`; `provider.ts`: solo `OPENROUTER_*`, la llave de Aliantis, con proveedores fijos y ZDR; 080) |
 | El tope diario del Laboratorio | `src/server/lab/tope.ts` + `organization.lab_corridas_por_dia` (solo lo escribe el panel: `vocero_panel_tope_laboratorio`, `PUT /api/admin/negocios/[id]/laboratorio`) |
-| El comportamiento del agente | No vive aquí: el CRM no trae agente (036). Lo que el agente lee —perfil, conocimiento (`renderKb` en `src/server/ai/prompts.ts`), `role`, `tools`, `llm`— sale por `src/server/bot/profile.ts`; lo demás es del cerebro (Nea) |
+| El comportamiento del agente | No vive aquí: el CRM no trae agente (036). Lo que el agente lee —perfil, conocimiento (`renderKb` en `src/server/ai/prompts.ts`), `role`, `tools`, `llm`— sale por `src/server/bot/profile.ts`; lo demás es del cerebro (`aliantis-brain`, que hoy no lee el perfil ni el conocimiento: su catálogo vive en su configuración, D17) |
 | El proxy `/api/bot/llm` | Apagado (080, P7): `src/app/api/bot/llm/[...ruta]/route.ts` responde `404 proxy_apagado` |
 | Las personas o el juez del Laboratorio | `src/server/lab/personas.ts` · `src/server/lab/judge.ts` |
 | El canal WhatsApp (Graph API) | `src/lib/meta/` (cliente único) + `src/server/whatsapp/` |
@@ -63,7 +63,7 @@ es in-process.
 | Campos/tablas | `src/lib/db/schema.ts` → `pnpm db:generate` → migración nueva en `drizzle/` |
 | La ingesta/envío de mensajes | `src/server/inbox/` (ingest idempotente, send con guard de sandbox, ventana 24h) |
 | Cómo se identifica a un contacto | `src/server/inbox/identity.ts` (teléfono normalizado o `bsuid:<id>`) |
-| Conectar el cerebro (Nea o el tuyo) | despacho: `src/server/dispatch/encolar.ts` (`despacharAlCerebro`) + `src/server/brains/` (`config.ts`: `despachoActivo`, `urlSaludCerebro`) · `src/app/api/bot/*` + `src/server/bot/auth.ts` (X-API-Key o Bearer) · contrato en `docs/openapi.json` · quién responde (avisos `sin_cerebro`, `apagado`): `src/server/bot/status.ts` + `GET /api/agent/brain-status` |
+| Conectar el cerebro (`aliantis-brain`) | despacho: `src/server/dispatch/encolar.ts` (`despacharAlCerebro`) + `src/server/brains/` (`config.ts`: `despachoActivo`, `urlSaludCerebro`) · `src/app/api/bot/*` + `src/server/bot/auth.ts` (X-API-Key o Bearer) · contrato en `docs/openapi.json` · quién responde (avisos `sin_cerebro`, `apagado`): `src/server/bot/status.ts` + `GET /api/agent/brain-status` |
 | La agenda (horarios, huecos, citas) | `src/server/agenda/` — detrás de la bandera `AGENDA` (`flag.ts`) |
 | Cómo se entrega la reunión (Zoom, Meet…) | `src/server/agenda/connectors/` + catálogo en `src/lib/agenda-connectors.ts` · guía: [docs/agenda-conectores.md](docs/agenda-conectores.md) |
 | De qué anuncio llegó cada conversación (siempre visible) | `src/server/attribution/referral.ts` (normalización) · `creativo.ts` (copia de la imagen, solo hosts de Meta) · `store.ts` · tarjeta en `src/components/anuncio-origen.tsx` |
@@ -148,6 +148,8 @@ deploy, las vars van también en la plataforma de hosting (runtime, no build).
 
 ## Definición de Hecho REFORZADA (obligatoria)
 
+> **En el fork de Aliantis**, el self-test E2E y el gate completo de abajo corren en GitHub Actions (`ci.yml` y `e2e.yml` con la etiqueta `e2e`), nunca en el PC de Andres (3,9 GB de RAM). Ver «Método de trabajo con Andres», más abajo, y `procedimiento.md`.
+
 "Typecheck + lint + build (+ tests)" es el piso, NO el techo. Una feature no
 está "Hecha" hasta correr el **self-test de COMPORTAMIENTO de punta a punta**
 (Playwright + mocks: `WA_MOCK_ENABLED=true`, `META_GRAPH_BASE_URL` → wa-mock,
@@ -195,16 +197,15 @@ Definición de Hecho vale **dentro** del bloque aprobado, nunca para seguir al s
 
 Memoria de archivos en `memory/` (índice `memory/MEMORY.md`, cargado por
 sesión). Persiste decisiones, gotchas y correcciones; no dupliques lo que el
-repo ya registra. Los subagentes con `memory: project` usan
-`.claude/agent-memory/`.
+repo ya registra.
 
 ## Arquitectura de agentes
 
 1. **Orquestador** = la sesión principal de Claude Code (este CLAUDE.md, con el
    método de trabajo con Andres; la skill `loop-sdd` no se usa en este fork).
-2. **Subagentes** (`.claude/agents/`): `deploy-ops` (deploy/logs/healthchecks,
-   no escribe código de app) · `public-site-builder` (páginas públicas/legales
-   y config de paneles externos).
+2. **Sin subagentes propios:** `deploy-ops` y `public-site-builder` de upstream
+   se quitaron en el bloque AU (spec 082). El reparto entre asistentes de
+   Aliantis está en `aliantis-core/docs/trabajo/procedimiento.md`.
 
 ## graphify
 

@@ -86,7 +86,7 @@ const STARTERS: {
     name: "retomar_conversacion",
     category: "MARKETING",
     body: "Hola {{1}}, ¿sigues interesado en {{2}}? Esta semana tenemos lugares disponibles. Responde a este mensaje y te ayudamos.",
-    examples: ["Ana", "la limpieza dental"],
+    examples: ["Ana", "la cotización que te enviamos"],
   },
 ];
 
