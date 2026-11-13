@@ -98,6 +98,16 @@ describe("076 — qué responde una ruta o una página del panel", () => {
     expect(mismoOrigen(de("POST", "https://malo.example"))).toBe(false);
     expect(mismoOrigen(de("POST"))).toBe(false);
     expect(mismoOrigen(de("DELETE", "https://crm.aliantis.co.malo.example"))).toBe(false);
+
+    // Detrás de reverse proxy (req.url interno es localhost:3000, pero x-forwarded-host es el dominio público).
+    const trasProxy = new Request("http://localhost:3000/api/admin/segundo-factor", {
+      method: "POST",
+      headers: {
+        origin: "https://preview.169-58-118-66.sslip.io",
+        "x-forwarded-host": "preview.169-58-118-66.sslip.io",
+      },
+    });
+    expect(mismoOrigen(trasProxy)).toBe(true);
   });
 
   it("el secreto sale del otpauth://", () => {
