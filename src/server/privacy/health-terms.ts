@@ -71,7 +71,7 @@ const MIN_TOLERANT_LENGTH = 4;
 // Una edición: desde 6 letras si el término es una palabra entera; desde 7 si es una raíz con
 // "*", contra el principio de la palabra y con una cola de máximo 5 letras. Las raíces de 6
 // ("inflam*", "desmay*", "punzad*") solo se reconocen por sonido: eran las que más chocaban.
-const MIN_EDIT_WORD = 6;
+const MIN_EDIT_WORD = 5;
 const MIN_EDIT_STEM = 7;
 const MAX_EDIT_TAIL = 5;
 // Una letra omitida por dentro, en términos de 5 letras ("dolr" → "dolor*"); cola de máximo 3.
