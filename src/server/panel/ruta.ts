@@ -9,13 +9,26 @@ import { estadoDelPanel, type EstadoDelPanel, type Superadmin } from "@/server/p
  * `comoPanel` (el rol `vocero_panel`, sin tablas).
  */
 
-/** Las mutaciones solo desde la misma página: el `Origin` debe ser el de la app. */
+/** Las mutaciones solo desde la misma página: el `Origin` debe ser el de la app (o proxy). */
 export function mismoOrigen(req: Request): boolean {
   if (req.method === "GET" || req.method === "HEAD") return true;
   const origen = req.headers.get("origin");
   if (!origen) return false;
   try {
-    return new URL(origen).host === new URL(req.url).host;
+    const { host: origenHost, origin: origenUrl } = new URL(origen);
+    const appBase = process.env.APP_BASE_URL;
+    if (appBase) {
+      try {
+        if (origenUrl === new URL(appBase).origin) return true;
+      } catch {
+        // APP_BASE_URL malformada no debe tumbar la validación.
+      }
+    }
+    const host =
+      req.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ||
+      req.headers.get("host") ||
+      new URL(req.url).host;
+    return Boolean(host) && origenHost === host;
   } catch {
     return false;
   }
