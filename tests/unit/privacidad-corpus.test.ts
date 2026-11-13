@@ -6,8 +6,10 @@ import {
 } from "@/server/privacy/perfil";
 import { classifyAndMask } from "@/server/privacy/privacy-filter";
 import {
+  NEAR_HEALTH,
   OTHER_BUSINESSES,
   WITH_HEALTH,
+  WITH_HEALTH_TYPOS,
   WITHOUT_HEALTH,
 } from "./fixtures/privacy-corpus";
 
@@ -50,6 +52,10 @@ describe("068 — corpus del filtro de salud", () => {
       [...WITH_HEALTH, ...WITHOUT_HEALTH].filter((t) => !dentalCo.has(t))
     ).toEqual([]);
     expect(OTHER_BUSINESSES.filter((t) => !genericoCo.has(t))).toEqual([]);
+    expect(WITH_HEALTH_TYPOS.filter((t) => !dentalCo.has(t))).toEqual([]);
+    expect(
+      NEAR_HEALTH.filter((t) => !dentalCo.has(t) || !genericoCo.has(t))
+    ).toEqual([]);
   });
 
   it("detecta el 100 % de los mensajes con datos de salud", () => {
@@ -64,5 +70,18 @@ describe("068 — corpus del filtro de salud", () => {
   it("con la lista general, otros negocios casi no derivan por salud", () => {
     const marcados = OTHER_BUSINESSES.filter((t) => conSalud(t, generico));
     expect(marcados.length / OTHER_BUSINESSES.length).toBeLessThanOrEqual(0.05);
+  });
+});
+
+/** 081 — Errores de escritura (spec 016 del cerebro): lo que se tolera no tapa palabras normales. */
+describe("081 — errores de escritura", () => {
+  it("detecta el 100 % de los mensajes de salud mal escritos", () => {
+    expect(WITH_HEALTH_TYPOS.filter((t) => !conSalud(t))).toEqual([]);
+  });
+
+  it("ninguna palabra vecina deriva, ni con el perfil dental ni con el genérico", () => {
+    expect(
+      NEAR_HEALTH.filter((t) => conSalud(t) || conSalud(t, generico))
+    ).toEqual([]);
   });
 });

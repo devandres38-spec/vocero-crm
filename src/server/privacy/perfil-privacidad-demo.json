@@ -72,6 +72,7 @@
       "hincho",
       "infeccion*",
       "infect*",
+      "maread*",
       "mareo*",
       "nausea*",
       "punzad*",
@@ -151,6 +152,7 @@
       "quimioterapia",
       "quiste*",
       "sida",
+      "sinusitis",
       "tiroid*",
       "tumor*",
       "vih",
@@ -158,6 +160,7 @@
       "hongo*",
       "tos",
       "bruxismo",
+      "carie",
       "caries",
       "gingivitis",
       "periodont*"
@@ -193,5 +196,5 @@
       "pastilla*"
     ]
   },
-  "huella": "678b2aee0a921aeb002a5af7c79cfc853e65e77cf2bdb03426630ef8a98fa5ce"
+  "huella": "3d4d35ded3ef47eede35acb883eb7dfa93dcd003d3d0d74061dc0baf24152d39"
 }
