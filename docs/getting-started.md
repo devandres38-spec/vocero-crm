@@ -1,5 +1,7 @@
 # Getting Started
 
+> **En este fork (Aliantis) no se usan el «Modo Objetivo» ni `/loop-sdd`.** El método es por bloques y está en `aliantis-core/docs/trabajo/procedimiento.md`; este documento queda como referencia de upstream.
+
 Esta guía te lleva de "carpeta recién clonada" a "primera feature corriendo el loop SDD".
 
 ## 0. Requisitos

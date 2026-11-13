@@ -1,5 +1,7 @@
 # Arquitectura de tres agentes
 
+> **En este fork (Aliantis) no se usan el «Modo Objetivo» ni `/loop-sdd`.** El método es por bloques y está en `aliantis-core/docs/trabajo/procedimiento.md`; este documento queda como referencia de upstream.
+
 El trabajo se reparte entre **tres agentes en dos niveles**. Lo importante: el
 **orquestador no es un subagente ni un archivo** — es la **sesión principal de Claude
 Code**, la que se abre cuando empiezas a interactuar. Esa sesión es quien **invoca** a los

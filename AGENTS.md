@@ -3,10 +3,11 @@
 Vocero es un CRM de WhatsApp open source (MIT) y self-hosted: bandeja en tiempo
 real, pipeline kanban, el perfil y el conocimiento del agente, y un Laboratorio
 donde clientes simulados lo evalúan antes de hablar con clientes reales. Desde la
-2.0 el CRM no trae agente (036): contesta un cerebro conectado al lado (Nea u
-otro) por el despacho y `/api/bot/*`. Sin cerebro, es un CRM de bandeja manual.
-Esta guía sirve igual para Claude Code, Codex, OpenCode o una persona: no depende
-de skills, scripts ni plugins de ningún asistente.
+2.0 el CRM no trae agente (036): contesta un cerebro conectado al lado (en Aliantis,
+`aliantis-brain`) por el despacho y `/api/bot/*`. Sin cerebro, es un CRM de bandeja manual.
+Esta guía sirve igual para cualquier asistente de código o una persona: no depende
+de skills, scripts ni plugins de ningún asistente. En el fork de Aliantis, el método
+y el reparto entre asistentes están en `aliantis-core/docs/trabajo/procedimiento.md`.
 
 ## Principios inviolables
 
@@ -34,6 +35,8 @@ de skills, scripts ni plugins de ningún asistente.
 | Imagen | Docker multi-stage standalone, healthcheck `/api/health`, publicada en `ghcr.io/kevinrivm/vocero-crm:X.Y.Z` por `.github/workflows/imagen.yml` |
 
 ## Cómo correrlo
+
+> **En el PC de Andres (3,9 GB de RAM) no se corren Docker, `pnpm dev`, `pnpm build`, la suite completa ni los E2E:** solo las pruebas, prettier y eslint de los archivos tocados y un `tsc --noEmit`. Lo demás corre en GitHub Actions o en un Codespace (`procedimiento.md`, «Dónde corre cada cosa»). Los comandos de abajo son para una máquina con recursos.
 
 ```bash
 pnpm install
@@ -192,9 +195,9 @@ Documentación: README («Tu agente al lado del CRM»), `docs/migrar-a-2.0.md`, 
 
 ## Cómo contribuir
 
-1. Rama desde `main` (`feat/…`, `fix/…`, `docs/…`, `chore/…`) y PR contra `main`. El autor del proyecto hace los merges.
+1. Rama desde `main` (`feat/…`, `fix/…`, `docs/…`, `chore/…`) y PR contra `main`. En el fork de Aliantis, el merge (y cualquier force push) solo con la palabra de Andres.
 2. Antes de abrir el PR, en el fork de Aliantis: pruebas, prettier y eslint de los archivos tocados y `tsc --noEmit` (el PC de Andres no aguanta más; ver `CLAUDE.md`). La revisión completa la hace el CI (`.github/workflows/ci.yml`): `pnpm typecheck && pnpm lint && pnpm test && pnpm build` en dos configuraciones, banderas apagadas y `CHANNELS` + `AGENDA` encendidas; `imagen.yml` construye la imagen Docker en cada PR, y `e2e.yml` (etiqueta `e2e` en el PR) corre el E2E del despacho y la migración sobre datos.
-3. Comportamiento observable nuevo: amplía o escribe su guion en `tests/e2e/` y, si se puede, su arnés en `scripts/e2e-*.mjs`; córrelo contra la app con mocks (`WA_MOCK_ENABLED=true`, `META_GRAPH_BASE_URL` → `/api/dev/wa-mock/graph`, `OPENROUTER_BASE_URL` → `/api/dev/ai-mock`, `BOT_API_KEY`; receta en `specs/001-vocero-core/quickstart.md`). Prueba también el camino infeliz.
+3. Comportamiento observable nuevo: amplía o escribe su guion en `tests/e2e/` y, si se puede, su arnés en `scripts/e2e-*.mjs`; córrelo contra la app con mocks (en Aliantis, en `e2e.yml` de Actions, no en el PC; `WA_MOCK_ENABLED=true`, `META_GRAPH_BASE_URL` → `/api/dev/wa-mock/graph`, `OPENROUTER_BASE_URL` → `/api/dev/ai-mock`, `BOT_API_KEY`; receta en `specs/001-vocero-core/quickstart.md`). Prueba también el camino infeliz.
 4. Specs (`specs/`): si tocas el modelo de datos o un contrato publicado, ciclo completo en `specs/NNN-nombre/`; comportamiento nuevo sin eso, un `spec.md` ligero; arreglos, refactors y dependencias quedan exentos (Principio VI de la constitución).
 5. Versión y release: sube `version` en `package.json`, el default de `VOCERO_CRM_VERSION` en `docker-compose.yml` (`tests/unit/version.test.ts` exige que coincidan) y la etiqueta de la imagen en `render.yaml`, `fly.toml` y `railway.toml` (`tests/unit/manifests-plataformas.test.ts`), añade la entrada en `CHANGELOG.md` con su «Actualizar desde…» y actualiza la etiqueta de la imagen en `INSTALL-IA.md`. El tag `vX.Y.Z` publica la imagen.
 6. Dependencias: `pnpm install --frozen-lockfile` debe pasar; un tercero nuevo en el núcleo necesita justificación constitucional (Principio II).
