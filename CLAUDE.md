@@ -197,16 +197,15 @@ Definición de Hecho vale **dentro** del bloque aprobado, nunca para seguir al s
 
 Memoria de archivos en `memory/` (índice `memory/MEMORY.md`, cargado por
 sesión). Persiste decisiones, gotchas y correcciones; no dupliques lo que el
-repo ya registra. Los subagentes con `memory: project` usan
-`.claude/agent-memory/`.
+repo ya registra.
 
 ## Arquitectura de agentes
 
 1. **Orquestador** = la sesión principal de Claude Code (este CLAUDE.md, con el
    método de trabajo con Andres; la skill `loop-sdd` no se usa en este fork).
-2. **Subagentes** (`.claude/agents/`): `deploy-ops` (deploy/logs/healthchecks,
-   no escribe código de app) · `public-site-builder` (páginas públicas/legales
-   y config de paneles externos).
+2. **Sin subagentes propios:** `deploy-ops` y `public-site-builder` de upstream
+   se quitaron en el bloque AU (spec 082). El reparto entre asistentes de
+   Aliantis está en `aliantis-core/docs/trabajo/procedimiento.md`.
 
 ## graphify
 
