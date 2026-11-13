@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Info, Plus, Trash2 } from "lucide-react";
 import { BrainStatusCard } from "@/components/agent/brain-status-card";
 import type { BrainStatusDto } from "@/lib/brain-status";
 import { Badge } from "@/components/ui/badge";
@@ -286,6 +286,7 @@ function ProfileSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <AvisoSinEfecto />
         <div className="space-y-1.5">
           <Label htmlFor="agent-name">Nombre del agente</Label>
           <Input
@@ -479,10 +480,9 @@ function KbSection({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Knowledge base</CardTitle>
+            <CardTitle>Base de conocimiento</CardTitle>
             <CardDescription>
-              La única fuente de verdad del agente: lo que no está aquí, no lo
-              afirma.
+              Preguntas y respuestas de tu negocio guardadas en Vocero.
             </CardDescription>
           </div>
           {kbSize && (
@@ -499,6 +499,7 @@ function KbSection({
         )}
       </CardHeader>
       <CardContent className="space-y-4">
+        <AvisoSinEfecto />
         <div className="space-y-2 rounded-md border p-3">
           <p className="text-sm font-medium">Nueva pregunta / respuesta</p>
           <Input
@@ -565,5 +566,27 @@ function KbSection({
         </ul>
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Spec 017 (bloque AU, P4): el asistente de Aliantis (`aliantis-brain`) responde con el catálogo
+ * que carga la agencia (D17), no con estos campos ni con la base de conocimiento. Mientras no
+ * exista la edición estructurada del catálogo desde aquí, el dueño debe saberlo.
+ */
+export function AvisoSinEfecto() {
+  return (
+    <div
+      role="note"
+      data-aviso-sin-efecto
+      className="flex items-start gap-2.5 rounded-md border bg-subtle p-3 text-sm text-foreground"
+    >
+      <Info aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
+      <p>
+        El asistente de Aliantis todavía no usa lo que escribas aquí: responde con la información
+        de tu negocio que carga tu agencia. Si algo cambia (precios, horarios, servicios),
+        avísale a tu agencia.
+      </p>
+    </div>
   );
 }

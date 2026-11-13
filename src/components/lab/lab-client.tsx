@@ -558,6 +558,10 @@ function HallazgoCard({
       </p>
       {editing && hallazgo.sugerencia && (
         <div className="mt-3 space-y-2 rounded-md border bg-card p-3">
+          <p className="text-xs text-muted-foreground">
+            Se guarda en la base de conocimiento de Vocero, que el asistente de Aliantis todavía no
+            usa: pásale la sugerencia a tu agencia para que la agregue a su información.
+          </p>
           <div className="space-y-1">
             <Label htmlFor={`sug-q-${caseId}-${index}`}>Pregunta</Label>
             <Input
@@ -581,7 +585,7 @@ function HallazgoCard({
               onClick={() => void apply()}
               disabled={saving || !pregunta.trim() || !respuesta.trim()}
             >
-              {saving ? "Guardando…" : "Guardar en el KB"}
+              {saving ? "Guardando…" : "Guardar en el conocimiento"}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
               Cancelar
