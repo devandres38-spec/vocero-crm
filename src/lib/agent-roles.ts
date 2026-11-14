@@ -131,6 +131,11 @@ export const ROLES: Record<ClaveRol, Rol> = {
       "pide_humano",
       "errores_modismos",
       "sin_rumbo",
+      // 083 — El consentimiento al agendar y la salud (esta solo con filtro de salud).
+      "agenda_rechaza",
+      "agenda_ignora",
+      "deja_datos",
+      "salud",
     ],
   },
 };

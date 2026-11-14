@@ -1340,6 +1340,24 @@ async function laboratorioConTope(cerebro) {
     JSON.stringify(casos.map((c) => [c.persona, c.status]))
   );
   ok("después de cada caso le llegó el olvido", olvidos.length >= casos.length && casos.length > 0, `${olvidos.length} olvidos para ${casos.length} casos`);
+  // 083 — Los guiones salen del catálogo que da el cerebro, por su endpoint firmado.
+  ok(
+    "083: el Laboratorio pidió el negocio al cerebro, firmado con la llave del Laboratorio",
+    cerebro.estado.labNegocio.length > 0 && cerebro.estado.labNegocio.every((p) => p.firmaOk && p.organizationId),
+    JSON.stringify(cerebro.estado.labNegocio)
+  );
+  const lineasDelCliente = casos.flatMap((c) => (c.transcript ?? []).filter((t) => t.role === "cliente").map((t) => t.text));
+  ok(
+    "083: las líneas del cliente nombran el servicio del catálogo y ninguna es de la ferretería",
+    lineasDelCliente.some((t) => t.includes("Servicio Simulado Uno")) &&
+      !lineasDelCliente.some((t) => /taladr|martill|pintura|\{s[123]/i.test(t)),
+    JSON.stringify(lineasDelCliente.slice(0, 6))
+  );
+  ok(
+    "083: con filtro de salud, también corre la persona de salud",
+    casos.some((c) => c.persona === "salud"),
+    JSON.stringify(casos.map((c) => c.persona))
+  );
   const outbox = (await api("/api/dev/wa-mock/outbox")).json?.outbox ?? [];
   ok("ningún mensaje de la corrida salió por WhatsApp (wa-mock vacío)", outbox.length === 0, `${outbox.length} envíos`);
 

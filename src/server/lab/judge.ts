@@ -31,12 +31,15 @@ export async function judgeCase(input: {
   personaKey: string;
   transcript: { role: "cliente" | "agente" | "sistema"; text: string }[];
   kbText: string;
+  /** 083 (D6) — Los datos públicos del negocio en el cerebro. */
+  negocioText?: string;
   behaviorText: string;
 }): Promise<JudgeOutcome> {
   const { system, user } = buildJudgePrompt({
     persona: input.personaKey,
     transcript: input.transcript,
     kbText: input.kbText,
+    negocioText: input.negocioText ?? "",
     behaviorText: input.behaviorText,
   });
   const result = await chatJson(
