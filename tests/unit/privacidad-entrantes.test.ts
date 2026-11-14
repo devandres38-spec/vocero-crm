@@ -22,8 +22,8 @@ const normal = (ruta: string) => ruta.split(/[\\/]/).join("/");
 const PERMITIDOS: Record<string, RegExp | null> = {
   // La ingesta de los cuatro canales: marcas de guardarEvento o segunda red.
   "src/server/inbox/ingest.ts": /textoFiltrado\(input\)/,
-  // El Laboratorio: la persona de prueba (D6).
-  "src/server/lab/runner.ts": /filtrarTexto\(line, politica\)/,
+  // El Laboratorio: la persona de prueba (D6). 083: también su botón del aviso.
+  "src/server/lab/runner.ts": /filtrarTexto\(linea\.text, politica/,
   // La demo: mensajes inventados, no de un paciente (spec 069, lo que no hace).
   "src/server/seed/demo.ts": null,
 };

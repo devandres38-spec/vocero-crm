@@ -13,7 +13,14 @@ import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 import { computeScore, judgeCase } from "@/server/lab/judge";
 import { corridasDesde } from "@/server/lab/tope";
-import { PERSONAS, type Persona } from "@/server/lab/personas";
+import {
+  guionDe,
+  PERSONAS,
+  personasParaNegocio,
+  TELEFONOS_DEL_LABORATORIO,
+  type Persona,
+} from "@/server/lab/personas";
+import { pedirNegocioDelLab, renderNegocio, type NegocioDelLab } from "@/server/lab/negocio";
 import { rolDe } from "@/lib/agent-roles";
 
 /**
@@ -90,7 +97,10 @@ export async function startRun(
     .from(schema.agentProfile)
     .where(eq(schema.agentProfile.organizationId, organizationId))
     .limit(1);
-  const delRol = personasDelRol(perfil?.role);
+  // 083 (D7) — Los datos públicos del negocio que tiene el cerebro: con ellos
+  // se arman los guiones y juzga el juez. Sin cerebro, guiones neutros.
+  const negocio = await pedirNegocioDelLab(organizationId);
+  const delRol = personasParaNegocio(personasDelRol(perfil?.role), negocio);
 
   await db.insert(schema.agentTestCase).values(
     delRol.map((p) => ({
@@ -105,7 +115,7 @@ export async function startRun(
   // Fire-and-forget in-process: el POST regresa ya; el progreso va por SSE.
   // 075 — De fondo (sigue después de responder), explícitamente en su negocio.
   void trabajoDeFondo("laboratorio", () =>
-    conNegocio(organizationId, () => executeRun(runId, organizationId))
+    conNegocio(organizationId, () => executeRun(runId, organizationId, negocio))
   ).catch(async (err) => {
     console.error("[lab] corrida falló:", err);
     await trabajoDeFondo("laboratorio", () =>
@@ -125,7 +135,8 @@ export function personasDelRol(role: string | null | undefined): Persona[] {
 
 async function executeRun(
   runId: string,
-  organizationId: string
+  organizationId: string,
+  negocio: NegocioDelLab | null
 ): Promise<void> {
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(
@@ -134,7 +145,7 @@ async function executeRun(
     )
   );
   try {
-    await Promise.race([runAllCases(runId, organizationId), timeout]);
+    await Promise.race([runAllCases(runId, organizationId, negocio), timeout]);
   } catch (err) {
     await failRun(runId, organizationId, String(err));
   }
@@ -142,7 +153,8 @@ async function executeRun(
 
 async function runAllCases(
   runId: string,
-  organizationId: string
+  organizationId: string,
+  negocio: NegocioDelLab | null
 ): Promise<void> {
   const db = getDb();
   const cases = await db
@@ -156,6 +168,8 @@ async function runAllCases(
     .from(schema.kbEntry)
     .where(eq(schema.kbEntry.organizationId, organizationId));
   const kbText = renderKb(kbEntries);
+  // 083 (D6) — Lo que de verdad sabe el agente: los datos del cerebro.
+  const negocioText = negocio ? renderNegocio(negocio) : "";
 
   const profileRows = await db
     .select()
@@ -190,7 +204,8 @@ async function runAllCases(
 
     const { transcript, conversationId, falla } = await runConversation(
       organizationId,
-      persona
+      persona,
+      negocio
     );
 
     if (falla) {
@@ -210,6 +225,7 @@ async function runAllCases(
       personaKey: persona.key,
       transcript,
       kbText,
+      negocioText,
       behaviorText,
     });
 
@@ -255,10 +271,53 @@ async function runAllCases(
   publishProgress(organizationId, runId, "done", done, total, score);
 }
 
-/** Conversa el guion completo contra el agente real; corta al primer handoff. */
+/** 083 (D3) — Los ids de los botones del aviso de privacidad (contrato del cerebro). */
+export const BOTON_ACEPTO = "consentimiento:acepto";
+export const BOTON_NO_ACEPTO = "consentimiento:no_acepto";
+
+type LineaDelCliente = { text: string; buttonId?: string };
+
+/**
+ * 083 (D3) — Qué contesta la persona al aviso de privacidad, si el último
+ * saliente lo trae: el botón que corresponde a su `alAviso`. `null` si no hay
+ * aviso o si la persona lo ignora (sigue su guion).
+ */
+export function respuestaAlAviso(
+  persona: Pick<Persona, "alAviso">,
+  saliente: { buttons: { id: string; title: string }[] | null } | undefined
+): LineaDelCliente | null {
+  const botones = saliente?.buttons ?? [];
+  if (!botones.some((b) => b.id === BOTON_ACEPTO)) return null;
+  if (persona.alAviso === "acepta") return { text: "Acepto", buttonId: BOTON_ACEPTO };
+  if (persona.alAviso === "rechaza") return { text: "No acepto", buttonId: BOTON_NO_ACEPTO };
+  return null;
+}
+
+/**
+ * 083 (D5) — Solo los contactos sintéticos del Laboratorio: teléfono de la
+ * lista de personas y archivado. Nunca un contacto real.
+ */
+export function esContactoDelLaboratorio(contacto: {
+  phone: string | null;
+  archivedAt: Date | null;
+}): boolean {
+  return (
+    contacto.phone !== null &&
+    TELEFONOS_DEL_LABORATORIO.has(contacto.phone) &&
+    contacto.archivedAt !== null
+  );
+}
+
+/**
+ * Conversa el guion completo contra el agente real; corta al primer handoff.
+ * 083 — El guion es el del negocio; la persona responde al aviso de privacidad
+ * (D3); la transcripción se arma sobre la marcha (D4), porque un «No acepto»
+ * borra los textos en Vocero; y cada caso empieza sin consentimiento (D5).
+ */
 async function runConversation(
   organizationId: string,
-  persona: Persona
+  persona: Persona,
+  negocio: NegocioDelLab | null
 ): Promise<{
   transcript: { role: "cliente" | "agente" | "sistema"; text: string }[];
   conversationId: string;
@@ -269,6 +328,7 @@ async function runConversation(
 
   // Contacto sintético ARCHIVADO (no aparece en la lista ni genera leads).
   const contactId = await upsertTestContact(organizationId, persona);
+  await limpiarConsentimientoDePrueba(organizationId, contactId);
 
   const convId = newId("conversation");
   await db.insert(schema.conversation).values({
@@ -279,25 +339,56 @@ async function runConversation(
     aiEnabled: true,
   });
 
+  const transcript: { role: "cliente" | "agente" | "sistema"; text: string }[] = [];
+  const vistos = new Set<string>();
+  // Los salientes nuevos del agente, en orden; devuelve el último.
+  const leerSalientes = async () => {
+    const salientes = await db
+      .select({ id: schema.message.id, text: schema.message.text, buttons: schema.message.buttons })
+      .from(schema.message)
+      .where(
+        scoped(
+          schema.message.organizationId,
+          organizationId,
+          eq(schema.message.conversationId, convId),
+          eq(schema.message.direction, "out")
+        )
+      )
+      .orderBy(asc(schema.message.createdAt));
+    let ultimo: (typeof salientes)[number] | undefined;
+    for (const m of salientes) {
+      if (vistos.has(m.id)) continue;
+      vistos.add(m.id);
+      ultimo = m;
+      if (m.text) transcript.push({ role: "agente", text: m.text });
+    }
+    return ultimo;
+  };
+
   let falla: string | null = null;
   // 069 — Lo que escribe la persona de prueba se filtra como lo de un paciente:
   // el Laboratorio tampoco guarda texto sin revisar (D6).
   const politica = await perfilDePrivacidad(organizationId);
-  for (const line of persona.script) {
+  const pendientes: LineaDelCliente[] = guionDe(persona, negocio).map((text) => ({ text }));
+  let respondioAviso = false;
+  while (pendientes.length > 0) {
+    const linea = pendientes.shift()!;
     const now = new Date();
     const messageId = newId("message");
-    const filtrado = filtrarTexto(line, politica);
+    const filtrado = filtrarTexto(linea.text, politica, linea.buttonId ?? null);
     await db.insert(schema.message).values({
       id: messageId,
       organizationId,
       conversationId: convId,
       direction: "in",
-      type: "text",
+      type: linea.buttonId ? "interactive" : "text",
       text: filtrado.text,
+      ...(linea.buttonId ? { buttonId: linea.buttonId } : {}),
       privacyFlags: filtrado.marcas.length > 0 ? filtrado.marcas : null,
       status: "delivered",
       waTimestamp: now,
     });
+    transcript.push({ role: "cliente", text: filtrado.text });
     await db
       .update(schema.conversation)
       .set({ lastInboundAt: now, lastMessageAt: now, updatedAt: now })
@@ -306,6 +397,7 @@ async function runConversation(
     // Turno REAL del cerebro, secuencial y sin debounce (FR-030, 033).
     falla = await turnoPorDespacho(organizationId, convId, messageId, now);
     if (falla) break;
+    const ultimo = await leerSalientes();
 
     const convRows = await db
       .select({ handoffAt: schema.conversation.handoffAt })
@@ -313,14 +405,18 @@ async function runConversation(
       .where(eq(schema.conversation.id, convId))
       .limit(1);
     if (convRows[0]?.handoffAt) break; // primer handoff → fin del guion
-  }
+    // 083 — Rechazó: el cerebro se despidió y borró; el caso termina aquí.
+    if (linea.buttonId === BOTON_NO_ACEPTO) break;
 
-  const messages = await db
-    .select()
-    .from(schema.message)
-    // 064 — Acotado a la organización: así usa `message_org_conv_idx`.
-    .where(scoped(schema.message.organizationId, organizationId, eq(schema.message.conversationId, convId)))
-    .orderBy(asc(schema.message.createdAt));
+    if (!respondioAviso) {
+      const respuesta = respuestaAlAviso(persona, ultimo);
+      if (respuesta) {
+        respondioAviso = true;
+        pendientes.unshift(respuesta);
+      }
+    }
+  }
+  await leerSalientes();
 
   await olvidar(organizationId, convId, contactId);
 
@@ -334,28 +430,36 @@ async function runConversation(
     .from(schema.conversation)
     .where(eq(schema.conversation.id, convId))
     .limit(1);
-  const traspaso = final?.handoffAt
-    ? [
-        {
-          role: "sistema" as const,
-          text: `La conversación pasó a una persona (motivo: ${final.handoffReason ?? "sin motivo"}).`,
-        },
-      ]
-    : [];
+  if (final?.handoffAt) {
+    transcript.push({
+      role: "sistema",
+      text: `La conversación pasó a una persona (motivo: ${final.handoffReason ?? "sin motivo"}).`,
+    });
+  }
 
-  return {
-    conversationId: convId,
-    falla,
-    transcript: [
-      ...messages
-      .filter((m) => m.text)
-      .map((m) => ({
-        role: m.direction === "in" ? ("cliente" as const) : ("agente" as const),
-        text: m.text!,
-      })),
-      ...traspaso,
-    ],
-  };
+  return { conversationId: convId, falla, transcript };
+}
+
+/**
+ * 083 (D5, decisión de Andres) — Cada caso empieza sin consentimiento: se
+ * borran las filas de `consent` del contacto, SOLO si es del Laboratorio.
+ * Sin esto, un «Acepto» de una corrida dejaría a la persona autorizada en las
+ * siguientes y el aviso no se probaría más.
+ */
+async function limpiarConsentimientoDePrueba(
+  organizationId: string,
+  contactId: string
+): Promise<void> {
+  const db = getDb();
+  const [contacto] = await db
+    .select({ phone: schema.contact.phone, archivedAt: schema.contact.archivedAt })
+    .from(schema.contact)
+    .where(scoped(schema.contact.organizationId, organizationId, eq(schema.contact.id, contactId)))
+    .limit(1);
+  if (!contacto || !esContactoDelLaboratorio(contacto)) return;
+  await db
+    .delete(schema.consent)
+    .where(scoped(schema.consent.organizationId, organizationId, eq(schema.consent.contactId, contactId)));
 }
 
 /**

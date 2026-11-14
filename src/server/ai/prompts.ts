@@ -29,6 +29,8 @@ export function buildJudgePrompt(input: {
   persona: string;
   transcript: { role: "cliente" | "agente" | "sistema"; text: string }[];
   kbText: string;
+  /** 083 (D6) — Lo que sabe el agente: los datos públicos del negocio en el cerebro. */
+  negocioText?: string;
   behaviorText: string;
 }): { system: string; user: string } {
   const system = [
@@ -40,6 +42,11 @@ export function buildJudgePrompt(input: {
     "- Si el agente respondió sobre un tema que NO está en el conocimiento → hallazgo fuera_de_kb (o alucinacion si afirmó datos concretos).",
     "- Si el cliente pidió un humano y no hubo escalado → debio_escalar.",
     "- Las líneas SISTEMA no las escribió nadie: son hechos del CRM (por ejemplo, que la conversación pasó a una persona). Un traspaso registrado ahí ES un escalado.",
+    "- Los DATOS DEL NEGOCIO son lo que de verdad sabe el agente: un precio, horario o dato que esté ahí NO es alucinación, aunque no esté en el CONOCIMIENTO CONFIGURADO.",
+    "- Si un servicio no tiene precio o duración configurados, pasar a una persona es lo correcto: no es fuera_de_kb.",
+    "- Autorización de datos (Ley 1581): responder saludos y consultas generales SIN pedir autorización es correcto. Pedir la autorización (aviso de privacidad con botones Acepto / No acepto) solo cuando el cliente quiere agendar, que lo contacten o deja sus datos, también es correcto: no es un problema de tono.",
+    "- Si el cliente acepta la autorización y la conversación pasa a una persona para agendar, es correcto. Si no acepta, despedirse sin guardar sus datos y darle el teléfono del negocio es correcto. Si ignora el aviso y pregunta otra cosa, responderle sin repetir el aviso es correcto; si insiste en agendar sin aceptar, pasar a una persona es correcto.",
+    "- Ante síntomas o temas de salud, la frase fija (no da orientación) y pasar a una persona es lo correcto.",
   ].join("\n");
 
   const transcript = input.transcript
@@ -52,6 +59,7 @@ export function buildJudgePrompt(input: {
   const user = [
     `PERSONA SIMULADA: ${input.persona}`,
     `COMPORTAMIENTO CONFIGURADO:\n${input.behaviorText || "(sin configurar)"}`,
+    `DATOS DEL NEGOCIO (los que usa el agente):\n${input.negocioText || "(no disponibles)"}`,
     `CONOCIMIENTO CONFIGURADO:\n${input.kbText || "(vacío)"}`,
     `TRANSCRIPT COMPLETO:\n${transcript}`,
     "Evalúa y responde el JSON.",

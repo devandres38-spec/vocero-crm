@@ -61,6 +61,22 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { cabecerasDelCerebro } from "./credencial.mjs";
 
+/** 083 — El negocio que devuelve este cerebro al Laboratorio (datos inventados). */
+export const NEGOCIO_FALSO = {
+  negocio: "Negocio Simulado",
+  tono: "tu",
+  filtroSalud: true,
+  servicios: [
+    { nombre: "Servicio Simulado Uno", precio: "$10.000", precioDesde: false, duracion: "1 hora" },
+    { nombre: "Servicio Simulado Dos", precio: "$20.000", precioDesde: true, duracion: null },
+    { nombre: "Servicio Simulado Sin Precio", precio: null, precioDesde: false, duracion: null },
+  ],
+  horario: "de lunes a viernes de 8:00 a. m. a 6:00 p. m.",
+  direccion: "Calle Falsa 123, Bogotá",
+  mediosPago: ["efectivo"],
+  preguntasFrecuentes: [],
+};
+
 /** Lo que dice el `/health` de esta Nea de mentira. */
 export const SALUD_FALSA = {
   status: "ok",
@@ -143,6 +159,8 @@ export async function levantarCerebroFalso({
     responder,
     demoraMs,
     recibidos: [],
+    /** 083 — Los pedidos de `/vocero/lab/negocio` (firma y negocio). */
+    labNegocio: [],
     /** Lo que contestó el CRM a lo que este cerebro mandó por `/api/bot/*`. */
     respuestas: [],
     /** 038 — Lo que el contexto le dijo antes de mover la etapa. */
@@ -225,6 +243,30 @@ export async function levantarCerebroFalso({
       const sana = estado.salud === "ok";
       res.writeHead(sana ? 200 : 503, { "content-type": "application/json" });
       return res.end(JSON.stringify(sana ? SALUD_FALSA : { ...SALUD_FALSA, status: "degradado" }));
+    }
+    // 083 — El negocio para el Laboratorio (spec 021 del cerebro): firmado con
+    // la llave derivada de la etiqueta `aliantis:lab:negocio:v1`.
+    if (req.method === "POST" && ruta === "/vocero/lab/negocio") {
+      const trozosLab = [];
+      req.on("data", (c) => trozosLab.push(c));
+      req.on("end", () => {
+        const crudo = Buffer.concat(trozosLab);
+        const llave = createHmac("sha256", botKey).update("aliantis:lab:negocio:v1").digest("hex");
+        const esperada = `sha256=${createHmac("sha256", llave).update(crudo).digest("hex")}`;
+        const firmaOk = req.headers["x-vocero-signature"] === esperada;
+        let cuerpo = null;
+        try {
+          cuerpo = JSON.parse(crudo.toString("utf8"));
+        } catch {}
+        estado.labNegocio.push({ firmaOk, organizationId: cuerpo?.organizationId ?? null });
+        if (!firmaOk || !cuerpo?.organizationId) {
+          res.writeHead(401, { "content-type": "application/json" });
+          return res.end(JSON.stringify({ error: "firma_invalida" }));
+        }
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(JSON.stringify({ ...NEGOCIO_FALSO, organizationId: cuerpo.organizationId }));
+      });
+      return;
     }
     if (req.method !== "POST" || ruta !== url.pathname) {
       res.writeHead(404);
