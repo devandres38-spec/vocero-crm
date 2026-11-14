@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HANDOFF_LABEL } from "@/lib/analytics";
 import { HANDOFF_LABELS } from "@/lib/eventos-hilo";
+import { MOTIVO_DEL_AVISO } from "@/server/avisos/textos";
 import { HANDOFF_REASONS, toHandoffReason } from "@/server/bot/handoff";
 
 /**
@@ -18,6 +19,8 @@ const DEL_CEREBRO = [
   "tope_gasto",
   "medios",
   "modelo",
+  // 084 (bloque P3).
+  "sin_respuesta",
 ] as const;
 
 describe("071 — motivos de Aliantis", () => {
@@ -34,6 +37,12 @@ describe("071 — motivos de Aliantis", () => {
       expect(HANDOFF_LABEL[motivo], motivo).toBeTruthy();
       expect(HANDOFF_LABELS[motivo], motivo).toBeTruthy();
     }
+  });
+
+  it("084 — sin_respuesta tiene su propio rótulo, distinto de no_entiende", () => {
+    expect(HANDOFF_LABEL.sin_respuesta).not.toBe(HANDOFF_LABEL.no_entiende);
+    expect(HANDOFF_LABELS.sin_respuesta).not.toBe(HANDOFF_LABELS.no_entiende);
+    expect(MOTIVO_DEL_AVISO.sin_respuesta).toBeTruthy();
   });
 
   it("lo desconocido sigue cayendo en modelo", () => {
