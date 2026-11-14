@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildJudgePrompt } from "@/server/ai/prompts";
 
 const chatJson = vi.fn();
 
@@ -106,5 +107,31 @@ describe("085 — judgeCase aplica el freno y lleva la persona (D1)", () => {
     expect(user).toContain(
       "PERSONA SIMULADA: sin_rumbo — Solo manda relleno: el bot se despide una vez y deja de perseguir."
     );
+  });
+});
+
+describe("085 — el prompt del juez (D3, CA-3)", () => {
+  const { system } = buildJudgePrompt({
+    persona: "sin_rumbo — Solo manda relleno",
+    transcript: SIN_RUMBO,
+    kbText: "",
+    behaviorText: "",
+  });
+
+  it("solo hay traspaso si una línea SISTEMA lo dice", () => {
+    expect(system).toContain("Sin esa línea, NO marques derivo_sin_necesidad");
+  });
+
+  it("el silencio tras despedirse es correcto, no un traspaso", () => {
+    expect(system).toContain(`«SISTEMA: ${LINEA_SILENCIO}» es un silencio, no un traspaso`);
+    expect(system).toMatch(/callar ante relleno.*es correcto/s);
+  });
+
+  it("no repetir el aviso es la regla aprobada", () => {
+    expect(system).toContain("no repetirlo ni «recordarlo» es la regla aprobada");
+  });
+
+  it("evalúa contra lo que se espera de la persona", () => {
+    expect(system).toContain("La PERSONA SIMULADA dice qué se espera");
   });
 });

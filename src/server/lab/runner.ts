@@ -223,6 +223,8 @@ async function runAllCases(
 
     const outcome = await judgeCase({
       personaKey: persona.key,
+      // 085 (D1): lo que se espera de la persona.
+      personaDescription: persona.description,
       transcript,
       kbText,
       negocioText,
