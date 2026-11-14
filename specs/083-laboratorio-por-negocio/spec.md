@@ -35,7 +35,7 @@
   - Cada persona dice qué hace ante el aviso: `alAviso: 'acepta' | 'rechaza' | 'ignora'` (por defecto, ignora).
 - **D3. El cliente simulado responde al aviso** (`runner.ts`): después de cada turno, si el último saliente trae el botón `consentimiento:acepto` y la persona acepta o rechaza, la siguiente línea es ese botón (`interactive`, título y `buttonId`). Pura y probada: `respuestaAlAviso`.
 - **D4. La transcripción se arma sobre la marcha:** cada línea del cliente al insertarla y cada saliente nuevo después de cada turno (por id). Así un «No acepto», que borra los textos en Vocero, no deja el caso vacío.
-- **D5. Consentimiento limpio por caso:** al empezar cada caso se borran las filas de `consent` del contacto **solo si** es del Laboratorio. La guarda es pura (`esContactoDelLaboratorio`): teléfono de la lista de personas y contacto archivado. Nunca toca un contacto real.
+- **D5. Consentimiento limpio por caso:** al empezar cada caso se borran las filas de `consent` del contacto **solo si** es del Laboratorio. La guarda es pura (`esContactoDelLaboratorio`): teléfono de la lista de personas y contacto archivado. Nunca toca un contacto real. **Es la única excepción a la invariante de la 070** («consent es de solo agregar»), que encontró el CI y aprobó Andres: `consentimiento.test.ts` sigue prohibiendo `update`/`delete` sobre `consent` en todo `src/` salvo `runner.ts`, y exige que ese `delete` vaya detrás de la guarda.
 - **D6. Juez:**
   - recibe los datos del negocio del cerebro (D1) además de la base de conocimiento;
   - el prompt aprende las reglas de Aliantis: responder consultas sin pedir autorización es correcto; pedirla al agendar o al dejar datos es correcto; aceptar → traspaso; rechazar → despedida con el teléfono; un dato faltante (precio o duración) → una persona; salud → frase fija y una persona.
@@ -56,3 +56,4 @@
 - S1: la guarda de D5 acepta cualquier contacto → falla CA-5.
 - S2: el cliente de D1 firma con la llave del gasto → falla su prueba.
 - S3: `respuestaAlAviso` ignora el aviso → falla CA-3.
+- S4: el borrado sin la guarda → falla la prueba de la excepción en `consentimiento.test.ts`.

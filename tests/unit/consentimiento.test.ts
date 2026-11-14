@@ -26,16 +26,32 @@ function archivos(dir: string): string[] {
   });
 }
 
+/**
+ * 083 (decisión de Andres, 13-nov-2026) — Única excepción: el Laboratorio
+ * borra el consentimiento de SUS contactos sintéticos al empezar cada caso,
+ * para que el aviso se pruebe en cada corrida. No son titulares reales, y el
+ * borrado va detrás de la guarda `esContactoDelLaboratorio`.
+ */
+const EXCEPCION_DEL_LABORATORIO = "src/server/lab/runner.ts";
+const tocaConsent = (s: string) =>
+  /\.(update|delete)\(\s*schema\.consent\b/.test(s) ||
+  /\b(update|delete\s+from)\s+"?consent"?\b/i.test(s);
+
 describe("070 — consent es de solo agregar", () => {
-  it("nada en src/ hace update ni delete sobre consent", () => {
-    const culpables = archivos("src").filter((f) => {
-      const s = readFileSync(f, "utf8");
-      return (
-        /\.(update|delete)\(\s*schema\.consent\b/.test(s) ||
-        /\b(update|delete\s+from)\s+"?consent"?\b/i.test(s)
-      );
-    });
-    expect(culpables).toEqual([]);
+  it("nada en src/ hace update ni delete sobre consent (salvo el Laboratorio, 083)", () => {
+    const culpables = archivos("src")
+      .filter((f) => tocaConsent(readFileSync(f, "utf8")))
+      .map((f) => f.split(/[\\/]/).join("/"));
+    expect(culpables.filter((f) => f !== EXCEPCION_DEL_LABORATORIO)).toEqual([]);
+  });
+
+  it("083 — el Laboratorio solo borra detrás de la guarda de sus contactos sintéticos", () => {
+    const s = readFileSync(EXCEPCION_DEL_LABORATORIO, "utf8");
+    const guarda = s.indexOf("if (!contacto || !esContactoDelLaboratorio(contacto)) return;");
+    const borra = s.search(/\.delete\(\s*schema\.consent\b/);
+    expect(guarda).toBeGreaterThan(-1);
+    expect(borra).toBeGreaterThan(guarda);
+    expect(s.match(/\.(update|delete)\(\s*schema\.consent\b/g)).toHaveLength(1);
   });
 });
 
