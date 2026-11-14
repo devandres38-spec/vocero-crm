@@ -57,7 +57,7 @@ es in-process.
 | El tope diario del Laboratorio | `src/server/lab/tope.ts` + `organization.lab_corridas_por_dia` (solo lo escribe el panel: `vocero_panel_tope_laboratorio`, `PUT /api/admin/negocios/[id]/laboratorio`) |
 | El comportamiento del agente | No vive aquí: el CRM no trae agente (036). Lo que el agente lee —perfil, conocimiento (`renderKb` en `src/server/ai/prompts.ts`), `role`, `tools`, `llm`— sale por `src/server/bot/profile.ts`; lo demás es del cerebro (`aliantis-brain`, que hoy no lee el perfil ni el conocimiento: su catálogo vive en su configuración, D17) |
 | El proxy `/api/bot/llm` | Apagado (080, P7): `src/app/api/bot/llm/[...ruta]/route.ts` responde `404 proxy_apagado` |
-| Las personas o el juez del Laboratorio | `src/server/lab/personas.ts` · `src/server/lab/judge.ts` |
+| Las personas o el juez del Laboratorio | `src/server/lab/personas.ts` (guiones con el catálogo del negocio, `guionDe`) · `src/server/lab/judge.ts` · `src/server/lab/negocio.ts` (los datos públicos del negocio, del cerebro: `POST /vocero/lab/negocio`, 083) |
 | El canal WhatsApp (Graph API) | `src/lib/meta/` (cliente único) + `src/server/whatsapp/` |
 | Los canales opcionales (Instagram, Messenger; ADR-001) | `src/lib/channels.ts` (catálogo) · `src/server/channels/` (capacidades y bandera `CHANNELS`) · `src/server/instagram/` · `src/server/messenger/` · `src/server/zernio/` (transporte y firma de la API unificada, compartido) |
 | Campos/tablas | `src/lib/db/schema.ts` → `pnpm db:generate` → migración nueva en `drizzle/` |
