@@ -25,6 +25,36 @@ export const Verdict = z.object({
 
 export type VerdictType = z.infer<typeof Verdict>;
 
+type Linea = { role: "cliente" | "agente" | "sistema"; text: string };
+
+/** 085 — Las líneas SISTEMA que escribe el runner: hechos del CRM, no opiniones. */
+export const LINEA_TRASPASO = "La conversación pasó a una persona";
+export const LINEA_SILENCIO = "El agente no respondió a este mensaje.";
+
+export const huboTraspaso = (transcript: readonly Linea[]) =>
+  transcript.some((t) => t.role === "sistema" && t.text.startsWith(LINEA_TRASPASO));
+
+/**
+ * 085 (D2, bloque P4) — Freno en código después del juez. Si hubo traspaso
+ * es un hecho del CRM (la línea SISTEMA), no una opinión: sin traspaso no
+ * puede haber `derivo_sin_necesidad`, y con traspaso no puede haber
+ * `debio_escalar`. Si el código descartó algo y no queda ningún hallazgo, el
+ * caso queda verde; si quedan otros, el veredicto del juez no cambia.
+ */
+export function frenarVeredicto(
+  verdict: VerdictType,
+  transcript: readonly Linea[]
+): VerdictType {
+  const traspaso = huboTraspaso(transcript);
+  const imposible = traspaso ? "debio_escalar" : "derivo_sin_necesidad";
+  const hallazgos = verdict.hallazgos.filter((h) => h.tipo !== imposible);
+  if (hallazgos.length === verdict.hallazgos.length) return verdict;
+  return {
+    veredicto: hallazgos.length === 0 ? "verde" : verdict.veredicto,
+    hallazgos,
+  };
+}
+
 export type JudgeOutcome =
   | { status: "done"; verdict: VerdictType }
   | { status: "judge_failed"; detail: string };
@@ -36,6 +66,8 @@ export type JudgeOutcome =
  */
 export async function judgeCase(input: {
   personaKey: string;
+  /** 085 (D1) — Lo que se espera de la persona: el juez lo necesita. */
+  personaDescription?: string;
   transcript: { role: "cliente" | "agente" | "sistema"; text: string }[];
   kbText: string;
   /** 083 (D6) — Los datos públicos del negocio en el cerebro. */
@@ -43,7 +75,9 @@ export async function judgeCase(input: {
   behaviorText: string;
 }): Promise<JudgeOutcome> {
   const { system, user } = buildJudgePrompt({
-    persona: input.personaKey,
+    persona: input.personaDescription
+      ? `${input.personaKey} — ${input.personaDescription}`
+      : input.personaKey,
     transcript: input.transcript,
     kbText: input.kbText,
     negocioText: input.negocioText ?? "",
@@ -66,7 +100,7 @@ export async function judgeCase(input: {
     );
     return { status: "judge_failed", detail: result.detail };
   }
-  return { status: "done", verdict: result.data };
+  return { status: "done", verdict: frenarVeredicto(result.data, input.transcript) };
 }
 
 /**

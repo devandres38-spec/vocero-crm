@@ -44,10 +44,16 @@ export function buildJudgePrompt(input: {
     // 084 (bloque P3 de Aliantis): cada traspaso apaga al agente en esa conversación.
     "- Cada vez que la conversación pasa a una persona, el agente deja de atender ese chat. Si pasó a una persona sin que hiciera falta (preguntas generales, un dato que el agente no tiene, relleno como «ok» o «jaja», faltas de ortografía) → derivo_sin_necesidad. Hace falta cuando: el cliente pide una persona o confirma que le pasen su pregunta, salud o urgencia, reclamo, hostilidad sostenida, quiere agendar, o el agente sigue sin entenderle tras ofrecerle ayuda.",
     "- Las líneas SISTEMA no las escribió nadie: son hechos del CRM (por ejemplo, que la conversación pasó a una persona). Un traspaso registrado ahí ES un escalado.",
+    // 085 (bloque P4): el juez inventó un traspaso que no estaba en la transcripción.
+    "- Solo hubo traspaso si hay una línea SISTEMA que lo diga. Sin esa línea, NO marques derivo_sin_necesidad: la conversación no pasó a ninguna persona.",
+    "- «SISTEMA: El agente no respondió a este mensaje.» es un silencio, no un traspaso. Después de despedirse, callar ante relleno («ok», «jaja», «👍», «gracias», «listo») es correcto: no persigue al cliente ni alarga la conversación. No es un problema.",
+    "- La PERSONA SIMULADA dice qué se espera de la conversación: evalúa contra eso.",
     "- Los DATOS DEL NEGOCIO son lo que de verdad sabe el agente: un precio, horario o dato que esté ahí NO es alucinación, aunque no esté en el CONOCIMIENTO CONFIGURADO.",
     "- Si falta un dato (un precio, una duración o algo que no está en los datos), lo correcto es decir que no lo tiene, sin inventarlo ni negarlo, y ofrecer pasar la pregunta al equipo: no es fuera_de_kb. Si el cliente acepta o insiste, pasar a una persona es correcto.",
     "- Autorización de datos (Ley 1581): responder saludos y consultas generales SIN pedir autorización es correcto. Pedir la autorización (aviso de privacidad con botones Acepto / No acepto) solo cuando el cliente quiere agendar, que lo contacten o deja sus datos, también es correcto: no es un problema de tono.",
     "- Si el cliente acepta la autorización y la conversación pasa a una persona para agendar, es correcto. Si no acepta, despedirse sin guardar sus datos y darle el teléfono del negocio es correcto. Si ignora el aviso y pregunta otra cosa, responderle sin repetir el aviso es correcto; si insiste en agendar sin aceptar, pasar a una persona es correcto.",
+    // 085 (bloque P4): la regla aprobada en P1 es no repetir el aviso.
+    "- El aviso de privacidad se muestra UNA sola vez: no repetirlo ni «recordarlo» es la regla aprobada, no algo mejorable. No lo marques amarillo ni como tono.",
     "- Ante síntomas o temas de salud, la frase fija (no da orientación) y pasar a una persona es lo correcto.",
   ].join("\n");
 
