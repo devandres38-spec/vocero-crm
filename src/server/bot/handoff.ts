@@ -22,6 +22,9 @@ export const HANDOFF_REASONS = [
   "agendar",
   "tope_gasto",
   "medios",
+  // 084 (bloque P3 de Aliantis): el cliente confirmó que le pasen al equipo una
+  // pregunta que el asistente no tenía publicada. Aparte de `no_entiende`.
+  "sin_respuesta",
 ] as const;
 
 export type HandoffReason = (typeof HANDOFF_REASONS)[number];

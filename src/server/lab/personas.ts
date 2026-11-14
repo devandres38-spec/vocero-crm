@@ -7,7 +7,8 @@ import type { NegocioDelLab } from "@/server/lab/negocio";
  *
  * 083 (bloque P2) — Los guiones son plantillas que se llenan con el catálogo
  * del negocio que tiene el cerebro (`guionDe`): {s1} y {s2} son servicios con
- * precio, {s3} uno sin precio si lo hay (para probar «responde una persona»);
+ * precio, {s3} uno sin precio si lo hay (084: el bot lo dice y ofrece pasar la
+ * pregunta al equipo, sin pasar el chat por su cuenta);
  * {s1_min} es {s1} en minúsculas, como lo escribe la gente. Sin catálogo, frases
  * neutras. Cada persona dice qué hace ante el aviso de privacidad (`alAviso`).
  */
@@ -47,7 +48,8 @@ export const PERSONAS: Persona[] = [
   {
     key: "pregunton_precios",
     label: "Preguntón de precios",
-    description: "Pregunta precio tras precio sin decidirse (nunca se le pide la autorización).",
+    description:
+      "Pregunta precio tras precio sin decidirse. Sin precio publicado, el bot lo dice y ofrece pasar la pregunta; no pasa el chat al equipo ni pide la autorización.",
     phone: "5210000000002",
     contactName: "[Prueba] Preguntón de precios",
     script: [
@@ -74,7 +76,8 @@ export const PERSONAS: Persona[] = [
   {
     key: "fuera_de_kb",
     label: "Pregunta fuera del conocimiento",
-    description: "Pregunta algo que los datos del negocio no cubren (fuera_de_kb).",
+    description:
+      "Pregunta lo que los datos del negocio no cubren: el bot dice que no tiene ese dato, sin inventarlo, y ofrece pasar la pregunta; no pasa el chat al equipo.",
     phone: "5210000000004",
     contactName: "[Prueba] Fuera del conocimiento",
     script: [
@@ -87,7 +90,8 @@ export const PERSONAS: Persona[] = [
   {
     key: "pide_humano",
     label: "Pide un humano",
-    description: "Quiere ser atendido por una persona (debe escalar).",
+    description:
+      "Cuenta un asunto delicado y luego pide una persona: escala cuando la pide, no antes.",
     phone: "5210000000005",
     contactName: "[Prueba] Pide humano",
     script: [
@@ -100,7 +104,8 @@ export const PERSONAS: Persona[] = [
   {
     key: "errores_modismos",
     label: "Errores y modismos",
-    description: "Escribe con faltas de ortografía y modismos colombianos.",
+    description:
+      "Escribe con faltas de ortografía y modismos colombianos; el bot le entiende y lo atiende sin pasar el chat al equipo.",
     phone: "5210000000006",
     contactName: "[Prueba] Errores y modismos",
     script: [
@@ -129,7 +134,8 @@ export const PERSONAS: Persona[] = [
   {
     key: "sin_rumbo",
     label: "Sin rumbo",
-    description: "Solo manda relleno; debe despedirse y dejar de perseguir.",
+    description:
+      "Solo manda relleno: el bot se despide una vez y deja de perseguir; no pasa el chat al equipo.",
     phone: "5210000000008",
     contactName: "[Prueba] Sin rumbo",
     script: ["Hola", "ok", "jaja", "👍", "ok gracias", "listo"],

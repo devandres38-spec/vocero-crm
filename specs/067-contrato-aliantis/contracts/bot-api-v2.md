@@ -186,6 +186,7 @@ El último registro de cada tipo para el contacto, o `null` si no hay ninguno.
 | `agendar` | Quiere agendar | `agendar` |
 | `tope_gasto` | Se alcanzó el tope de gasto del agente | `tope_gasto` |
 | `medios` | Envió un adjunto | `medios` |
+| `sin_respuesta` | Pregunta sin dato publicado; el cliente pidió que la pasen al equipo (084) | `sin_respuesta` |
 
 Equivalencias sin motivo nuevo: `pedido_paciente` → `cliente`, `errores` → `error`, `otro` → `modelo`. `bot_pausado` no se usa: con el Agente apagado el CRM no despacha (salvo salud) y la bandeja ya es de una persona.
 

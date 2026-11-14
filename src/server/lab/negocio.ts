@@ -95,7 +95,7 @@ export async function pedirNegocioDelLab(
 /** El texto para el juez: lo que el agente sabe del negocio (lo que dice el cerebro). */
 export function renderNegocio(n: NegocioDelLab): string {
   const servicios = n.servicios.map((s) => {
-    const precio = s.precio === null ? "precio: no configurado (responde una persona)" : `precio: ${s.precioDesde ? "desde " : ""}${s.precio}`;
+    const precio = s.precio === null ? "precio: no publicado (el agente lo dice y ofrece pasar la pregunta)" : `precio: ${s.precioDesde ? "desde " : ""}${s.precio}`;
     const duracion = s.duracion === null ? "duración: no configurada" : `duración: ${s.duracion}`;
     return `- ${s.nombre} (${precio}; ${duracion})`;
   });

@@ -18,6 +18,7 @@ export const MOTIVO_DEL_AVISO: Record<string, string> = {
   agendar: "quiere agendar, cambiar o cancelar",
   tope_gasto: "se alcanzó el tope de uso del asistente",
   medios: "envió audios, fotos o archivos",
+  sin_respuesta: "pregunta que el asistente no tenía publicada",
 };
 
 /** Referencia corta de la conversación: con ella se busca en la bandeja. */

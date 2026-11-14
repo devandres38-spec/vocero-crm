@@ -440,6 +440,8 @@ export const conversation = pgTable(
         "agendar",
         "tope_gasto",
         "medios",
+        // 084: tampoco necesita migración (sin `check` en la base).
+        "sin_respuesta",
       ],
     }),
     lastInboundAt: timestamp("last_inbound_at"),

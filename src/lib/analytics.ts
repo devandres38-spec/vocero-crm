@@ -284,4 +284,5 @@ export const HANDOFF_LABEL: Record<string, string> = {
   agendar: "Quiere agendar, cambiar o cancelar",
   tope_gasto: "Se alcanzó el tope de uso del agente",
   medios: "Envió audios, fotos o archivos",
+  sin_respuesta: "Pregunta que el asistente no tenía publicada",
 };

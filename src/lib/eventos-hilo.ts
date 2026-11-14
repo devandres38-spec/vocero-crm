@@ -29,6 +29,7 @@ export const HANDOFF_LABELS: Record<string, string> = {
   agendar: "Quiere agendar, cambiar o cancelar una cita",
   tope_gasto: "Se alcanzó el tope de uso del agente",
   medios: "El cliente envió audios, fotos o archivos",
+  sin_respuesta: "Pregunta que el asistente no tenía publicada",
 };
 
 /** D1 — «Pasó a Interesado · por Ana», «Entró al embudo en Nuevo»… */
