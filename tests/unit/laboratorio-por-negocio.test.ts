@@ -57,7 +57,7 @@ describe("083 · guiones por negocio (D2)", () => {
     expect(guionDe(persona("errores_modismos"), ACADEMIA)).toContain("cuanto bale inglés básico?");
   });
 
-  it("s1 y s2 tienen precio; s3 es el que no lo tiene (responde una persona)", () => {
+  it("s1 y s2 tienen precio; s3 es el que no lo tiene (el bot ofrece pasar la pregunta)", () => {
     expect(serviciosDelGuion(ACADEMIA)).toEqual({
       s1: "Inglés básico",
       s2: "Curso de Excel",
@@ -207,7 +207,9 @@ describe("083 · el juez compara contra lo que sabe el agente (D6)", () => {
     });
     expect(user).toContain("DATOS DEL NEGOCIO");
     expect(user).toContain("Curso de Excel (precio: $300.000; duración: 8 horas)");
-    expect(user).toContain("Programación web (precio: no configurado (responde una persona)");
+    expect(user).toContain(
+      "Programación web (precio: no publicado (el agente lo dice y ofrece pasar la pregunta)",
+    );
     expect(system).toContain("SIN pedir autorización es correcto");
     expect(system).toContain("darle el teléfono del negocio es correcto");
   });
