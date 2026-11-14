@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildJudgePrompt } from "@/server/ai/prompts";
+import { lineaTrasTurno } from "@/server/lab/runner";
 
 const chatJson = vi.fn();
 
@@ -133,5 +134,27 @@ describe("085 — el prompt del juez (D3, CA-3)", () => {
 
   it("evalúa contra lo que se espera de la persona", () => {
     expect(system).toContain("La PERSONA SIMULADA dice qué se espera");
+  });
+});
+
+describe("085 — el silencio en la transcripción (D4, CA-4)", () => {
+  it("calló: la línea SISTEMA del silencio", () => {
+    expect(lineaTrasTurno({ falla: null, silencio: true }, false)).toEqual({
+      role: "sistema",
+      text: LINEA_SILENCIO,
+    });
+  });
+
+  it("contestó o traspasó: ninguna línea", () => {
+    expect(lineaTrasTurno({ falla: null, silencio: false }, true)).toBeNull();
+    expect(lineaTrasTurno({ falla: null, silencio: false }, false)).toBeNull();
+  });
+
+  it("una respuesta que llegó tarde gana sobre el silencio", () => {
+    expect(lineaTrasTurno({ falla: null, silencio: true }, true)).toBeNull();
+  });
+
+  it("una falla no es un silencio", () => {
+    expect(lineaTrasTurno({ falla: "no recibió el despacho" }, false)).toBeNull();
   });
 });

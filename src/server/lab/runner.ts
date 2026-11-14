@@ -11,7 +11,7 @@ import { construirEventoOlvido } from "@/server/brains/contract";
 import { avisarOlvido } from "@/server/brains/deliver";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
-import { computeScore, judgeCase } from "@/server/lab/judge";
+import { computeScore, judgeCase, LINEA_SILENCIO } from "@/server/lab/judge";
 import { corridasDesde } from "@/server/lab/tope";
 import {
   guionDe,
@@ -53,6 +53,25 @@ const QUIETUD_MS = 1_500;
 export const SILENCIO_MS = 45_000;
 
 export class RunConflictError extends Error {}
+
+/**
+ * 085 (D4) — Cómo terminó un turno del cerebro: una falla (no recibió el
+ * despacho), o una respuesta, que puede ser el silencio (lo recibió y no
+ * escribió en SILENCIO_MS).
+ */
+export type FinDelTurno = { falla: string } | { falla: null; silencio: boolean };
+
+/**
+ * 085 (D4) — El silencio no es un mensaje: sin esta línea el juez ve líneas
+ * del cliente seguidas, sin explicación, y llegó a inventar un traspaso.
+ */
+export function lineaTrasTurno(
+  turno: FinDelTurno,
+  respondio: boolean
+): { role: "sistema"; text: string } | null {
+  if (turno.falla !== null || !turno.silencio || respondio) return null;
+  return { role: "sistema", text: LINEA_SILENCIO };
+}
 
 /** 080 — El negocio ya creó hoy todas las corridas de su tope. */
 export class TopeAlcanzadoError extends Error {
@@ -397,9 +416,13 @@ async function runConversation(
       .where(eq(schema.conversation.id, convId));
 
     // Turno REAL del cerebro, secuencial y sin debounce (FR-030, 033).
-    falla = await turnoPorDespacho(organizationId, convId, messageId, now);
+    const turno = await turnoPorDespacho(organizationId, convId, messageId, now);
+    falla = turno.falla;
     if (falla) break;
     const ultimo = await leerSalientes();
+    // 085 (D4): el silencio queda en la transcripción, para el juez.
+    const silencio = lineaTrasTurno(turno, ultimo !== undefined);
+    if (silencio) transcript.push(silencio);
 
     const convRows = await db
       .select({ handoffAt: schema.conversation.handoffAt })
@@ -468,18 +491,18 @@ async function limpiarConsentimientoDePrueba(
  * 033 — Un turno contra el cerebro externo: se le despacha la línea y se
  * espera, con tope, lo primero que pase.
  *
- * Devuelve null si contestó, traspasó o CALLÓ: un cerebro que recibió el
- * despacho y no escribe también está contestando (Nea calla ante el relleno
- * después de despedirse: es el candado de cierre, y el juez lo evalúa). Es una
- * falla solo si el despacho no se entregó: el cerebro no lo aceptó (cayó a
- * humano) o no lo recibió a tiempo.
+ * Devuelve `falla: null` si contestó, traspasó o CALLÓ: un cerebro que recibió
+ * el despacho y no escribe también está contestando (calla ante el relleno
+ * después de despedirse: es el candado de cierre, y el juez lo evalúa; 085:
+ * `silencio: true`). Es una falla solo si el despacho no se entregó: el
+ * cerebro no lo aceptó (cayó a humano) o no lo recibió a tiempo.
  */
 async function turnoPorDespacho(
   organizationId: string,
   conversationId: string,
   messageId: string,
   desde: Date
-): Promise<string | null> {
+): Promise<FinDelTurno> {
   const db = getDb();
   const { notBefore } = await encolarDespacho({
     organizationId,
@@ -516,7 +539,7 @@ async function turnoPorDespacho(
       // Un turno puede mandar más de un mensaje, o despedirse y traspasar:
       // se le da un momento antes de la siguiente línea.
       await dormir(QUIETUD_MS);
-      return null;
+      return { falla: null, silencio: false };
     }
     const [despacho] = await db
       .select({
@@ -528,17 +551,20 @@ async function turnoPorDespacho(
       .orderBy(desc(schema.dispatch.createdAt))
       .limit(1);
     if (despacho?.status === "caducado_a_humano") {
-      return `el cerebro no aceptó el despacho (${despacho.lastError ?? "sin detalle"})`;
+      return {
+        falla: `el cerebro no aceptó el despacho (${despacho.lastError ?? "sin detalle"})`,
+      };
     }
-    if (conv?.handoffAt) return null; // traspasó sin despedirse: es su respuesta
+    // Traspasó sin despedirse: es su respuesta.
+    if (conv?.handoffAt) return { falla: null, silencio: false };
     if (despacho?.status === "entregado") {
       entregadoEn ??= Date.now();
       // Lo recibió y no escribe: se le da su tiempo de pensar y, si sigue
       // callado, ese silencio es su respuesta.
-      if (Date.now() - entregadoEn >= SILENCIO_MS) return null;
+      if (Date.now() - entregadoEn >= SILENCIO_MS) return { falla: null, silencio: true };
     }
   }
-  return `el cerebro no recibió el despacho en ${TURNO_TIMEOUT_MS / 1000} s`;
+  return { falla: `el cerebro no recibió el despacho en ${TURNO_TIMEOUT_MS / 1000} s` };
 }
 
 /** 033 — Que el cerebro olvide la conversación de prueba al terminar el caso. */
