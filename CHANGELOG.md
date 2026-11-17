@@ -5,9 +5,57 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
-## Sin publicar
+## 2.8.0 — 2026-11-17
+
+Marca blanca Aliantis y Colombia por defecto (spec 068, constitución 2.0.0).
+Actualizar es redesplegar: la migración `0027_zona_bogota` se aplica sola al
+arrancar y solo cambia el default de una columna. Nea sube a la par (zona de
+respaldo `America/Bogota`).
+
+### Actualizar desde 2.7
+
+- **Moneda**: un negocio que nunca eligió moneda en Ajustes → Marca pasa a
+  ver pesos colombianos. Para conservar los pesos mexicanos, pon
+  `REGION_CURRENCY=MXN` (y, si quieres el formato de México,
+  `REGION_LOCALE=es-MX`, `REGION_TIMEZONE=America/Mexico_City`,
+  `REGION_COUNTRY=MX`). Quien ya eligió su moneda no ve cambios.
+- **Zona**: la agenda ya configurada conserva su zona; solo una organización
+  que todavía no la tenía arranca en `America/Bogota`.
+- **Marca**: una instancia que se seguía llamando «Vocero» ve ahora su
+  inicial (el logo de la plataforma es el de Aliantis). El azul eléctrico de
+  la 2.x sigue disponible como preset con sus valores exactos.
+- **Nea**: actualízala junto con el CRM. Sin `AGENT_TIMEZONE`, su zona de
+  respaldo pasa a `America/Bogota`; la de cada negocio la sigue mandando el
+  CRM.
 
 ### Nuevo
+
+- **Región de la instancia** (`src/lib/region.ts`): país, formato, moneda y
+  zona por defecto, con `REGION_COUNTRY`, `REGION_LOCALE`, `REGION_CURRENCY`
+  y `REGION_TIMEZONE` (default Colombia). `pnpm doctor` avisa un valor
+  inválido sin tumbar el arranque.
+- **Pesos colombianos sin decimales** en tablero, cajón y Resultados
+  (`$ 150.000`); se sigue guardando en centavos. COP, CLP y PYG se muestran
+  sin decimales; el resto, con dos.
+- **Teléfonos locales** en el alta manual y la importación CSV
+  (`libphonenumber-js`): «300 123 4567» se guarda como `573001234567`; un
+  número local que no es válido en el país de la región se rechaza en vez de
+  inventarle un código. Los números con `+` o código de país funcionan como
+  antes, y `521…` sigue resolviendo al mismo contacto mexicano.
+- **Marca Aliantis por defecto**: logo «A» en chevron, acento `#0d3b9e`,
+  favicon e icono de la app. Ningún texto visible dice «Vocero».
+- **Laboratorio y demo colombianos**: personas que escriben como colombianos
+  y una demo con precios en COP. Teléfonos sintéticos que nunca son reales.
+
+### Arreglado
+
+- **La demo ya no borra datos de otra organización.** Su limpieza
+  idempotente filtraba solo por teléfono; sembrarla en un negocio borraba
+  los contactos demo de los demás. Ahora filtra por organización.
+
+### También en esta versión
+
+- **«Conectar con Meta» (Embedded Signup v4)** en Ajustes → WhatsApp (spec
 
 - **«Conectar con Meta» (Embedded Signup v4)** en Ajustes → WhatsApp (spec
   066). Con `META_APP_ID`, `META_EMBEDDED_CONFIG_ID` y `META_APP_SECRET` en la
@@ -17,9 +65,6 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
   Cuenta de WhatsApp, en la de mensajes y en el número. Sin esas variables
   todo queda como antes. Pasos del panel de Meta en
   [docs/embedded-signup.md](docs/embedded-signup.md). Sin migración.
-
-### Arreglado
-
 - **`#100/2388339` al suscribir la app en la Cuenta de WhatsApp ya no es
   fatal** si la Cuenta de mensajes quedó suscrita: desde el 28-oct-2026 Meta
   lo responde en las cuentas partidas, y el registro del webhook se cortaba

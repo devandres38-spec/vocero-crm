@@ -21,8 +21,8 @@ Playwright en la máquina local. Verificar con `npx pnpm@11.5.0 typecheck`,
 
 **Next.js 15 (App Router) + React 19** en monolito · TypeScript estricto
 (`strict` + `noUncheckedIndexedAccess`) · Tailwind CSS (sistema de diseño de la
-marca Vocero, el mismo de vocerocrm.com: tokens en `src/app/globals.css`, tema
-claro/oscuro, acento white-label por defecto `#0d5bff`, fuentes Archivo +
+marca de plataforma Aliantis desde la 068: tokens en `src/app/globals.css`, tema
+claro/oscuro, acento white-label por defecto `#0d3b9e`, fuentes Archivo +
 Instrument Serif + IBM Plex Mono self-hosted vía `next/font`; el logo vive en
 `src/lib/brand.ts` y se dibuja con `src/components/brand-mark.tsx`) ·
 **PostgreSQL + Drizzle ORM** (migraciones versionadas en
@@ -50,6 +50,9 @@ es in-process.
 | Campos/tablas | `src/lib/db/schema.ts` → `pnpm db:generate` → migración nueva en `drizzle/` |
 | La ingesta/envío de mensajes | `src/server/inbox/` (ingest idempotente, send con guard de sandbox, ventana 24h) |
 | Cómo se identifica a un contacto | `src/server/inbox/identity.ts` (teléfono normalizado o `bsuid:<id>`) |
+| País, formato, moneda y zona por defecto (068) | `src/lib/region.ts` (`getRegion`, formatters) + `src/lib/region-context.tsx` (`useRegion`); variables `REGION_*` |
+| Teléfonos escritos por una persona (068) | `src/lib/phone.ts` (`normalizarTelefonoHumano`, `libphonenumber-js`) |
+| La marca de la plataforma (068) | `src/lib/brand.ts` (Aliantis, logo «A») + `src/lib/branding.ts` (`DEFAULT_BRANDING`, presets) |
 | Conectar el cerebro (Nea o el tuyo) | despacho: `src/server/dispatch/encolar.ts` (`despacharAlCerebro`) + `src/server/brains/` (`config.ts`: `despachoActivo`, `urlSaludCerebro`) · `src/app/api/bot/*` + `src/server/bot/auth.ts` (X-API-Key o Bearer) · contrato en `docs/openapi.json` · quién responde (avisos `sin_cerebro`, `apagado`): `src/server/bot/status.ts` + `GET /api/agent/brain-status` |
 | La agenda (horarios, huecos, citas) | `src/server/agenda/` — detrás de la bandera `AGENDA` (`flag.ts`) |
 | Cómo se entrega la reunión (Zoom, Meet…) | `src/server/agenda/connectors/` + catálogo en `src/lib/agenda-connectors.ts` · guía: [docs/agenda-conectores.md](docs/agenda-conectores.md) |
