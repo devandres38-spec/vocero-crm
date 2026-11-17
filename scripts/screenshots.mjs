@@ -97,7 +97,7 @@ await call("/api/settings/whatsapp", {
 });
 await call("/api/settings/branding", {
   method: "PUT",
-  data: { name: "Vocero", accent: "#0d5bff", currency: "MXN" },
+  data: { name: "Aliantis", accent: "#0d3b9e", currency: "COP" },
 });
 
 await context.addCookies([{ name: "vocero-theme", value: THEME, url: BASE }]);

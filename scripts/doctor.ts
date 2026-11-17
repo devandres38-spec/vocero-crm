@@ -22,6 +22,7 @@ import {
   checkWhatsApp,
   evaluateComposeEnv,
   evaluateEnv,
+  checkRegion,
   formatResult,
   summarize,
   type CheckResult,
@@ -61,6 +62,8 @@ section("Variables de entorno (esquema de src/lib/env.ts)", [
   ...results,
   ...evaluateComposeEnv(process.env),
 ]);
+
+section("Región", checkRegion(process.env));
 
 if (!env) {
   const porque = "el entorno no pasa el esquema: corrige las ✗ de arriba";

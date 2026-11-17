@@ -1,18 +1,18 @@
 import {
-  BRAND_CYAN_ON_TILE,
-  BRAND_MARK_BODY,
+  BRAND_MARK_LEFT,
+  BRAND_MARK_RIGHT,
   BRAND_MARK_STROKE,
-  BRAND_MARK_TAIL,
-  isVoceroName,
+  BRAND_TEAL_ON_TILE,
+  isPlatformBrandName,
 } from "./brand";
 import { resolveAccentSet, type Branding } from "./branding";
 
 /**
  * El icono de la pestaña, white-label.
  *
- * Toda instancia tiene uno **sin configurar nada**: si se llama Vocero, es el
- * logo de la marca (la "v" con remate cian sobre el mosaico azul, igual que en
- * vocerocrm.com); con otro nombre se dibuja la inicial sobre el acento. Una
+ * Toda instancia tiene uno **sin configurar nada**: si lleva el nombre de la
+ * plataforma, es su logo (la "A" en chevron sobre el mosaico del acento); con
+ * otro nombre se dibuja la inicial sobre el acento. Una
  * agencia que despliega para su cliente puede subir el logo real y
  * reemplazarlo.
  *
@@ -90,10 +90,10 @@ export function sniffFaviconMime(bytes: Uint8Array): FaviconMime | null {
   return null;
 }
 
-/** Inicial que se dibuja. Vacío o raro cae a la V de Vocero. */
+/** Inicial que se dibuja. Vacío o raro cae a la A de la plataforma. */
 export function faviconInitial(name: string): string {
   const c = name.trim().charAt(0).toUpperCase();
-  return c || "V";
+  return c || "A";
 }
 
 /**
@@ -103,7 +103,7 @@ export function faviconInitial(name: string): string {
  */
 export function generatedFaviconSvg(branding: Branding): string {
   const { accent, hover, fg } = resolveAccentSet(branding.accent);
-  if (isVoceroName(branding.name)) return voceroFaviconSvg(accent, hover);
+  if (isPlatformBrandName(branding.name)) return platformFaviconSvg(accent, hover);
   const letra = faviconInitial(branding.name)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;");
@@ -117,11 +117,11 @@ export function generatedFaviconSvg(branding: Branding): string {
 }
 
 /**
- * El favicon de vocerocrm.com, con el degradado en el acento de la instancia:
- * una instancia llamada Vocero pero con otro color sigue viendo SU color.
- * El trazo sale de `lib/brand`, el mismo que dibuja la barra lateral.
+ * El favicon de la plataforma, con el degradado en el acento de la instancia:
+ * una organización con el nombre de la plataforma pero otro color sigue viendo
+ * SU color. El trazo sale de `lib/brand`, el mismo que dibuja la barra lateral.
  */
-function voceroFaviconSvg(from: string, to: string): string {
+function platformFaviconSvg(from: string, to: string): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">`,
     `<defs><linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">`,
@@ -129,8 +129,8 @@ function voceroFaviconSvg(from: string, to: string): string {
     `</linearGradient></defs>`,
     `<rect width="64" height="64" rx="14" fill="url(#g)"/>`,
     `<g transform="translate(5.6 5.6) scale(2.2)" fill="none" stroke-linecap="round">`,
-    `<path d="${BRAND_MARK_BODY}" stroke="#ffffff" stroke-width="${BRAND_MARK_STROKE}"/>`,
-    `<path d="${BRAND_MARK_TAIL}" stroke="${BRAND_CYAN_ON_TILE}" stroke-width="${BRAND_MARK_STROKE}"/>`,
+    `<path d="${BRAND_MARK_LEFT}" stroke="#ffffff" stroke-width="${BRAND_MARK_STROKE}"/>`,
+    `<path d="${BRAND_MARK_RIGHT}" stroke="${BRAND_TEAL_ON_TILE}" stroke-width="${BRAND_MARK_STROKE}"/>`,
     `</g></svg>`,
   ].join("");
 }

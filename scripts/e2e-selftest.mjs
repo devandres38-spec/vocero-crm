@@ -1831,7 +1831,7 @@ async function guiaChecks() {
   const htmlManual = await pantallaHtml();
   ok(
     "la tarjeta final dice «bandeja manual» y no ofrece encender",
-    htmlManual.includes("Vocero funciona como bandeja manual") && !htmlManual.includes("Encender a Sofi"),
+    htmlManual.includes("el CRM funciona como bandeja manual") && !htmlManual.includes("Encender a Sofi"),
     htmlManual.includes("Encender a Sofi") ? "ofrece encender" : "sin el texto de bandeja manual"
   );
   const sinCerebro = await api("/api/agent/profile", {

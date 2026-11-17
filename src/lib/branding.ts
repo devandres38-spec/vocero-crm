@@ -1,3 +1,4 @@
+import { PLATFORM_BRAND_NAME } from "@/lib/brand";
 import { DEFAULT_CURRENCY, isCurrency, type Currency } from "@/lib/money";
 
 /**
@@ -45,22 +46,26 @@ export type Branding = {
 };
 
 export const DEFAULT_BRANDING: Branding = {
-  name: "Vocero",
-  // El azul eléctrico de vocerocrm.com: la instancia recién instalada se ve
-  // igual que la landing. Una agencia lo cambia en Configuración → Marca.
-  accent: "#0d5bff",
+  name: PLATFORM_BRAND_NAME,
+  // 068 — El azul de Aliantis: la instancia recién instalada ya lleva la
+  // marca de la plataforma. Cada negocio lo cambia en Configuración → Marca.
+  accent: "#0d3b9e",
   currency: DEFAULT_CURRENCY,
   favicon: null,
 };
 
 /**
- * Presets. El primero es la marca Vocero (valores exactos de la landing); los
- * demás son los tonos sobrios del handoff Atlas, que siguen disponibles para
- * quien quiera un CRM más discreto.
+ * Presets. El primero es la marca Aliantis (068); el azul eléctrico es el de
+ * la 2.x (quien ya lo eligió conserva sus valores exactos); los demás son los
+ * tonos sobrios del handoff Atlas, para quien quiera un CRM más discreto.
  */
 export const ACCENT_PRESETS: Record<string, { label: string; set: AccentSet }> = {
+  "#0d3b9e": {
+    label: "Azul Aliantis",
+    set: { accent: "#0d3b9e", hover: "#0b3285", soft: "#d3dcee", tint: "#f0f3f9", text: "#0d3b9e", fg: "#ffffff" },
+  },
   "#0d5bff": {
-    label: "Azul Vocero",
+    label: "Azul eléctrico",
     set: { accent: "#0d5bff", hover: "#0a4de6", soft: "#d3e2ff", tint: "#ebf1ff", text: "#0038d8", fg: "#ffffff" },
   },
   "#3f5972": {
@@ -166,7 +171,7 @@ function inkPasses(base: Rgb): boolean {
  */
 type DarkRecipe = { bg: Rgb; minContrast: number; soft: number; tint: number; text: number };
 
-// Página oscura: con 3:1 el azul Vocero conserva la tinta blanca (4.5:1); el
+// Página oscura: con 3:1 el azul de la marca conserva la tinta blanca (4.5:1); el
 // tint más denso (0.78) hace que la fila seleccionada se vea sin leer el color
 // del texto (≥ 1.25:1 contra el fondo).
 const PAGE_DARK: DarkRecipe = { bg: DARK_BG, minContrast: 3, soft: 0.56, tint: 0.72, text: 0.34 };
