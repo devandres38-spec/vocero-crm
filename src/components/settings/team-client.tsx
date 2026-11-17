@@ -23,6 +23,8 @@ export function TeamClient() {
   const [email, setEmail] = useState("");
   const [tempPassword, setTempPassword] = useState("");
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
+  // 069 — En modo plataforma, un correo que ya tiene cuenta recibe un enlace.
+  const [invitado, setInvitado] = useState<{ email: string; url: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +53,7 @@ export function TeamClient() {
     setSaving(true);
     setError(null);
     setCreated(null);
+    setInvitado(null);
     const res = await fetch("/api/settings/team", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -64,7 +67,14 @@ export function TeamClient() {
       setError(data?.error?.message ?? "No se pudo crear la cuenta");
       return;
     }
-    setCreated({ email, password: tempPassword });
+    const data = (await res.json().catch(() => null)) as {
+      invitation?: { url?: string };
+    } | null;
+    if (data?.invitation?.url) {
+      setInvitado({ email, url: data.invitation.url });
+    } else {
+      setCreated({ email, password: tempPassword });
+    }
     setName("");
     setEmail("");
     setTempPassword("");
@@ -116,6 +126,17 @@ export function TeamClient() {
             </div>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
+          {invitado && (
+            <div className="rounded-md border border-warning-soft bg-warning-tint p-3 text-sm">
+              <p className="font-medium text-warning-text">
+                {invitado.email} ya tiene cuenta: se generó una invitación.
+              </p>
+              <p className="mt-1 text-warning-text opacity-90">
+                Pásale este enlace ahora (no se volverá a mostrar; vence en 7 días):
+              </p>
+              <code className="mt-1 block break-all">{invitado.url}</code>
+            </div>
+          )}
           {created && (
             <div className="rounded-md border border-success-soft bg-success-tint p-3 text-sm">
               <p className="font-medium text-success-text">Cuenta creada ✓</p>

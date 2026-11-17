@@ -1,3 +1,4 @@
+import { dominioBase } from "@/lib/tenancy";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonSalir } from "@/components/plataforma/boton-salir";
 
@@ -8,6 +9,10 @@ export const dynamic = "force-dynamic";
  * dice nada del negocio del host: ni si existe.
  */
 export default function SinAccesoPage() {
+  // El selector vive en el dominio raíz: en el subdominio de otro negocio el
+  // host seguiría decidiendo por él.
+  const base = dominioBase();
+  const raiz = base ? `https://${base}/empresas` : "/empresas";
   return (
     <Card className="shadow-md">
       <CardHeader>
@@ -18,6 +23,9 @@ export default function SinAccesoPage() {
           Tu cuenta no tiene acceso aquí. Si te invitaron, abre el enlace de la
           invitación o entra por la dirección de tu negocio.
         </p>
+        <a href={raiz} className="block text-accent underline underline-offset-4">
+          Ver mis empresas
+        </a>
         <BotonSalir />
       </CardContent>
     </Card>

@@ -32,6 +32,7 @@ export function AppShell({
   commit,
   agenda = false,
   kicker,
+  empresasUrl,
   aviso = null,
   children,
 }: {
@@ -45,6 +46,8 @@ export function AppShell({
   agenda?: boolean;
   /** 028 — La etiqueta bajo el logo (`navKicker`). */
   kicker?: string;
+  /** 069 — Modo plataforma: el selector de empresas. */
+  empresasUrl?: string;
   /**
    * Franja de aviso por encima de TODA la aplicación (#85).
    *
@@ -96,6 +99,7 @@ export function AppShell({
         apariencia={apariencia}
         agenda={agenda}
         kicker={kicker}
+        empresasUrl={empresasUrl}
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />

@@ -98,7 +98,10 @@ export function destinoSinOrganizacion(ctx: Contexto): string {
     case "suspendida":
       return "/suspendida";
     case "ninguno":
-      return tenancyEsMulti() ? "/sin-acceso" : "/login";
+      if (!tenancyEsMulti()) return "/login";
+      // Sin organización en la raíz: a elegir empresa. En el host de un
+      // negocio ajeno (o inexistente): «no perteneces», sin decir más.
+      return ctx.motivo === "sin_organizacion" ? "/empresas" : "/sin-acceso";
     default:
       return "/login";
   }

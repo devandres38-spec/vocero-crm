@@ -11,7 +11,7 @@ import {
   resolveActiveOrganizationId,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
-import { esPlataforma } from "@/lib/tenancy";
+import { dominioBase, esPlataforma } from "@/lib/tenancy";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -56,11 +56,29 @@ export function organizationPathBloqueado(path: string): boolean {
   return path.startsWith("/organization/") && !ORGANIZATION_PATHS_PERMITIDOS.has(path);
 }
 
+/**
+ * 069 (D3) — En modo plataforma, UNA sesión para todos los subdominios: la
+ * cookie vive en el dominio base y los orígenes `https://*.dominio` son de
+ * confianza. Que la cookie se comparta NO decide la organización: la decide
+ * el host de cada petición, validado contra la membresía (resolverContexto).
+ */
+function opcionesDePlataforma() {
+  const base = dominioBase();
+  if (!esPlataforma() || !base) return {};
+  return {
+    trustedOrigins: [`https://${base}`, `https://*.${base}`],
+    advanced: {
+      crossSubDomainCookies: { enabled: true, domain: base },
+    },
+  };
+}
+
 function createAuth() {
   const env = getEnv();
   return betterAuth({
     baseURL: env.APP_BASE_URL,
     secret: env.BETTER_AUTH_SECRET,
+    ...opcionesDePlataforma(),
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {

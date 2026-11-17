@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { AlertTriangle, Bell, BellOff, LogOut, X } from "lucide-react";
+import { AlertTriangle, Bell, BellOff, Building2, LogOut, X } from "lucide-react";
 import { BrandTile } from "@/components/brand-mark";
 import { BotonInstalar } from "@/components/pwa";
 import { BotonActivarAvisos } from "@/components/activar-avisos";
@@ -75,6 +75,7 @@ export function AppNav({
   commit,
   agenda = false,
   kicker = "CRM · WhatsApp",
+  empresasUrl,
   open = false,
   onClose,
 }: {
@@ -96,6 +97,8 @@ export function AppNav({
    * todavía debe ver la entrada igual.
    */
   agenda?: boolean;
+  /** 069 — Modo plataforma: a dónde ir para cambiar de empresa. */
+  empresasUrl?: string;
   /** Solo aplica por debajo de `lg`: en escritorio el lateral es fijo. */
   open?: boolean;
   onClose?: () => void;
@@ -345,6 +348,16 @@ export function AppNav({
         <span className="flex shrink-0 items-center">
           {campana}
           <ThemeToggle initial={apariencia} />
+          {empresasUrl && (
+            <a
+              href={empresasUrl}
+              aria-label="Cambiar de empresa"
+              title="Cambiar de empresa"
+              className="rounded p-1 text-text-3 hover:text-foreground"
+            >
+              <Building2 className="h-4 w-4" strokeWidth={1.7} />
+            </a>
+          )}
           <button
             aria-label="Cerrar sesión"
             title="Cerrar sesión"
