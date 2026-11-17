@@ -1,4 +1,5 @@
-import { normalizeMx } from "@/lib/meta/client";
+import { normalizarTelefonoHumano } from "@/lib/phone";
+import { REGION_DEFAULTS } from "@/lib/region";
 
 /**
  * Importación de contactos desde un CSV: la parte PURA.
@@ -107,22 +108,23 @@ export function detectColumns(
 /**
  * Teléfono a identidad de WhatsApp, o el motivo por el que no sirve.
  *
- * Exige código de país igual que el alta manual: diez dígitos son un número
- * local en varios países, y asumir uno produciría un contacto que jamás casa
- * con quien escriba después.
+ * 068 — Igual que el alta manual (`lib/phone.ts`): acepta el número con su
+ * código de país o, si es válido en el país de la región, el número local
+ * («300 123 4567» en Colombia). Un número local que no es válido ahí se
+ * rechaza en vez de inventarle un país.
  */
 export function normalizeImportPhone(
-  raw: string
+  raw: string,
+  country: string = REGION_DEFAULTS.country
 ): { ok: true; phone: string } | { ok: false; reason: ImportProblem["reason"] } {
-  const digits = raw.replace(/\D/g, "");
-  if (!digits) return { ok: false, reason: "sin_telefono" };
-  if (digits.length > 15) return { ok: false, reason: "telefono_invalido" };
-  if (digits.length < 11) return { ok: false, reason: "sin_codigo_pais" };
-  return { ok: true, phone: normalizeMx(digits) };
+  return normalizarTelefonoHumano(raw, country);
 }
 
 /** Filas crudas a filas importables + lo que se quedó fuera y por qué. */
-export function prepareImport(rows: { name: string; phone: string }[]): {
+export function prepareImport(
+  rows: { name: string; phone: string }[],
+  country: string = REGION_DEFAULTS.country
+): {
   valid: ImportRow[];
   problems: ImportProblem[];
 } {
@@ -132,7 +134,7 @@ export function prepareImport(rows: { name: string; phone: string }[]): {
   rows.forEach((r, i) => {
     const line = i + 2;
     const name = r.name.replace(/\s+/g, " ").trim().slice(0, 120);
-    const res = normalizeImportPhone(r.phone);
+    const res = normalizeImportPhone(r.phone, country);
     if (!res.ok) {
       problems.push({ line, name, reason: res.reason });
       return;
@@ -151,7 +153,8 @@ export function prepareImport(rows: { name: string; phone: string }[]): {
 
 /** Del texto del archivo a filas listas, o el motivo por el que no se pudo leer. */
 export function readImportFile(
-  text: string
+  text: string,
+  country: string = REGION_DEFAULTS.country
 ):
   | { ok: true; valid: ImportRow[]; problems: ImportProblem[]; total: number }
   | { ok: false; error: string } {
@@ -181,5 +184,5 @@ export function readImportFile(
       .join(" "),
     phone: r[cols.phone] ?? "",
   }));
-  return { ok: true, ...prepareImport(rows), total: body.length };
+  return { ok: true, ...prepareImport(rows, country), total: body.length };
 }

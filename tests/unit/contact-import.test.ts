@@ -50,11 +50,19 @@ describe("normalizeImportPhone", () => {
     });
   });
 
-  it("rechaza un número local: sin código de país nunca casaría con quien escriba", () => {
+  it("rechaza un número local que no es válido en el país de la región (no le inventa el 57)", () => {
     expect(normalizeImportPhone("55 1234 5678")).toEqual({
       ok: false,
       reason: "sin_codigo_pais",
     });
+  });
+
+  it("068 — acepta el número local colombiano y lo guarda con su 57", () => {
+    expect(normalizeImportPhone("300 123 4567")).toEqual({ ok: true, phone: "573001234567" });
+  });
+
+  it("068 — con otro país de región, lo local se lee en ese país", () => {
+    expect(normalizeImportPhone("55 1234 5678", "MX")).toEqual({ ok: true, phone: "525512345678" });
   });
 
   it("distingue vacío de inválido", () => {
@@ -74,6 +82,16 @@ describe("prepareImport", () => {
     ]);
     expect(valid).toEqual([{ name: "Ana", phone: "525512345678" }]);
     expect(problems).toEqual([{ line: 3, name: "Ana otra vez", reason: "repetido" }]);
+  });
+
+  it("068 — el mismo colombiano escrito de tres formas es UN contacto", () => {
+    const { valid, problems } = prepareImport([
+      { name: "Juan", phone: "3001234567" },
+      { name: "Juan 2", phone: "+57 300 123 4567" },
+      { name: "Juan 3", phone: "573001234567" },
+    ]);
+    expect(valid).toEqual([{ name: "Juan", phone: "573001234567" }]);
+    expect(problems.map((p) => p.reason)).toEqual(["repetido", "repetido"]);
   });
 
   it("sin nombre usa el teléfono, como la ingesta", () => {
