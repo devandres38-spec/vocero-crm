@@ -54,6 +54,8 @@ import {
   uploadGraphMedia,
   validateOutgoing,
 } from "@/server/whatsapp/media";
+import { esPlataforma } from "@/lib/tenancy";
+import { organizacionSuspendida } from "@/server/platform/estado";
 
 /** Error tipado del envío; `code` mapea a HTTP en la capa de API. */
 export class SendError extends Error {
@@ -70,7 +72,9 @@ export class SendError extends Error {
     | "meta_unavailable"
     | "upload_failed"
     /** 039: el mensaje a citar no es de aquí, no salió a la plataforma, o el canal no cita. */
-    | "reply_unavailable";
+    | "reply_unavailable"
+    /** 069: la plataforma suspendió la organización: no sale nada. */
+    | "organizacion_suspendida";
   /** 008: presente cuando el fallo ocurrió TRAS persistir el mensaje (failed). */
   messageId?: string;
 
@@ -156,6 +160,11 @@ async function prepareSend(
   const row = rows[0];
   if (!row || row.conversation.organizationId !== organizationId) {
     throw new SendError("meta_error", "Conversación no encontrada");
+  }
+  // 069 — Una organización suspendida no envía, venga de donde venga el
+  // envío (bandeja, cerebro, recordatorios). Solo existe en modo plataforma.
+  if (esPlataforma() && (await organizacionSuspendida(organizationId))) {
+    throw new SendError("organizacion_suspendida", "Esta organización está suspendida");
   }
 
   if (row.conversation.isTest) {

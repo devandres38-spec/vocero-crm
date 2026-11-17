@@ -42,11 +42,11 @@ export const REGION_ENV_KEYS = {
   timezone: "REGION_TIMEZONE",
 } as const satisfies Record<keyof Region, string>;
 
-function esPais(v: string): boolean {
+export function esPais(v: string): boolean {
   return /^[A-Z]{2}$/.test(v);
 }
 
-function esLocale(v: string): boolean {
+export function esLocale(v: string): boolean {
   try {
     return Intl.DateTimeFormat.supportedLocalesOf([v]).length > 0;
   } catch {
@@ -54,7 +54,7 @@ function esLocale(v: string): boolean {
   }
 }
 
-function esMoneda(v: string): boolean {
+export function esMoneda(v: string): boolean {
   if (!/^[A-Z]{3}$/.test(v)) return false;
   try {
     new Intl.NumberFormat("en", { style: "currency", currency: v });

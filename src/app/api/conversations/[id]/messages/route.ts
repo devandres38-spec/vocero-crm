@@ -93,6 +93,7 @@ const SEND_ERROR_STATUS: Record<SendError["code"], number> = {
   meta_unavailable: 503,
   upload_failed: 502,
   reply_unavailable: 422,
+  organizacion_suspendida: 403,
 };
 
 export const POST = withAuth(async (session, req: Request, ctx: Params) => {

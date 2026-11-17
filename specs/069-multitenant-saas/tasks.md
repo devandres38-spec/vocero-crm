@@ -1,7 +1,25 @@
 # Tasks: Multi-Tenant SaaS (modo plataforma)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) (rev. 2)
-**Estado**: borrador para aprobación — ninguna tarea iniciada.
+**Estado**: en ejecución. Bloque 1 (Fases 1–4: T001–T028) hecho y verificado en local
+(typecheck, lint, Vitest 138 archivos / 1606 pruebas). Bloque 2: US3, US7, US8.
+Bloque 3: US5, US4, US6, US9 y cierre.
+
+**Notas del Bloque 1**
+- Además de lo previsto: la API propia del plugin `organization` de Better Auth
+  (`/organization/create`, `/invite-member`, `/accept-invitation`…) queda cerrada
+  en ambos modos salvo `set-active`; abierta permitía crearse un negocio o una
+  segunda membresía saltándose la plataforma.
+- `branding.ts`/`apariencia.ts` sin sesión en `multi` ya devuelven la marca de
+  plataforma (nunca «la primera»); la resolución por subdominio sigue en US4.
+- `/api/bot/openapi.json` (documentación estática, sin datos) sigue respondiendo
+  en `multi`; el resto de `/api/bot/*` es 404.
+- La sección `modules` del Blueprint ya se aplica (columna); su efecto en las
+  pantallas llega con US7. `pipeline`, `agent`, `knowledge` y `agenda` responden
+  422 `seccion_no_disponible` hasta US8.
+- La API REST mínima del panel (`GET/POST /organizations`, detalle,
+  `suspend`/`reactivate`, `invitations`) se adelantó de T043 porque el panel la
+  necesita; T043 añade `blueprint` (GET/PUT) y `catalog`.
 
 **Formato**: `[ID] [P?] [Story] Descripción` · `[P]` = paralelizable ·
 Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
@@ -11,22 +29,22 @@ Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
 
 ## Phase 1: Setup
 
-- [ ] T001 Rama `feat/069-multitenant-saas` en `vocero-crm` (primer commit: estos artefactos)
-- [ ] T002 [P] `.env.example`: `TENANCY`, `PLATFORM_BASE_DOMAIN`, `PLATFORM_ADMIN_EMAILS`, `PLATFORM_MCP` con guía inline (DNS y certificado comodín; MCP apagado por defecto)
-- [ ] T003 [P] `src/lib/env.ts`: las cuatro variables, opcionales y sin tumbar el arranque
+- [x] T001 Rama `feat/069-multitenant-saas` en `vocero-crm` (primer commit: estos artefactos)
+- [x] T002 [P] `.env.example`: `TENANCY`, `PLATFORM_BASE_DOMAIN`, `PLATFORM_ADMIN_EMAILS`, `PLATFORM_MCP` con guía inline (DNS y certificado comodín; MCP apagado por defecto)
+- [x] T003 [P] `src/lib/env.ts`: las cuatro variables, opcionales y sin tumbar el arranque
 
 ## Phase 2: Foundational (bloquea las historias)
 
-- [ ] T004 `src/lib/tenancy.ts`: `tenancy()`, `esPlataforma()`, `dominioBase()`, `mcpActivo()`, `validarSlug()`, `SLUGS_RESERVADOS`
-- [ ] T005 [P] `tests/unit/tenancy.test.ts`: valores por defecto, valor inválido → `single`, reglas de slug y reservados `[local]`
-- [ ] T006 `src/lib/db/schema.ts`: columnas de `organization` (`status`, `suspended_at`, `modules`) e `invitation` (`token_hash`, `accepted_at`), tablas `platform_admin`, `support_grant` (con `level`), `platform_api_token`, `platform_audit_log` (con `via`, `token_id`) → `npx pnpm@11.5.0 db:generate` → revisar y renombrar `drizzle/0028_plataforma.sql` (solo `ADD COLUMN` / `CREATE`) `[local]`
-- [ ] T007 `src/server/modulos/efectivos.ts` (puro): `modulosEfectivos(techo, org)`, `CATALOGO_VERTICAL` (vacío), tipo `ModulosOrganizacion` (Zod)
-- [ ] T008 [P] `tests/unit/modulos-efectivos.test.ts`: `null` = techo; techo apagado gana; WhatsApp siempre; vertical desconocido rechazado `[local]`
-- [ ] T009 `src/server/tenant/host.ts`: `slugDelHost(host, dominioBase)` (puro) y `organizacionPorHost(headers)`
-- [ ] T010 `src/server/tenant/contexto.ts`: `resolverContexto(headers)` (D4) con `grant` y `modulos`; en `single` delega en `resolveMembership` y `modulos` = techo
-- [ ] T011 `src/lib/auth/session.ts`: `requireSession`/`getSessionOrNull` sobre el resolvedor; `SessionContext` gana `via`, `grant?`, `modulos`
-- [ ] T012 [P] `tests/unit/tenant-contexto.test.ts` (dependencias inyectadas, sin BD): host→slug, raíz→`activeOrganizationId` validada, no miembro → ninguno, suspendida, `single` = primera membresía `[local]`
-- [ ] T013 [P] `src/server/platform/auditoria.ts`: `auditar(entrada)` con `via`/`tokenId` + tipos de acción; `doctor`: ✗ `multi` sin dominio base, avisos (`PLATFORM_ADMIN_EMAILS`, `TENANCY` inválida, `PLATFORM_MCP` en `single`) `[local]`
+- [x] T004 `src/lib/tenancy.ts`: `tenancy()`, `esPlataforma()`, `dominioBase()`, `mcpActivo()`, `validarSlug()`, `SLUGS_RESERVADOS`
+- [x] T005 [P] `tests/unit/tenancy.test.ts`: valores por defecto, valor inválido → `single`, reglas de slug y reservados `[local]`
+- [x] T006 `src/lib/db/schema.ts`: columnas de `organization` (`status`, `suspended_at`, `modules`) e `invitation` (`token_hash`, `accepted_at`), tablas `platform_admin`, `support_grant` (con `level`), `platform_api_token`, `platform_audit_log` (con `via`, `token_id`) → `npx pnpm@11.5.0 db:generate` → revisar y renombrar `drizzle/0028_plataforma.sql` (solo `ADD COLUMN` / `CREATE`) `[local]`
+- [x] T007 `src/server/modulos/efectivos.ts` (puro): `modulosEfectivos(techo, org)`, `CATALOGO_VERTICAL` (vacío), tipo `ModulosOrganizacion` (Zod)
+- [x] T008 [P] `tests/unit/modulos-efectivos.test.ts`: `null` = techo; techo apagado gana; WhatsApp siempre; vertical desconocido rechazado `[local]`
+- [x] T009 `src/server/tenant/host.ts`: `slugDelHost(host, dominioBase)` (puro) y `organizacionPorHost(headers)`
+- [x] T010 `src/server/tenant/contexto.ts`: `resolverContexto(headers)` (D4) con `grant` y `modulos`; en `single` delega en `resolveMembership` y `modulos` = techo
+- [x] T011 `src/lib/auth/session.ts`: `requireSession`/`getSessionOrNull` sobre el resolvedor; `SessionContext` gana `via`, `grant?`, `modulos`
+- [x] T012 [P] `tests/unit/tenant-contexto.test.ts` (dependencias inyectadas, sin BD): host→slug, raíz→`activeOrganizationId` validada, no miembro → ninguno, suspendida, `single` = primera membresía `[local]`
+- [x] T013 [P] `src/server/platform/auditoria.ts`: `auditar(entrada)` con `via`/`tokenId` + tipos de acción; `doctor`: ✗ `multi` sin dominio base, avisos (`PLATFORM_ADMIN_EMAILS`, `TENANCY` inválida, `PLATFORM_MCP` en `single`) `[local]`
 
 **Checkpoint**: contexto (organización, rol, grant, módulos) resuelto en un solo lugar; `single` sin cambios.
 
@@ -34,26 +52,26 @@ Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
 
 ## Phase 3: User Story 1 — Modo plataforma con candados (P1) 🎯 MVP
 
-- [ ] T014 [US1] `server/auth/registration.ts`: en `multi`, registro solo para `PLATFORM_ADMIN_EMAILS`; `on-signup.ts`: en `multi` no crea organización e inserta en `platform_admin`; extraer `sembrarOrganizacion(tx, orgId)`
-- [ ] T015 [US1] `server/bot/auth.ts` `requireBotKey`: 404 vacío en `multi` antes de mirar la llave
-- [ ] T016 [US1] `server/brains/config.ts` `despachoActivo()`: falso en `multi`
-- [ ] T017 [P] [US1] `lib/storage/medios.ts` `comprobarSegmento`: rechaza `.`, `..`, `/`, `\`
-- [ ] T018 [P] [US1] Pruebas: registro por modo, bot 404 en `multi` y 401/200 en `single`, despacho por modo, segmentos peligrosos `[local]`
-- [ ] T019 [US1] Guardarraíl `tests/unit/sin-primera-organizacion.test.ts` `[local]`
-- [ ] T020 [US1] Suite completa con `TENANCY` vacía sin cambiar expectativas (SC-001) `[local]`
+- [x] T014 [US1] `server/auth/registration.ts`: en `multi`, registro solo para `PLATFORM_ADMIN_EMAILS`; `on-signup.ts`: en `multi` no crea organización e inserta en `platform_admin`; extraer `sembrarOrganizacion(tx, orgId)`
+- [x] T015 [US1] `server/bot/auth.ts` `requireBotKey`: 404 vacío en `multi` antes de mirar la llave
+- [x] T016 [US1] `server/brains/config.ts` `despachoActivo()`: falso en `multi`
+- [x] T017 [P] [US1] `lib/storage/medios.ts` `comprobarSegmento`: rechaza `.`, `..`, `/`, `\`
+- [x] T018 [P] [US1] Pruebas: registro por modo, bot 404 en `multi` y 401/200 en `single`, despacho por modo, segmentos peligrosos `[local]`
+- [x] T019 [US1] Guardarraíl `tests/unit/sin-primera-organizacion.test.ts` `[local]`
+- [x] T020 [US1] Suite completa con `TENANCY` vacía sin cambiar expectativas (SC-001) `[local]`
 
 ---
 
 ## Phase 4: User Story 2 — Panel de agencia (P1)
 
-- [ ] T021 [US2] `server/platform/guardia.ts`: `esSuperAdmin(userId)`, `requirePlataforma(req, { scope })` — sesión de Super-Admin (`via: sesion`); 404 si no (el Bearer se suma en T047)
-- [ ] T022 [US2] `lib/platform/blueprint.ts`: contrato Zod v1 completo (`.strict()`, sin secretos, límites de tamaño) + JSON Schema exportado
-- [ ] T023 [US2] `server/platform/blueprint/aplicar.ts`: esqueleto (transacción, bloqueo por organización, `dryRun`, respuesta y auditoría) + secciones `organization`, `region`, `brand`, `owner`; crear organización = `sembrarOrganizacion` + aplicar
-- [ ] T024 [US2] `server/platform/invitaciones.ts`: crear (token 32 bytes, SHA-256, 7 días), revocar; URL devuelta una vez (lo usa la sección `owner`)
-- [ ] T025 [US2] `server/platform/organizaciones.ts`: listar, detalle, suspender, reactivar; auditado
-- [ ] T026 [US2] UI `app/(platform)/platform/`: lista, detalle (invitar, suspender/reactivar); asistente `nuevo/` pasos a (info, región, marca) y f (owner)
-- [ ] T027 [US2] Suspensión: el resolvedor marca `suspendida`; página y 403 `organizacion_suspendida`; `inbox/send.ts` y `dispatch/encolar.ts` lo respetan; la ingesta no
-- [ ] T028 [P] [US2] Pruebas: slug inválido/reservado/repetido → 422; no-superadmin → 404; suspensión bloquea envío y no ingesta; fallo en una sección → nada creado; A↛B al administrar `[local]`
+- [x] T021 [US2] `server/platform/guardia.ts`: `esSuperAdmin(userId)`, `requirePlataforma(req, { scope })` — sesión de Super-Admin (`via: sesion`); 404 si no (el Bearer se suma en T047)
+- [x] T022 [US2] `lib/platform/blueprint.ts`: contrato Zod v1 completo (`.strict()`, sin secretos, límites de tamaño) + JSON Schema exportado
+- [x] T023 [US2] `server/platform/blueprint/aplicar.ts`: esqueleto (transacción, bloqueo por organización, `dryRun`, respuesta y auditoría) + secciones `organization`, `region`, `brand`, `owner`; crear organización = `sembrarOrganizacion` + aplicar
+- [x] T024 [US2] `server/platform/invitaciones.ts`: crear (token 32 bytes, SHA-256, 7 días), revocar; URL devuelta una vez (lo usa la sección `owner`)
+- [x] T025 [US2] `server/platform/organizaciones.ts`: listar, detalle, suspender, reactivar; auditado
+- [x] T026 [US2] UI `app/(platform)/platform/`: lista, detalle (invitar, suspender/reactivar); asistente `nuevo/` pasos a (info, región, marca) y f (owner)
+- [x] T027 [US2] Suspensión: el resolvedor marca `suspendida`; página y 403 `organizacion_suspendida`; `inbox/send.ts` y `dispatch/encolar.ts` lo respetan; la ingesta no
+- [x] T028 [P] [US2] Pruebas: slug inválido/reservado/repetido → 422; no-superadmin → 404; suspensión bloquea envío y no ingesta; fallo en una sección → nada creado; A↛B al administrar `[local]`
 
 ---
 
