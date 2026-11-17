@@ -4,6 +4,7 @@ import { isValidHex } from "@/lib/branding";
 import { CURRENCIES } from "@/lib/money";
 import { esLocale, esPais, esZonaValida } from "@/lib/region";
 import { validarSlug } from "@/lib/tenancy";
+import { LIMITS } from "@/server/agenda/settings";
 import { modulosOrganizacionSchema } from "@/server/modulos/efectivos";
 
 /**
@@ -125,6 +126,9 @@ const intervaloSchema = z
   .strict()
   .refine((i) => i.start < i.end, { message: "intervalo_invertido" });
 
+/** Los rangos de Ajustes → Agenda: el Blueprint no permite más que la UI. */
+const entero = (r: { min: number; max: number }) => z.number().int().min(r.min).max(r.max).optional();
+
 const agendaSchema = z
   .object({
     weeklyHours: z
@@ -138,10 +142,10 @@ const agendaSchema = z
         { message: "horarios_solapados" }
       )
       .optional(),
-    slotMinutes: z.number().int().min(5).max(480).optional(),
-    bufferMinutes: z.number().int().min(0).max(240).optional(),
-    minNoticeHours: z.number().int().min(0).max(720).optional(),
-    maxDaysAhead: z.number().int().min(1).max(365).optional(),
+    slotMinutes: entero(LIMITS.slotMinutes),
+    bufferMinutes: entero(LIMITS.bufferMinutes),
+    minNoticeHours: entero(LIMITS.minNoticeHours),
+    maxDaysAhead: entero(LIMITS.maxDaysAhead),
     timezone: z.string().trim().refine(esZonaValida, { message: "zona_invalida" }).optional(),
     /** El único conector sin credenciales; los demás los conecta el negocio. */
     connector: z.literal("enlace-fijo").optional(),

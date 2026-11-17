@@ -66,10 +66,13 @@ export const LIMITS = {
   maxDaysAhead: { min: 1, max: 60 },
 } as const;
 
+/** 069 — Lectura y escritura aceptan una transacción (la del Blueprint). */
+type Conexion = Pick<ReturnType<typeof getDb>, "select" | "insert">;
+
 export async function getSettings(
-  organizationId: string
+  organizationId: string,
+  db: Conexion = getDb()
 ): Promise<CalendarSettings> {
-  const db = getDb();
   const rows = await db
     .select()
     .from(schema.calendarSettings)
@@ -116,10 +119,45 @@ export type CalendarSettingsInput = Partial<
 
 export async function upsertSettings(
   organizationId: string,
-  input: CalendarSettingsInput
+  input: CalendarSettingsInput,
+  db: Conexion = getDb()
 ): Promise<CalendarSettings> {
-  const current = await getSettings(organizationId);
+  const current = await getSettings(organizationId, db);
+  const next = siguienteConfiguracion(current, input);
+  const values = {
+    weeklyHours: next.weeklyHours,
+    slotMinutes: next.slotMinutes,
+    bufferMinutes: next.bufferMinutes,
+    minNoticeHours: next.minNoticeHours,
+    maxDaysAhead: next.maxDaysAhead,
+    timezone: next.timezone,
+    connector: next.connector,
+    meetingLink: next.meetingLink,
+  };
+  await db
+    .insert(schema.calendarSettings)
+    .values({
+      id: newId("calendarSettings"),
+      organizationId,
+      ...values,
+    })
+    .onConflictDoUpdate({
+      target: schema.calendarSettings.organizationId,
+      set: { ...values, updatedAt: new Date() },
+    });
 
+  return next;
+}
+
+/**
+ * 069 — Pura: la configuración que resulta de aplicar `input` sobre `current`
+ * (con las mismas normalizaciones y rechazos que el guardado). El Blueprint
+ * la usa para saber si algo cambia antes de escribir.
+ */
+export function siguienteConfiguracion(
+  current: CalendarSettings,
+  input: CalendarSettingsInput
+): CalendarSettings {
   const timezone = input.timezone ?? current.timezone;
   // Una zona desconocida rompería el motor entero: se rechaza al guardar.
   if (!isValidTimeZone(timezone)) {
@@ -161,29 +199,6 @@ export async function upsertSettings(
       input.meetingLink !== undefined ? input.meetingLink : current.meetingLink
     ),
   };
-
-  const db = getDb();
-  const values = {
-    weeklyHours: next.weeklyHours,
-    slotMinutes: next.slotMinutes,
-    bufferMinutes: next.bufferMinutes,
-    minNoticeHours: next.minNoticeHours,
-    maxDaysAhead: next.maxDaysAhead,
-    timezone: next.timezone,
-    connector: next.connector,
-    meetingLink: next.meetingLink,
-  };
-  await db
-    .insert(schema.calendarSettings)
-    .values({
-      id: newId("calendarSettings"),
-      organizationId,
-      ...values,
-    })
-    .onConflictDoUpdate({
-      target: schema.calendarSettings.organizationId,
-      set: { ...values, updatedAt: new Date() },
-    });
 
   return next;
 }

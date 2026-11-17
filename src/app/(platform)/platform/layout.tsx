@@ -30,6 +30,9 @@ export default async function PlatformLayout({
             <Link href="/platform/nuevo" className="text-text-2 hover:text-foreground">
               Nuevo negocio
             </Link>
+            <Link href="/platform/tokens" className="text-text-2 hover:text-foreground">
+              Tokens
+            </Link>
             <BotonSalir />
           </nav>
         </div>

@@ -1,4 +1,4 @@
-import { BlueprintError } from "@/server/platform/blueprint/aplicar";
+import { BlueprintError } from "@/server/platform/blueprint/errores";
 
 /**
  * 069 (D13) — Respuestas de la API de plataforma: el mismo sobre de error del

@@ -12,16 +12,16 @@ export async function aplicarModulos(
   tx: Tx,
   org: OrgParaBlueprint,
   deseado: ModulosOrganizacion
-): Promise<boolean> {
+): Promise<{ cambio: boolean; modulos: ModulosOrganizacion }> {
   const actual = (org.modules && typeof org.modules === "object" ? org.modules : {}) as ModulosOrganizacion;
   const nuevo: ModulosOrganizacion = { ...actual };
   for (const [k, v] of Object.entries(deseado)) {
     if (v !== undefined) (nuevo as Record<string, unknown>)[k] = v;
   }
-  if (igualProfundo(actual, nuevo)) return false;
+  if (igualProfundo(actual, nuevo)) return { cambio: false, modulos: actual };
   await tx
     .update(schema.organization)
     .set({ modules: nuevo })
     .where(eq(schema.organization.id, org.id));
-  return true;
+  return { cambio: true, modulos: nuevo };
 }

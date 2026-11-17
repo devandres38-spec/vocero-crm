@@ -46,6 +46,7 @@ export function crearFakeDb() {
         return Object.assign(Promise.resolve(), {
           onConflictDoNothing: () =>
             Object.assign(Promise.resolve(), { returning: () => Promise.resolve(filas.map(() => ({}))) }),
+          onConflictDoUpdate: () => Promise.resolve(),
           returning: () => Promise.resolve(filas),
         });
       },

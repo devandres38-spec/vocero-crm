@@ -2,6 +2,9 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EstadoBadge } from "@/components/plataforma/estado-badge";
 import { AccionesOrganizacion } from "@/components/plataforma/acciones-organizacion";
+import { ModulosOrganizacion } from "@/components/plataforma/modulos-organizacion";
+import { EditorBlueprint } from "@/components/plataforma/editor-blueprint";
+import { techoDeInstancia } from "@/server/modulos/efectivos";
 import { dominioBase } from "@/lib/tenancy";
 import { getRegion } from "@/lib/region";
 import { detalleOrganizacion } from "@/server/platform/organizaciones";
@@ -22,6 +25,7 @@ export default async function DetalleOrganizacionPage({
   if (!org) notFound();
   const base = dominioBase();
   const instancia = getRegion();
+  const techo = techoDeInstancia();
   const region = {
     country: org.region.country ?? `${instancia.country} (de la instancia)`,
     locale: org.region.locale ?? `${instancia.locale} (de la instancia)`,
@@ -83,11 +87,19 @@ export default async function DetalleOrganizacionPage({
         </CardContent>
       </Card>
 
+      <ModulosOrganizacion
+        id={org.id}
+        techo={{ agenda: techo.agenda, atribucion: techo.atribucion, channels: [...techo.channels] }}
+        efectivos={org.modulos}
+      />
+
       <AccionesOrganizacion
         id={org.id}
         status={org.status}
         invitaciones={org.invitaciones}
       />
+
+      <EditorBlueprint id={org.id} />
     </div>
   );
 }

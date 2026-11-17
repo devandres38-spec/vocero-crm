@@ -5,13 +5,18 @@ import {
   blueprintSchema,
   type OrganizationBlueprint,
   type ResultadoBlueprint,
-  type SeccionBlueprint,
 } from "@/lib/platform/blueprint";
 import { sembrarOrganizacion } from "@/server/auth/on-signup";
 import { auditar } from "@/server/platform/auditoria";
 import type { Actor } from "@/server/platform/invitaciones";
 import { aplicarMetadata, type OrgParaBlueprint, type Tx } from "@/server/platform/blueprint/secciones/metadata";
 import { aplicarModulos } from "@/server/platform/blueprint/secciones/modulos";
+import { aplicarPipeline } from "@/server/platform/blueprint/secciones/pipeline";
+import { aplicarAgente } from "@/server/platform/blueprint/secciones/agente";
+import { aplicarConocimiento } from "@/server/platform/blueprint/secciones/conocimiento";
+import { aplicarAgenda } from "@/server/platform/blueprint/secciones/agenda";
+import { BlueprintError } from "@/server/platform/blueprint/errores";
+import { modulosEfectivos, techoDeInstancia } from "@/server/modulos/efectivos";
 import { aplicarOwner } from "@/server/platform/blueprint/secciones/owner";
 
 /**
@@ -27,24 +32,15 @@ import { aplicarOwner } from "@/server/platform/blueprint/secciones/owner";
  *   secciones y conteos, sin textos del negocio.
  */
 
-export class BlueprintError extends Error {
-  constructor(
-    public code: string,
-    public status: number = 422,
-    public issues: { path: string; message: string }[] = []
-  ) {
-    super(code);
-    this.name = "BlueprintError";
-  }
-}
+export { BlueprintError };
 
 export type Objetivo = { crear: true } | { organizationId: string };
 
-/** Secciones que este servicio aún no aplica (llegan con la US8). */
-const SECCIONES_PENDIENTES: SeccionBlueprint[] = ["pipeline", "agent", "knowledge", "agenda"];
-
 class Deshacer extends Error {
-  constructor(public resultado: ResultadoBlueprint) {
+  constructor(
+    public resultado: ResultadoBlueprint,
+    public conteos: Record<string, unknown>
+  ) {
     super("dry-run");
   }
 }
@@ -87,14 +83,6 @@ export async function aplicarBlueprint(
 ): Promise<ResultadoBlueprint> {
   const bp = validarBlueprint(entrada);
   const dryRun = opciones.dryRun === true;
-  const pendientes = SECCIONES_PENDIENTES.filter((s) => bp[s] !== undefined);
-  if (pendientes.length > 0) {
-    throw new BlueprintError(
-      "seccion_no_disponible",
-      422,
-      pendientes.map((s) => ({ path: s, message: "seccion_no_disponible" }))
-    );
-  }
 
   let resultado: ResultadoBlueprint;
   try {
@@ -108,6 +96,7 @@ export async function aplicarBlueprint(
         sections: {},
         warnings: [],
       };
+      const conteos: Record<string, unknown> = {};
       const estado = (cambio: boolean) => (created ? "creada" : cambio ? "actualizada" : "sin_cambios");
 
       if (bp.organization || created) r.sections.organization = created ? "creada" : "sin_cambios";
@@ -115,15 +104,35 @@ export async function aplicarBlueprint(
       if (meta.organization) r.sections.organization = estado(true);
       if (bp.region) r.sections.region = estado(meta.region);
       if (bp.brand || created) r.sections.brand = estado(meta.brand);
-      if (bp.modules) r.sections.modules = estado(await aplicarModulos(tx, org, bp.modules));
+      let modulosGuardados = org.modules;
+      if (bp.modules) {
+        const m = await aplicarModulos(tx, org, bp.modules);
+        modulosGuardados = m.modulos;
+        r.sections.modules = estado(m.cambio);
+      }
+      if (bp.pipeline) {
+        const p = await aplicarPipeline(tx, org.id, bp.pipeline.stages);
+        r.sections.pipeline = estado(p.cambio);
+        r.warnings.push(...p.advertencias);
+      }
+      if (bp.agent) r.sections.agent = estado(await aplicarAgente(tx, org.id, bp.agent));
+      if (bp.knowledge) {
+        const k = await aplicarConocimiento(tx, org.id, bp.knowledge);
+        r.sections.knowledge = estado(k.cambio);
+        conteos.knowledge = k.conteos;
+      }
+      if (bp.agenda) {
+        r.sections.agenda = estado(await aplicarAgenda(tx, org.id, bp.agenda));
+        if (!modulosEfectivos(techoDeInstancia(), modulosGuardados).agenda) r.warnings.push("modulo_apagado:agenda");
+      }
       if (bp.owner) {
         const o = await aplicarOwner(tx, actor, org, bp.owner, dryRun);
         r.sections.owner = o.cambio ? (created ? "creada" : "actualizada") : "sin_cambios";
         r.invitation = o.invitation;
       }
 
-      if (dryRun) throw new Deshacer(r);
-      await auditar(entradaDeAuditoria(actor, r), tx);
+      if (dryRun) throw new Deshacer(r, conteos);
+      await auditar(entradaDeAuditoria(actor, r, conteos), tx);
       return r;
     });
   } catch (err) {
@@ -132,14 +141,15 @@ export async function aplicarBlueprint(
     // Un plan también deja rastro (quién preguntó qué), sin la organización
     // si era nueva: la fila se deshizo con la transacción.
     await auditar({
-      ...entradaDeAuditoria(actor, resultado),
+      ...entradaDeAuditoria(actor, resultado, err.conteos),
       organizationId: resultado.created ? null : resultado.organizationId,
     });
   }
   return resultado;
 }
 
-function entradaDeAuditoria(actor: Actor, r: ResultadoBlueprint) {
+/** Secciones, conteos y advertencias: nunca textos del negocio. */
+function entradaDeAuditoria(actor: Actor, r: ResultadoBlueprint, conteos: Record<string, unknown>) {
   return {
     actorUserId: actor.userId,
     action: "blueprint_aplicado" as const,
@@ -154,6 +164,7 @@ function entradaDeAuditoria(actor: Actor, r: ResultadoBlueprint) {
       sections: r.sections,
       warnings: r.warnings,
       invitation: r.invitation?.status ?? null,
+      counts: conteos,
     },
   };
 }

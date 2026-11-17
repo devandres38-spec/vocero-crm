@@ -20,7 +20,7 @@ vi.mock("@/lib/auth/session", async (original) => ({
 
 import { GET } from "@/app/api/platform/organizations/route";
 import { withAuth } from "@/lib/api";
-import { OrganizacionSuspendidaError } from "@/lib/auth/session";
+import { destinoSinOrganizacion, OrganizacionSuspendidaError } from "@/lib/auth/session";
 
 const req = () => new Request("https://aliantis.co/api/platform/organizations");
 
@@ -79,5 +79,21 @@ describe("069 — organización suspendida", () => {
     expect(leer("src/server/inbox/send.ts")).toMatch(/organizacionSuspendida\(organizationId\)/);
     expect(leer("src/server/dispatch/encolar.ts")).toMatch(/organizacionSuspendida\(organizationId\)/);
     expect(leer("src/server/inbox/ingest.ts")).not.toMatch(/organizacionSuspendida/);
+  });
+});
+
+describe("069 — a dónde va quien no tiene organización en esta petición", () => {
+  it("`single`: todo al login, como siempre", () => {
+    expect(destinoSinOrganizacion({ kind: "ninguno", userId: "u", motivo: "sin_organizacion" })).toBe("/login");
+    expect(destinoSinOrganizacion({ kind: "anonimo" })).toBe("/login");
+  });
+
+  it("`multi`: raíz → selector; host ajeno → «no perteneces»; Super-Admin → panel", () => {
+    vi.stubEnv("TENANCY", "multi");
+    expect(destinoSinOrganizacion({ kind: "ninguno", userId: "u", motivo: "sin_organizacion" })).toBe("/empresas");
+    expect(destinoSinOrganizacion({ kind: "ninguno", userId: "u", motivo: "no_miembro" })).toBe("/sin-acceso");
+    expect(destinoSinOrganizacion({ kind: "ninguno", userId: "u", motivo: "org_inexistente" })).toBe("/sin-acceso");
+    expect(destinoSinOrganizacion({ kind: "plataforma", userId: "u" })).toBe("/platform");
+    expect(destinoSinOrganizacion({ kind: "suspendida", userId: "u", organizationId: "o" })).toBe("/suspendida");
   });
 });
