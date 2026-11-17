@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { contextoActual, destinoSinOrganizacion, getSessionOrNull } from "@/lib/auth/session";
 import { aparienciaActual } from "@/server/apariencia";
 import { getBranding } from "@/server/branding";
 import { AppShell } from "@/components/app-shell";
@@ -16,7 +16,7 @@ export default async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSessionOrNull();
-  if (!session) redirect("/login");
+  if (!session) redirect(destinoSinOrganizacion(await contextoActual()));
   const branding = await getBranding(session.organizationId);
   const authSession = await getAuth().api.getSession({
     headers: await headers(),

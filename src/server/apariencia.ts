@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { esPlataforma } from "@/lib/tenancy";
 import { THEME_COOKIE } from "@/lib/theme";
 import {
   APARIENCIA_COOKIE,
@@ -28,6 +29,8 @@ function leerMetadata(metadata: string | null): Record<string, unknown> {
 
 /** La del negocio, o null si nunca se eligió (vale la de Vocero). */
 export async function aparienciaDelNegocio(organizationId?: string | null): Promise<Apariencia | null> {
+  // 069 — En modo plataforma, sin organización vale la de plataforma.
+  if (!organizationId && esPlataforma()) return null;
   const db = getDb();
   const rows = organizationId
     ? await db
@@ -35,7 +38,7 @@ export async function aparienciaDelNegocio(organizationId?: string | null): Prom
         .from(schema.organization)
         .where(eq(schema.organization.id, organizationId))
         .limit(1)
-    : // Sin sesión (login, layout raíz): la única organización de la instancia.
+    : // Solo `single` (sin sesión: login, layout raíz): la única organización.
       await db.select({ metadata: schema.organization.metadata }).from(schema.organization).limit(1);
   const r = aparienciaSchema.safeParse(leerMetadata(rows[0]?.metadata ?? null).apariencia);
   return r.success ? r.data : null;

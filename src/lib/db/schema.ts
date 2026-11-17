@@ -83,6 +83,26 @@ export const organization = pgTable("organization", {
   logo: text("logo"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   metadata: text("metadata"),
+  /**
+   * 069 — `activa` | `suspendida`. Una suspendida no deja usar la app ni la
+   * API, ni enviar ni despachar; la ingesta de webhooks sigue (no se pierde
+   * nada). Better Auth ignora las columnas que no declara.
+   */
+  status: text("status", { enum: ["activa", "suspendida"] })
+    .notNull()
+    .default("activa"),
+  suspendedAt: timestamp("suspended_at"),
+  /**
+   * 069 — Módulos de ESTA organización dentro del techo de la instancia
+   * (`src/server/modulos/efectivos.ts`). `null` o clave ausente = hereda el
+   * techo: lo que tienen todas las organizaciones de `single`.
+   */
+  modules: jsonb("modules").$type<{
+    agenda?: boolean;
+    atribucion?: boolean;
+    channels?: string[];
+    modules?: string[];
+  }>(),
 });
 
 export const member = pgTable("member", {
@@ -109,7 +129,80 @@ export const invitation = pgTable("invitation", {
   inviterId: text("inviter_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  /** 069 — SHA-256 del token del enlace; el token en claro nunca se guarda. */
+  tokenHash: text("token_hash").unique(),
+  acceptedAt: timestamp("accepted_at"),
 });
+
+/* ============================================================
+ * 069 — Plataforma (modo `multi`). Datos de la PLATAFORMA, no de un tenant:
+ * no llevan `organization_id NOT NULL` (Complexity Tracking del plan).
+ * ============================================================ */
+
+/** Super-Admins. Separado de `member.role` a propósito (constitución I). */
+export const platformAdmin = pgTable("platform_admin", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdBy: text("created_by"),
+});
+
+/** Acceso de soporte de un Super-Admin a UNA organización, con caducidad. */
+export const supportGrant = pgTable(
+  "support_grant",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    platformUserId: text("platform_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    level: text("level", { enum: ["lectura", "configuracion"] }).notNull(),
+    reason: text("reason").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    revokedAt: timestamp("revoked_at"),
+    revokedBy: text("revoked_by"),
+  },
+  (t) => [index("support_grant_org_idx").on(t.organizationId, t.expiresAt)]
+);
+
+/** Tokens personales `alp_…` de un Super-Admin (REST y MCP). Solo el hash. */
+export const platformApiToken = pgTable("platform_api_token", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull().unique(),
+  last4: text("last4").notNull(),
+  scopes: jsonb("scopes").$type<("read" | "provision")[]>().notNull(),
+  expiresAt: timestamp("expires_at"),
+  lastUsedAt: timestamp("last_used_at"),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/** Rastro de toda acción de plataforma (Ley 1581). */
+export const platformAuditLog = pgTable(
+  "platform_audit_log",
+  {
+    id: text("id").primaryKey(),
+    actorUserId: text("actor_user_id").notNull(),
+    organizationId: text("organization_id").references(() => organization.id, {
+      onDelete: "set null",
+    }),
+    via: text("via", { enum: ["sesion", "api", "mcp"] }).notNull().default("sesion"),
+    tokenId: text("token_id"),
+    action: text("action").notNull(),
+    detail: jsonb("detail").$type<Record<string, unknown>>().notNull().default({}),
+    ip: text("ip"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("platform_audit_log_org_idx").on(t.organizationId, t.createdAt)]
+);
 
 /* ============================================================
  * Dominio (toda tabla lleva organization_id NOT NULL + índice org-first)

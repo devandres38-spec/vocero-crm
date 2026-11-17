@@ -1,0 +1,25 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BotonSalir } from "@/components/plataforma/boton-salir";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * 069 — Hay sesión, pero no es de este negocio (o aún no eligió uno). No se
+ * dice nada del negocio del host: ni si existe.
+ */
+export default function SinAccesoPage() {
+  return (
+    <Card className="shadow-md">
+      <CardHeader>
+        <CardTitle>No perteneces a este negocio</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 text-sm text-text-2">
+        <p>
+          Tu cuenta no tiene acceso aquí. Si te invitaron, abre el enlace de la
+          invitación o entra por la dirección de tu negocio.
+        </p>
+        <BotonSalir />
+      </CardContent>
+    </Card>
+  );
+}

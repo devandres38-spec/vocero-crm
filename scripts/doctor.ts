@@ -23,6 +23,7 @@ import {
   evaluateComposeEnv,
   evaluateEnv,
   checkRegion,
+  checkTenancy,
   formatResult,
   summarize,
   type CheckResult,
@@ -64,6 +65,7 @@ section("Variables de entorno (esquema de src/lib/env.ts)", [
 ]);
 
 section("Región", checkRegion(process.env));
+section("Modo de despliegue", checkTenancy(process.env));
 
 if (!env) {
   const porque = "el entorno no pasa el esquema: corrige las ✗ de arriba";

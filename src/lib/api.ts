@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { requireSession, UnauthorizedError, type SessionContext } from "@/lib/auth/session";
+import {
+  OrganizacionSuspendidaError,
+  requireSession,
+  UnauthorizedError,
+  type SessionContext,
+} from "@/lib/auth/session";
 
 /** Respuesta de error estándar de la API interna (contrato api.md). */
 export function apiError(
@@ -24,6 +29,10 @@ export function withAuth<Args extends unknown[]>(
     } catch (err) {
       if (err instanceof UnauthorizedError) {
         return apiError(401, "unauthorized", "No autenticado");
+      }
+      // 069 — Suspendida: la organización existe y es suya, pero no opera.
+      if (err instanceof OrganizacionSuspendidaError) {
+        return apiError(403, "organizacion_suspendida", "Esta organización está suspendida");
       }
       throw err;
     }

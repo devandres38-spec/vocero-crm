@@ -1,3 +1,5 @@
+import { esPlataforma } from "@/lib/tenancy";
+
 /**
  * 021 — ¿Hay un cerebro al que despacharle? Dos cosas, y las dos por entorno:
  * `BRAIN_DISPATCH_URL` (a dónde) y `BOT_API_KEY` (con qué se firma, y con qué
@@ -56,6 +58,10 @@ export function leerConfigDespacho(env: Entorno = process.env): ConfigDespacho {
 
 /** El CRM está empujando turnos a un cerebro. */
 export function despachoActivo(): boolean {
+  // 069 — En modo plataforma el despacho de organización única no existe:
+  // los negocios operan su bandeja a mano hasta el despacho por
+  // organización (070).
+  if (esPlataforma()) return false;
   return leerConfigDespacho().active;
 }
 

@@ -1,6 +1,8 @@
 import { count, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
+import { correosSuperAdmin, esPlataforma, normalizarCorreo } from "@/lib/tenancy";
+import { auditar } from "@/server/platform/auditoria";
 
 /** Etapas sembradas del pipeline (US2). */
 const SEED_STAGES: { name: string; kind: "open" | "won" | "lost" }[] = [
@@ -11,16 +13,56 @@ const SEED_STAGES: { name: string; kind: "open" | "won" | "lost" }[] = [
   { name: "Perdido", kind: "lost" },
 ];
 
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
 /**
- * Primer registro de la instancia: crea la organización, deja al usuario como
- * propietario y siembra pipeline + perfil del agente.
- *
- * Solo actúa si NO existe ninguna organización (las cuentas de equipo las crea
- * el propietario y reciben su membresía explícita). Un advisory lock evita que
- * dos registros simultáneos en instancia vacía creen dos organizaciones.
+ * Lo que toda organización nueva trae: pipeline y perfil del agente. Una sola
+ * siembra para el alta de `single` y para la de la plataforma (069).
  */
-export async function onUserCreated(userId: string, userName: string) {
+export async function sembrarOrganizacion(tx: Tx, orgId: string): Promise<void> {
+  await tx.insert(schema.pipelineStage).values(
+    SEED_STAGES.map((s, i) => ({
+      id: newId("stage"),
+      organizationId: orgId,
+      name: s.name,
+      position: i,
+      kind: s.kind,
+    }))
+  );
+  await tx.insert(schema.agentProfile).values({
+    id: newId("agentProfile"),
+    organizationId: orgId,
+  });
+}
+
+/**
+ * Al crearse un usuario.
+ *
+ * `single` — Primer registro de la instancia: crea la organización, deja al
+ * usuario como propietario y siembra pipeline + perfil del agente. Solo actúa
+ * si NO existe ninguna organización (las cuentas de equipo las crea el
+ * propietario y reciben su membresía explícita). Un advisory lock evita que
+ * dos registros simultáneos en instancia vacía creen dos organizaciones.
+ *
+ * `multi` (069) — Nunca crea organizaciones (las da de alta la plataforma).
+ * Si el correo es de PLATFORM_ADMIN_EMAILS, el usuario queda Super-Admin.
+ */
+export async function onUserCreated(userId: string, userName: string, email?: string) {
   const db = getDb();
+  if (esPlataforma()) {
+    if (!email || !correosSuperAdmin().has(normalizarCorreo(email))) return;
+    await db.transaction(async (tx) => {
+      const nuevos = await tx
+        .insert(schema.platformAdmin)
+        .values({ userId, createdBy: "PLATFORM_ADMIN_EMAILS" })
+        .onConflictDoNothing()
+        .returning({ userId: schema.platformAdmin.userId });
+      if (nuevos.length > 0) {
+        await auditar({ actorUserId: userId, action: "admin_registrado" }, tx);
+      }
+    });
+    return;
+  }
   await db.transaction(async (tx) => {
     // Lock transaccional de "primer arranque" (clave arbitraria fija):
     // dos registros simultáneos en instancia vacía → solo uno crea la org.
@@ -42,29 +84,35 @@ export async function onUserCreated(userId: string, userName: string) {
       userId,
       role: "owner",
     });
-    await tx.insert(schema.pipelineStage).values(
-      SEED_STAGES.map((s, i) => ({
-        id: newId("stage"),
-        organizationId: orgId,
-        name: s.name,
-        position: i,
-        kind: s.kind,
-      }))
-    );
-    await tx.insert(schema.agentProfile).values({
-      id: newId("agentProfile"),
-      organizationId: orgId,
-    });
+    await sembrarOrganizacion(tx, orgId);
   });
 }
 
-/** Organización activa de un usuario (su primera membresía). */
+/**
+ * Organización activa al crear una sesión.
+ *
+ * `single`: su membresía (en `single` hay una sola organización).
+ * `multi` (069): la ÚNICA si tiene exactamente una; con varias, ninguna —el
+ * host o el selector deciden—. Nunca «la primera».
+ */
 export async function resolveActiveOrganizationId(
   userId: string
 ): Promise<string | null> {
+  if (esPlataforma()) {
+    const rows = await getDb()
+      .select({ organizationId: schema.member.organizationId })
+      .from(schema.member)
+      .where(eq(schema.member.userId, userId))
+      .limit(2);
+    return rows.length === 1 ? rows[0]!.organizationId : null;
+  }
   return (await resolveMembership(userId))?.organizationId ?? null;
 }
 
+/**
+ * Solo modo `single` (069): la membresía del usuario en la organización de la
+ * instancia. En `multi` la organización la decide `resolverContexto`.
+ */
 export async function resolveMembership(
   userId: string
 ): Promise<{ organizationId: string; role: string } | null> {

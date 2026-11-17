@@ -42,3 +42,28 @@ describe("registro público cerrado", () => {
     expect(await isPublicSignupAllowed()).toBe(false);
   });
 });
+
+describe("069 — registro en modo plataforma", () => {
+  it("cerrado siempre, aunque ALLOW_SIGNUP=true y la instancia esté vacía", async () => {
+    orgCount = 0;
+    vi.stubEnv("TENANCY", "multi");
+    vi.stubEnv("ALLOW_SIGNUP", "true");
+    vi.stubEnv("PLATFORM_ADMIN_EMAILS", "ops@agencia.co");
+    expect(await isPublicSignupAllowed("alguien@cliente.co")).toBe(false);
+    expect(await isPublicSignupAllowed()).toBe(false);
+  });
+
+  it("abierto solo a los correos de PLATFORM_ADMIN_EMAILS (normalizados)", async () => {
+    vi.stubEnv("TENANCY", "multi");
+    vi.stubEnv("PLATFORM_ADMIN_EMAILS", "ops@agencia.co, otra@agencia.co");
+    expect(await isPublicSignupAllowed(" OPS@Agencia.co ")).toBe(true);
+    expect(await isPublicSignupAllowed("otra@agencia.co")).toBe(true);
+  });
+
+  it("`single` explícito se comporta como siempre", async () => {
+    orgCount = 0;
+    vi.stubEnv("TENANCY", "single");
+    vi.stubEnv("ALLOW_SIGNUP", "");
+    expect(await isPublicSignupAllowed()).toBe(true);
+  });
+});

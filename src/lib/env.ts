@@ -93,6 +93,13 @@ export const envSchema = z.object({
   REGION_LOCALE: z.string().optional(),
   REGION_CURRENCY: z.string().optional(),
   REGION_TIMEZONE: z.string().optional(),
+  // 069: modo de despliegue (src/lib/tenancy.ts). Opcionales y sin validar
+  // aquí por lo mismo que REGION_*: un valor mal escrito cae a `single` (la
+  // 2.8.0) y `pnpm doctor` lo avisa.
+  TENANCY: z.string().optional(),
+  PLATFORM_BASE_DOMAIN: z.string().optional(),
+  PLATFORM_ADMIN_EMAILS: z.string().optional(),
+  PLATFORM_MCP: z.string().optional(),
   NODE_ENV: z.string().default("development"),
 });
 
