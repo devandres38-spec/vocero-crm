@@ -1,9 +1,8 @@
 import { z } from "zod";
-import { getDb } from "@/lib/db";
 import { buscarOrganizacion } from "@/server/platform/blueprint/aplicar";
 import { requirePlataforma } from "@/server/platform/guardia";
 import { errorPlataforma, leerJson, respuestaDeError } from "@/server/platform/http";
-import { crearInvitacion, esMiembroPorCorreo } from "@/server/platform/invitaciones";
+import { invitarAOrganizacion } from "@/server/platform/invitaciones";
 
 export const dynamic = "force-dynamic";
 
@@ -40,15 +39,7 @@ export async function POST(req: Request, ctx: Params): Promise<Response> {
   try {
     const org = await buscarOrganizacion((await ctx.params).idOrSlug);
     if (!org) return errorPlataforma(404, "organizacion_inexistente");
-    const r = await getDb().transaction(async (tx) => {
-      if (await esMiembroPorCorreo(tx, org.id, parsed.data.email)) return null;
-      return crearInvitacion(tx, g.actor, {
-        organizationId: org.id,
-        slug: org.slug,
-        email: parsed.data.email,
-        role: parsed.data.role,
-      });
-    });
+    const r = await invitarAOrganizacion(g.actor, org, parsed.data.email, parsed.data.role);
     if (!r) return errorPlataforma(409, "ya_miembro", "Ese correo ya es miembro de la organización");
     return Response.json(
       { invitationId: r.id, url: r.url, expiresAt: r.expiresAt.toISOString() },

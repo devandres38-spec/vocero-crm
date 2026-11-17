@@ -168,3 +168,19 @@ export async function revocarInvitacion(
     return true;
   });
 }
+
+/**
+ * 069 — Invitar a una organización desde la plataforma (REST y MCP usan esto
+ * mismo). `null` si el correo ya es miembro.
+ */
+export async function invitarAOrganizacion(
+  actor: Actor,
+  org: { id: string; slug: string | null },
+  email: string,
+  role: "owner" | "admin" | "member" = "owner"
+): Promise<{ id: string; url: string; expiresAt: Date } | null> {
+  return getDb().transaction(async (tx) => {
+    if (await esMiembroPorCorreo(tx, org.id, email)) return null;
+    return crearInvitacion(tx, actor, { organizationId: org.id, slug: org.slug, email, role });
+  });
+}
