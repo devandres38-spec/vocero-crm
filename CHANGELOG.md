@@ -5,6 +5,60 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.9.0 — 2026-11-17
+
+Modo plataforma multi-tenant (spec 069, constitución 2.0.0). **En `single`
+(sin `TENANCY`) nada cambia**: actualizar es redesplegar; la migración
+`0028_plataforma` se aplica sola al arrancar y solo agrega columnas y tablas
+que `single` no usa.
+
+### Actualizar desde 2.8
+
+- **Instancias de un negocio (`single`)**: nada que hacer. Un único cambio
+  visible: la API propia del plugin de organizaciones de Better Auth
+  (`/api/auth/organization/create`, `/invite-member`…) responde 404; la app
+  nunca la usó y abierta permitía crear organizaciones saltándose el alta.
+- **Pasar a plataforma (`multi`)**: sigue
+  [docs/plataforma-despliegue.md](docs/plataforma-despliegue.md) (DNS y
+  certificado comodín en Coolify, `TENANCY=multi`, `PLATFORM_BASE_DOMAIN`,
+  `PLATFORM_ADMIN_EMAILS`). La organización existente conserva el slug
+  `principal` y sus módulos.
+- **Banderas como techo**: en `multi`, `AGENDA`, `ATRIBUCION` y `CHANNELS`
+  dicen lo que la instancia permite; cada negocio enciende lo suyo desde
+  `/platform`.
+- **Nea**: sin cambios en esta versión. En `multi`, `/api/bot/*` responde 404
+  y el despacho está apagado hasta `/api/brains/*` (070): cada negocio atiende
+  su bandeja a mano.
+
+### Nuevo
+
+- **Modo plataforma** (`TENANCY=multi`): cada negocio en
+  `{slug}.PLATFORM_BASE_DOMAIN`, una sesión para todos los subdominios y la
+  organización decidida por el host en cada petición, validada contra la
+  membresía. Nunca «la primera organización» (guardarraíl).
+- **Panel de agencia `/platform`**: alta de negocios con asistente (negocio,
+  región, marca, módulos, pipeline, agente y conocimiento, agenda, dueño),
+  detalle con módulos y editor del Blueprint, suspender/reactivar, soporte,
+  auditoría y tokens.
+- **Invitaciones** de un solo uso (7 días; en la base solo el hash del token)
+  y selector de empresas para quien pertenece a varias.
+- **`OrganizationBlueprint` v1**: un negocio completo como JSON declarativo e
+  idempotente, con `dryRun` y export (`aplicar(exportar)` no cambia nada).
+  Nunca lleva secretos ni borra datos.
+- **API REST `/api/platform/*`** y **tokens personales `alp_…`** (alcances
+  `read`/`provision`, caducidad, revocación).
+- **Servidor MCP** en `/api/platform/mcp` (`PLATFORM_MCP=on`) para aprovisionar
+  con Claude o Gemini: [docs/plataforma-mcp.md](docs/plataforma-mcp.md).
+- **Acceso de soporte en dos niveles** (`lectura` / `configuracion`) con motivo,
+  caducidad ≤ 8 h, banda visible, auditoría de cada petición y visible al
+  dueño en Ajustes → Equipo junto a «Cambios de la plataforma».
+- **Módulos por organización**, **marca por subdominio** en login, manifest,
+  favicon e icono, y **región por negocio** (país, idioma, zona).
+
+### Arreglado
+
+- `comprobarSegmento` rechaza `.` y `..` en rutas de medios.
+
 ## 2.8.0 — 2026-11-17
 
 Marca blanca Aliantis y Colombia por defecto (spec 068, constitución 2.0.0).

@@ -1,13 +1,16 @@
 # Tasks: Multi-Tenant SaaS (modo plataforma)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) (rev. 2)
-**Estado**: en ejecución. Bloques 1 y 2 hechos y verificados en local; Bloque 3
-(US5, US4, US6, US9 y cierre) pendiente de aprobación.
+**Estado**: implementada (T001–T070) y verificada en local. Pendiente solo lo
+que corre fuera de este equipo: T071 build + E2E en CI/staging, T072 DNS y
+certificado comodín en Coolify (verificación humana) y T073 (marcar hecha tras
+ambos).
 
 | Bloque | Tareas | Commits | Verificación local |
 |---|---|---|---|
 | 1 — Base + US1 + US2 | T001–T028 | `3784baa` spec · `5425461` base + US1 · `04d76dc` US2 | typecheck ✓ · lint ✓ · Vitest 138 archivos / 1606 pruebas ✓ |
 | 2 — US3 + US7 + US8 | T029–T047 | `f4a5bcf` US3 · `91dccf8` + `b52bfff` US7 · `72f4a76` US8 | typecheck ✓ · lint ✓ · Vitest 142 archivos / 1646 pruebas ✓ |
+| 3 — US5 + US4/US6 + US9 + cierre | T048–T070 | `10a6894` US5 · `c324fe2` US4/US6 · `56f8519` US9 · cierre (docs, E2E, 2.9.0) | typecheck ✓ · lint ✓ · Vitest 146 archivos / 1686 pruebas ✓ |
 
 Antes de la 069: 130 archivos / 1489 pruebas. Ninguna expectativa existente
 cambió (SC-001); solo se añadieron casos.
@@ -42,8 +45,28 @@ cambió (SC-001); solo se añadieron casos.
   `aplicar(exportar(org))` = `sin_cambios` está probado.
 - Tokens: un token presentado e inválido responde 401 (no 404); los tokens se
   gestionan solo con sesión. `GET /blueprint` y el `dryRun` piden alcance `read`.
-- Pendiente para el Bloque 3: el `owner` aún no ve accesos de soporte (US5) y la
-  marca del login sigue siendo la de plataforma hasta US4.
+
+**Notas del Bloque 3**
+- US5: además de las 6 superficies con mutación permitida (guardarraíl con la
+  lista exacta de 8 archivos), un acceso de soporte NO puede ni leer
+  credenciales, canales, conectores ni el equipo (`RUTAS_VETADAS_SOPORTE` en
+  `src/lib/api.ts`). Abrir accesos solo con sesión de una persona: ni token
+  ni MCP. Sin acceso vigente, la API responde 404 y queda `acceso_denegado`.
+- US4/US6: `organizacionParaMarca()` (host → sesión → ninguno) alimenta marca,
+  apariencia y región de las pantallas sin organización explícita; la región
+  por negocio se edita en Ajustes → Marca (`/api/settings/region`, solo
+  `multi`, solo quien configura; no se agregó a las superficies de soporte).
+  Quedan con el locale de la instancia dos textos fijados al cargar el módulo
+  (`FECHA_DE_CITA` en `api/conversations/[id]` y los mensajes de
+  `channels/capabilities.ts`): menor, anotado para una fase posterior.
+- US9 / R2: manejador JSON-RPC propio (Streamable HTTP sin estado, respuestas
+  JSON) en vez de `@modelcontextprotocol/sdk` — el respaldo previsto en el
+  plan: sin dependencia nueva (II) ni sesiones. Solo token `alp_` (nunca la
+  cookie), Origin ajeno → 403. Equivalencia REST↔MCP probada sobre las
+  escrituras y la auditoría.
+- Cierre: `scripts/e2e-plataforma.mjs` (+ `tests/e2e/us-plataforma.md`) corre
+  por API contra staging con DNS comodín; `docs/plataforma-despliegue.md`,
+  `docs/plataforma-mcp.md`, `docs/openapi-platform.json`; CHANGELOG 2.9.0.
 
 **Formato**: `[ID] [P?] [Story] Descripción` · `[P]` = paralelizable ·
 Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
@@ -135,49 +158,49 @@ Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
 
 ## Phase 8: User Story 5 — Acceso de soporte en dos niveles (P1)
 
-- [ ] T048 [US5] `server/platform/soporte.ts`: solicitar (nivel, motivo ≥ 10, caducidad ≤ 8 h), revocar, `grantVigente(userId, orgId)`
-- [ ] T049 [US5] Resolvedor: Super-Admin + grant vigente de la organización del host → `role: "soporte"`, `grant.level`; sin grant → 404 + `acceso_denegado`
-- [ ] T050 [US5] `lib/api.ts` `withAuth`: opción `soporte?: "configuracion"`; regla `GET` libre, mutación solo con nivel `configuracion` + ruta que lo declara, si no 403 `solo_lectura` / `fuera_de_alcance`; auditar cada petición y `changedKeys` en mutaciones; `canConfigure("soporte")` según nivel
-- [ ] T051 [US5] Declarar `soporte: "configuracion"` en `api/settings/{branding,appearance}`, `api/pipeline/stages/**`, `api/calendar/settings`, `api/agent/profile`, `api/kb/**` (y nada más)
-- [ ] T052 [US5] UI: banda «Acceso de soporte (lectura|configuración) — vence HH:MM» en `AppShell`; `/platform/soporte` (solicitar con nivel / revocar) y `/platform/auditoria` (filtros por organización, vía, acción); Ajustes → Equipo muestra al `owner` los accesos con su nivel
-- [ ] T053 [P] [US5] Pruebas: sin grant 404 y auditado; grant de A no abre B; `lectura` → escritura 403 `solo_lectura`; `configuracion` → perfil/KB/etapas/agenda/marca 200 con `changedKeys`, envío/contactos/equipo/IA/WhatsApp 403 `fuera_de_alcance`; guardarraíl con la lista exacta de rutas que declaran el alcance; vencido/revocado corta `[local]`
+- [x] T048 [US5] `server/platform/soporte.ts`: solicitar (nivel, motivo ≥ 10, caducidad ≤ 8 h), revocar, `grantVigente(userId, orgId)`
+- [x] T049 [US5] Resolvedor: Super-Admin + grant vigente de la organización del host → `role: "soporte"`, `grant.level`; sin grant → 404 + `acceso_denegado`
+- [x] T050 [US5] `lib/api.ts` `withAuth`: opción `soporte?: "configuracion"`; regla `GET` libre, mutación solo con nivel `configuracion` + ruta que lo declara, si no 403 `solo_lectura` / `fuera_de_alcance`; auditar cada petición y `changedKeys` en mutaciones; `canConfigure("soporte")` según nivel
+- [x] T051 [US5] Declarar `soporte: "configuracion"` en `api/settings/{branding,appearance}`, `api/pipeline/stages/**`, `api/calendar/settings`, `api/agent/profile`, `api/kb/**` (y nada más)
+- [x] T052 [US5] UI: banda «Acceso de soporte (lectura|configuración) — vence HH:MM» en `AppShell`; `/platform/soporte` (solicitar con nivel / revocar) y `/platform/auditoria` (filtros por organización, vía, acción); Ajustes → Equipo muestra al `owner` los accesos con su nivel
+- [x] T053 [P] [US5] Pruebas: sin grant 404 y auditado; grant de A no abre B; `lectura` → escritura 403 `solo_lectura`; `configuracion` → perfil/KB/etapas/agenda/marca 200 con `changedKeys`, envío/contactos/equipo/IA/WhatsApp 403 `fuera_de_alcance`; guardarraíl con la lista exacta de rutas que declaran el alcance; vencido/revocado corta `[local]`
 
 ---
 
 ## Phase 9: User Story 4 — Marca por subdominio (P2)
 
-- [ ] T054 [US4] `server/branding.ts` y `server/apariencia.ts`: sin organización → por host en `multi`, `DEFAULT_BRANDING` si no hay coincidencia; `single` igual
-- [ ] T055 [US4] Consumidores: `app/layout.tsx`, `(auth)/layout.tsx`, `manifest.ts`, `api/branding/favicon/route.ts`, `server/app-icon.tsx`
-- [ ] T056 [P] [US4] Pruebas: host de A → marca de A; raíz / slug inexistente / suspendida → Aliantis; `single` → como hoy `[local]`
+- [x] T054 [US4] `server/branding.ts` y `server/apariencia.ts`: sin organización → por host en `multi`, `DEFAULT_BRANDING` si no hay coincidencia; `single` igual
+- [x] T055 [US4] Consumidores: `app/layout.tsx`, `(auth)/layout.tsx`, `manifest.ts`, `api/branding/favicon/route.ts`, `server/app-icon.tsx`
+- [x] T056 [P] [US4] Pruebas: host de A → marca de A; raíz / slug inexistente / suspendida → Aliantis; `single` → como hoy `[local]`
 
 ---
 
 ## Phase 10: User Story 6 — Región por organización (P2)
 
-- [ ] T057 [US6] `lib/region.ts` + `server/region.ts`: `getRegionDeOrganizacion(orgId)` (metadata ∪ `REGION_*`)
-- [ ] T058 [US6] Consumidores: `RegionProvider` del layout raíz por organización; `api/contacts` e importación (país); `agenda/settings` (zona por defecto); `analytics/period`
-- [ ] T059 [US6] Ajustes → Marca: país y locale (API `/api/branding` acepta `region`)
-- [ ] T060 [P] [US6] Pruebas: org MX en instancia CO usa MX; sin región hereda `REGION_*`; A↛B al guardar región `[local]`
+- [x] T057 [US6] `lib/region.ts` + `server/region.ts`: `getRegionDeOrganizacion(orgId)` (metadata ∪ `REGION_*`)
+- [x] T058 [US6] Consumidores: `RegionProvider` del layout raíz por organización; `api/contacts` e importación (país); `agenda/settings` (zona por defecto); `analytics/period`
+- [x] T059 [US6] Ajustes → Marca: país y locale (API `/api/branding` acepta `region`)
+- [x] T060 [P] [US6] Pruebas: org MX en instancia CO usa MX; sin región hereda `REGION_*`; A↛B al guardar región `[local]`
 
 ---
 
 ## Phase 11: User Story 9 — Servidor MCP de aprovisionamiento (P2)
 
-- [ ] T061 [US9] **R2**: verificar en el paquete `@modelcontextprotocol/sdk` (versión exacta, ≥ 2 semanas) el transporte Streamable HTTP sobre `Request`/`Response`; si no sirve, respaldo JSON-RPC propio sin dependencia. Registrar la decisión en el plan
-- [ ] T062 [US9] `server/platform/mcp/herramientas.ts`: `get_catalog`, `list_organizations`, `get_organization`, `get_blueprint`, `plan_blueprint`, `apply_blueprint`, `create_owner_invitation`, `suspend_organization`, `reactivate_organization` — adaptadores de los servicios; `inputSchema` del JSON Schema de T022; alcance por herramienta
-- [ ] T063 [US9] `app/api/platform/mcp/route.ts`: 404 si `!mcpActivo()` o `single`; guardia `Bearer` (`via: mcp`); sin estado
-- [ ] T064 [P] [US9] Pruebas: bandera apagada 404; sin token / revocado 401 auditado; `read` no puede `apply_blueprint`; `tools/list` sin herramientas de datos personales ni soporte (lista exacta); **equivalencia REST↔MCP** (mismo Blueprint → mismo estado y auditoría salvo `via`) (SC-005) `[local]`
-- [ ] T065 [US9] `docs/plataforma-mcp.md`: crear token, configurar Claude Code/Desktop y Gemini CLI, ejemplo de Blueprint, límites (sin OAuth todavía)
+- [x] T061 [US9] **R2**: verificar en el paquete `@modelcontextprotocol/sdk` (versión exacta, ≥ 2 semanas) el transporte Streamable HTTP sobre `Request`/`Response`; si no sirve, respaldo JSON-RPC propio sin dependencia. Registrar la decisión en el plan
+- [x] T062 [US9] `server/platform/mcp/herramientas.ts`: `get_catalog`, `list_organizations`, `get_organization`, `get_blueprint`, `plan_blueprint`, `apply_blueprint`, `create_owner_invitation`, `suspend_organization`, `reactivate_organization` — adaptadores de los servicios; `inputSchema` del JSON Schema de T022; alcance por herramienta
+- [x] T063 [US9] `app/api/platform/mcp/route.ts`: 404 si `!mcpActivo()` o `single`; guardia `Bearer` (`via: mcp`); sin estado
+- [x] T064 [P] [US9] Pruebas: bandera apagada 404; sin token / revocado 401 auditado; `read` no puede `apply_blueprint`; `tools/list` sin herramientas de datos personales ni soporte (lista exacta); **equivalencia REST↔MCP** (mismo Blueprint → mismo estado y auditoría salvo `via`) (SC-005) `[local]`
+- [x] T065 [US9] `docs/plataforma-mcp.md`: crear token, configurar Claude Code/Desktop y Gemini CLI, ejemplo de Blueprint, límites (sin OAuth todavía)
 
 ---
 
 ## Phase 12: Polish & Release
 
-- [ ] T066 `docs/openapi-platform.json` (REST de D13, generado/validado contra el Zod del Blueprint)
-- [ ] T067 `scripts/e2e-plataforma.mjs` + guion `tests/e2e/us-plataforma.md` (dos negocios — uno por asistente, otro por MCP —, módulos distintos, invitación, cambio de empresa, suspensión, marca por subdominio, soporte en ambos niveles; camino infeliz)
-- [ ] T068 [P] `AGENTS.md`, `CLAUDE.md` (modo plataforma, resolvedor, módulos efectivos, Blueprint, soporte, MCP), `INSTALL-IA.md` y README (DNS/TLS comodín en Coolify), `specs/README.md`
-- [ ] T069 Versión 2.9.0 (`package.json`, `docker-compose.yml`, `render.yaml`, `fly.toml`, `railway.toml`, `INSTALL-IA.md`); `CHANGELOG.md` con «Actualizar desde 2.8» (nada cambia en `single`; cómo pasar a `multi`; banderas como techo)
-- [ ] T070 Gate local completo `[local]`
+- [x] T066 `docs/openapi-platform.json` (REST de D13, generado/validado contra el Zod del Blueprint)
+- [x] T067 `scripts/e2e-plataforma.mjs` + guion `tests/e2e/us-plataforma.md` (dos negocios — uno por asistente, otro por MCP —, módulos distintos, invitación, cambio de empresa, suspensión, marca por subdominio, soporte en ambos niveles; camino infeliz)
+- [x] T068 [P] `AGENTS.md`, `CLAUDE.md` (modo plataforma, resolvedor, módulos efectivos, Blueprint, soporte, MCP), `INSTALL-IA.md` y README (DNS/TLS comodín en Coolify), `specs/README.md`
+- [x] T069 Versión 2.9.0 (`package.json`, `docker-compose.yml`, `render.yaml`, `fly.toml`, `railway.toml`, `INSTALL-IA.md`); `CHANGELOG.md` con «Actualizar desde 2.8» (nada cambia en `single`; cómo pasar a `multi`; banderas como techo)
+- [x] T070 Gate local completo `[local]`
 - [ ] T071 Build + E2E (`e2e-plataforma` y los existentes con `TENANCY` vacía y con `multi`) `[CI/staging]`
 - [ ] T072 DNS y certificado comodín verificados en Coolify — **verificación humana** `[CI/staging]`
 - [ ] T073 Marcar 069 como hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T071–T072
