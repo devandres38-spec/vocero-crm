@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { esPlataforma } from "@/lib/tenancy";
+import { organizacionParaMarca } from "@/server/tenant/marca";
 import { THEME_COOKIE } from "@/lib/theme";
 import {
   APARIENCIA_COOKIE,
@@ -29,8 +30,12 @@ function leerMetadata(metadata: string | null): Record<string, unknown> {
 
 /** La del negocio, o null si nunca se eligió (vale la de Vocero). */
 export async function aparienciaDelNegocio(organizationId?: string | null): Promise<Apariencia | null> {
-  // 069 — En modo plataforma, sin organización vale la de plataforma.
-  if (!organizationId && esPlataforma()) return null;
+  // 069 (US4) — En modo plataforma, la del subdominio (o de la sesión) y, si
+  // no hay, la de plataforma.
+  if (!organizationId && esPlataforma()) {
+    organizationId = await organizacionParaMarca();
+    if (!organizationId) return null;
+  }
   const db = getDb();
   const rows = organizationId
     ? await db

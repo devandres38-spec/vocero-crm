@@ -12,6 +12,8 @@ import { getBranding } from "@/server/branding";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import "./globals.css";
+import { getRegionDeOrganizacion } from "@/server/region";
+import { organizacionParaMarca } from "@/server/tenant/marca";
 
 // Las voces de la marca, dentro del repo (`./fonts`, subconjunto latino de
 // Google Fonts, licencia OFL en `fonts/licencias/`). Antes next/font las
@@ -93,7 +95,9 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
-  const region = getRegion();
+  // 069 (US6) — La región del negocio de la pantalla (subdominio o sesión);
+  // en `single` o sin negocio, la de la instancia.
+  const region = await getRegionDeOrganizacion(await organizacionParaMarca()).catch(() => getRegion());
   // 062 · D6 — La apariencia (tema, letra, tamaño y densidad) se resuelve en
   // el servidor: el primer pintado ya la trae, sin parpadeo.
   const { apariencia } = await aparienciaActual().catch(() => ({

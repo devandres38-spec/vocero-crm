@@ -10,9 +10,9 @@ import { navKicker } from "@/lib/channels";
 import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
 import { BandaSoporte } from "@/components/plataforma/banda-soporte";
-import { getRegion } from "@/lib/region";
 import { agendaActiva, modulosDe } from "@/server/modulos/consulta";
 import { dominioBase, esPlataforma } from "@/lib/tenancy";
+import { getRegionDeOrganizacion } from "@/server/region";
 
 export default async function AppLayout({
   children,
@@ -49,7 +49,7 @@ export default async function AppLayout({
       aviso={
         <>
           {session.via === "soporte" && session.grant && (
-            <BandaSoporte level={session.grant.level} expiresAt={session.grant.expiresAt} zona={getRegion().timezone} />
+            <BandaSoporte level={session.grant.level} expiresAt={session.grant.expiresAt} zona={(await getRegionDeOrganizacion(session.organizationId)).timezone} />
           )}
           <AvisoIaBanner aviso={aviso} />
         </>

@@ -14,6 +14,8 @@ import {
   type Interval,
   type WeekdayKey,
 } from "@/lib/time/slots";
+import { getRegionDeOrganizacion } from "@/server/region";
+import { esPlataforma } from "@/lib/tenancy";
 
 /**
  * 015 — La configuración de la agenda del negocio (una por organización):
@@ -80,8 +82,13 @@ export async function getSettings(
     .limit(1);
 
   const row = rows[0];
-  // Sin fila: la instancia recién encendida ya es usable.
-  if (!row) return DEFAULT_CALENDAR_SETTINGS;
+  // Sin fila: la instancia recién encendida ya es usable. 069 (US6): en modo
+  // plataforma, con la zona del negocio (en `single`, la de la instancia).
+  if (!row) {
+    return esPlataforma()
+      ? { ...DEFAULT_CALENDAR_SETTINGS, timezone: (await getRegionDeOrganizacion(organizationId)).timezone }
+      : DEFAULT_CALENDAR_SETTINGS;
+  }
 
   return {
     weeklyHours: normalizeWeeklyHours(row.weeklyHours as WeeklyHours),

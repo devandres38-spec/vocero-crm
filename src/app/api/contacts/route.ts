@@ -5,10 +5,10 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { normalizarTelefonoHumano } from "@/lib/phone";
-import { getRegion } from "@/lib/region";
 import { digitsOnly, normalizeText } from "@/lib/search";
 import { serializeContact } from "@/server/contacts";
 import { createLeadForContact } from "@/server/inbox/lead-activity";
+import { getRegionDeOrganizacion } from "@/server/region";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +122,10 @@ export const POST = withAuth(async (session, req: Request) => {
   if (!body.ok) return body.response;
 
   // 003: la identidad WhatsApp se deriva del teléfono normalizado.
-  const telefono = normalizarTelefonoHumano(body.data.phone, getRegion().country);
+  const telefono = normalizarTelefonoHumano(
+    body.data.phone,
+    (await getRegionDeOrganizacion(session.organizationId)).country
+  );
   if (!telefono.ok) {
     return apiError(
       422,
