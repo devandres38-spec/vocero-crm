@@ -110,7 +110,8 @@ describe("resolvePeriod", () => {
 
   it("una zona horaria inválida no tumba la pantalla", () => {
     const p = resolvePeriod({ from: "2026-03-01", to: "2026-03-02", timezone: "Marte/Olimpo" });
-    expect(p.timezone).toBe("America/Mexico_City");
+    // Cae a la zona de la región (068: Bogotá).
+    expect(p.timezone).toBe("America/Bogota");
   });
 });
 

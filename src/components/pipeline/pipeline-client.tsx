@@ -442,7 +442,7 @@ function LeadCard({
           </div>
           <p className="text-[11px] text-muted-foreground">
             {lead.lastActivityAt
-              ? `Actividad: ${formatTime(lead.lastActivityAt)}`
+              ? `Actividad: ${formatTime(lead.lastActivityAt, locale)}`
               : "Sin actividad"}
           </p>
         </div>

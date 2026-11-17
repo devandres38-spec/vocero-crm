@@ -1,5 +1,7 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
+import { formatNumber } from "@/lib/region";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
@@ -378,6 +380,7 @@ function KbSection({
   kbSize: { chars: number; warnAt: number; warning: boolean } | null;
   onChanged: () => void;
 }) {
+  const { locale } = useRegion();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [block, setBlock] = useState("");
@@ -423,7 +426,7 @@ function KbSection({
           </div>
           {kbSize && (
             <Badge variant={kbSize.warning ? "warning" : "secondary"}>
-              {kbSize.chars.toLocaleString("es-MX")} caracteres
+              {formatNumber(kbSize.chars, locale)} caracteres
             </Badge>
           )}
         </div>

@@ -1,4 +1,5 @@
 import { getDb, schema } from "@/lib/db";
+import { getRegion } from "@/lib/region";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import {
@@ -21,7 +22,8 @@ import {
 
 export type WeeklyHours = Partial<Record<WeekdayKey, Interval[]>>;
 
-export const DEFAULT_TIMEZONE = "America/Mexico_City";
+/** 068 — La zona de la región de la instancia (America/Bogota por defecto). */
+export const DEFAULT_TIMEZONE = getRegion().timezone;
 
 /** L-V 09:00-18:00 — se ajusta en Ajustes → Agenda. */
 export const DEFAULT_WEEKLY_HOURS: WeeklyHours = {

@@ -2257,7 +2257,7 @@ async function agendaChecks() {
   );
   ok(
     "…con la etiqueta del día en palabras, en la zona del negocio",
-    ctxConCita.json?.booking?.timezone === "America/Mexico_City" &&
+    ctxConCita.json?.booking?.timezone === "America/Bogota" &&
       typeof proxima?.label === "string" &&
       proxima.label.endsWith(`, ${slotsA[0].time}`) &&
       proxima.label.length > `, ${slotsA[0].time}`.length + 8,

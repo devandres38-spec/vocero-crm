@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +53,7 @@ const DAYS: { key: DayKey; label: string }[] = [
 const DEFAULT_INTERVAL: Interval = { start: "09:00", end: "18:00" };
 
 export function AgendaClient() {
+  const { timezone } = useRegion();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [slots, setSlots] = useState<{ label: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -292,7 +294,7 @@ export function AgendaClient() {
               id="tz"
               value={settings.timezone}
               onChange={(e) => patch({ timezone: e.target.value })}
-              placeholder="America/Mexico_City"
+              placeholder={timezone}
             />
           </div>
         </CardContent>

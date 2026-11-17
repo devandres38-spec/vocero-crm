@@ -7,9 +7,12 @@
  *
  * Sin dependencias: todo se resuelve con `Intl` de la plataforma, que ya trae
  * la base de datos de zonas (verificado también en el contenedor Alpine de
- * producción: 418 zonas y formato es-MX correcto). Ver
+ * producción: 418 zonas y formato regional correcto). El formato sale de la
+ * región de la instancia (068, `lib/region.ts`). Ver
  * specs/015-motor-agenda-universal/research.md D1.
  */
+
+import { getRegion } from "@/lib/region";
 
 export type Interval = { start: string; end: string }; // "HH:mm" hora de pared
 
@@ -214,10 +217,10 @@ export function overlaps(
 }
 
 /** Etiqueta legible en la zona del negocio: "mié 5 ago, 10:00". */
-export function labelInTz(startUtc: string, tz: string): string {
+export function labelInTz(startUtc: string, tz: string, locale = getRegion().locale): string {
   const d = new Date(startUtc);
   if (Number.isNaN(d.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("es-MX", {
+  const parts = new Intl.DateTimeFormat(locale, {
     timeZone: tz,
     weekday: "short",
     day: "numeric",
@@ -234,10 +237,10 @@ export function labelInTz(startUtc: string, tz: string): string {
 }
 
 /** Solo la hora en la zona del negocio: "10:00". */
-export function timeInTz(startUtc: string, tz: string): string {
+export function timeInTz(startUtc: string, tz: string, locale = getRegion().locale): string {
   const d = new Date(startUtc);
   if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("es-MX", {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: tz,
     hour: "2-digit",
     minute: "2-digit",
@@ -253,7 +256,12 @@ export function timeInTz(startUtc: string, tz: string): string {
  * contestó "10:30, de mañana" a una oferta de HOY y se agendó el día
  * equivocado. Quien ofrece tiene que poder decir el día completo.
  */
-export function dayLabelInTz(startUtc: string, tz: string, now?: Date): string {
+export function dayLabelInTz(
+  startUtc: string,
+  tz: string,
+  now?: Date,
+  locale = getRegion().locale
+): string {
   const d = new Date(startUtc);
   if (Number.isNaN(d.getTime())) return "";
   const dayIso = dayIsoInTz(d, tz);
@@ -263,7 +271,7 @@ export function dayLabelInTz(startUtc: string, tz: string, now?: Date): string {
   if (dayIso === todayIso) prefijo = "hoy ";
   else if (dayIso === addDaysISO(todayIso, 1)) prefijo = "mañana ";
 
-  const cuerpo = new Intl.DateTimeFormat("es-MX", {
+  const cuerpo = new Intl.DateTimeFormat(locale, {
     timeZone: tz,
     weekday: "long",
     day: "numeric",
@@ -284,16 +292,18 @@ const PARTS_FORMATS = new Map<
 >();
 
 function partsFormats(tz: string) {
-  let f = PARTS_FORMATS.get(tz);
+  const locale = getRegion().locale;
+  const clave = `${locale}|${tz}`;
+  let f = PARTS_FORMATS.get(clave);
   if (!f) {
     const mk = (opts: Intl.DateTimeFormatOptions) =>
-      new Intl.DateTimeFormat("es-MX", { timeZone: tz, ...opts });
+      new Intl.DateTimeFormat(locale, { timeZone: tz, ...opts });
     f = {
       date: mk({ day: "numeric", month: "short", year: "numeric" }),
       time: mk({ hour: "2-digit", minute: "2-digit", hour12: false }),
       weekday: mk({ weekday: "long" }),
     };
-    PARTS_FORMATS.set(tz, f);
+    PARTS_FORMATS.set(clave, f);
   }
   return f;
 }

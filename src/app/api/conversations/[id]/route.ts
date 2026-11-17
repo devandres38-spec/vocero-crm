@@ -1,3 +1,4 @@
+import { getRegion } from "@/lib/region";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
@@ -44,7 +45,7 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   return Response.json({ conversation: null });
 });
 
-const FECHA_DE_CITA = new Intl.DateTimeFormat("es-MX", { dateStyle: "long" });
+const FECHA_DE_CITA = new Intl.DateTimeFormat(getRegion().locale, { dateStyle: "long" });
 
 /**
  * 026 — Elimina la conversación y le pide al cerebro que la olvide.

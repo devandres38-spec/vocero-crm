@@ -133,12 +133,12 @@ describe("022 · lo que TikTok impone, declarado en las capacidades", () => {
     // 6,000 emojis son 12,000 unidades UTF-16: contando `.length`, también.
     expect(textFits("tiktok", "🙂".repeat(6000))).toBe(true);
     expect(textFits("tiktok", "🙂".repeat(6001))).toBe(false);
-    expect(textLimitMessage("tiktok")).toContain("6,000 caracteres");
+    expect(textLimitMessage("tiktok")).toContain("6.000 caracteres");
     // WhatsApp conserva su límite de siempre (4,096), ahora declarado en el
     // canal en vez de en el esquema de la API; y la API acepta hasta el mayor.
     expect(textFits("whatsapp", "a".repeat(4096))).toBe(true);
     expect(textFits("whatsapp", "a".repeat(4097))).toBe(false);
-    expect(textLimitMessage("whatsapp")).toContain("4,096 caracteres");
+    expect(textLimitMessage("whatsapp")).toContain("4.096 caracteres");
     expect(MAX_TEXT_CHARS_ANY_CHANNEL).toBe(6000);
     // Messenger sigue midiendo en bytes.
     expect(textFits("messenger", "é".repeat(1200))).toBe(false);

@@ -14,9 +14,17 @@ import { daysWithAgenda, spreadByDay } from "@/server/agenda/spread";
 
 const MX = "America/Mexico_City";
 
+// Los escenarios de este archivo son de un negocio en México: la zona se fija
+// explícitamente, porque el default de la instancia es Bogotá desde la 068.
 function settings(over: Partial<CalendarSettings> = {}): CalendarSettings {
-  return { ...DEFAULT_CALENDAR_SETTINGS, ...over };
+  return { ...DEFAULT_CALENDAR_SETTINGS, timezone: MX, ...over };
 }
+
+describe("068 — zona por defecto", () => {
+  it("una agenda sin configurar vive en la zona de la región (Bogotá)", () => {
+    expect(DEFAULT_CALENDAR_SETTINGS.timezone).toBe("America/Bogota");
+  });
+});
 
 describe("buildCandidateSlots", () => {
   it("solo genera slots en los días con horario (L-V por defecto)", () => {
