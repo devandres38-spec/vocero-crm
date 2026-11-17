@@ -9,6 +9,8 @@ import { resolveCommit } from "@/lib/version";
 import { navKicker } from "@/lib/channels";
 import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
+import { BandaSoporte } from "@/components/plataforma/banda-soporte";
+import { getRegion } from "@/lib/region";
 import { agendaActiva, modulosDe } from "@/server/modulos/consulta";
 import { dominioBase, esPlataforma } from "@/lib/tenancy";
 
@@ -44,7 +46,14 @@ export default async function AppLayout({
       agenda={agendaActiva(session)}
       kicker={navKicker(modulosDe(session).channels)}
       empresasUrl={empresasUrl()}
-      aviso={<AvisoIaBanner aviso={aviso} />}
+      aviso={
+        <>
+          {session.via === "soporte" && session.grant && (
+            <BandaSoporte level={session.grant.level} expiresAt={session.grant.expiresAt} zona={getRegion().timezone} />
+          )}
+          <AvisoIaBanner aviso={aviso} />
+        </>
+      }
     >
       {children}
     </AppShell>

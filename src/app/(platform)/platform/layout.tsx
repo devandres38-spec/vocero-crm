@@ -23,12 +23,18 @@ export default async function PlatformLayout({
             <BrandLogo branding={DEFAULT_BRANDING} size="md" />
             <span className="text-sm text-text-3">Plataforma</span>
           </Link>
-          <nav className="flex items-center gap-4 text-sm">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <Link href="/platform" className="text-text-2 hover:text-foreground">
               Negocios
             </Link>
             <Link href="/platform/nuevo" className="text-text-2 hover:text-foreground">
               Nuevo negocio
+            </Link>
+            <Link href="/platform/soporte" className="text-text-2 hover:text-foreground">
+              Soporte
+            </Link>
+            <Link href="/platform/auditoria" className="text-text-2 hover:text-foreground">
+              Auditoría
             </Link>
             <Link href="/platform/tokens" className="text-text-2 hover:text-foreground">
               Tokens

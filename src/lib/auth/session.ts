@@ -5,6 +5,8 @@ import { esPlataforma as tenancyEsMulti } from "@/lib/tenancy";
 import type { ModulosEfectivos } from "@/server/modulos/efectivos";
 import { resolverContexto, type Contexto, type GrantSoporte } from "@/server/tenant/contexto";
 import { depsReales } from "@/server/tenant/consultas";
+import { clientIp } from "@/lib/rate-limit";
+import { auditar } from "@/server/platform/auditoria";
 
 export type SessionContext = {
   userId: string;
@@ -27,6 +29,17 @@ export class UnauthorizedError extends Error {
   }
 }
 
+/**
+ * 069 (US5) — Un Super-Admin pide datos de un negocio sin acceso de soporte
+ * vigente. La API responde 404: la agencia no sabe ni si hay algo que ver.
+ */
+export class SinAccesoError extends Error {
+  constructor() {
+    super("Sin acceso");
+    this.name = "SinAccesoError";
+  }
+}
+
 /** 069 — La organización existe y el usuario es miembro, pero está suspendida. */
 export class OrganizacionSuspendidaError extends Error {
   constructor() {
@@ -41,7 +54,7 @@ export class OrganizacionSuspendidaError extends Error {
  */
 export const contextoActual = cache(async (): Promise<Contexto> => {
   const h = await headers();
-  return resolverContexto(
+  const ctx = await resolverContexto(
     depsReales(h, async () => {
       const s = await getAuth().api.getSession({ headers: h });
       return s
@@ -49,6 +62,18 @@ export const contextoActual = cache(async (): Promise<Contexto> => {
         : null;
     })
   );
+  // 069 (US5) — Un Super-Admin en el host de un negocio sin acceso vigente
+  // (nunca lo pidió, venció o se revocó): queda auditado. Lo que ve es un 404.
+  if (ctx.kind === "ninguno" && ctx.organizationId) {
+    await auditar({
+      actorUserId: ctx.userId,
+      action: "acceso_denegado",
+      organizationId: ctx.organizationId,
+      ip: clientIp(h),
+      detail: { motivo: "sin_acceso_de_soporte" },
+    }).catch((err) => console.error("[soporte] no se pudo auditar:", err));
+  }
+  return ctx;
 });
 
 /**
@@ -72,6 +97,9 @@ export async function requireSession(): Promise<SessionContext> {
       throw new OrganizacionSuspendidaError();
     case "anonimo":
       throw new UnauthorizedError();
+    case "ninguno":
+      if (ctx.organizationId) throw new SinAccesoError();
+      throw new UnauthorizedError("Sesión sin organización activa");
     default:
       throw new UnauthorizedError("Sesión sin organización activa");
   }

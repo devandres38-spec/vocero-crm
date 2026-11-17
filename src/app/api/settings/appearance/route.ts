@@ -1,7 +1,10 @@
 import { apiError, parseBody, withAuth } from "@/lib/api";
-import { canConfigure } from "@/lib/auth/roles";
+import { puedeConfigurar } from "@/lib/auth/roles";
 import { aparienciaSchema, temaPropio } from "@/lib/temas";
 import { aparienciaDelNegocio, guardarAparienciaDelNegocio } from "@/server/apariencia";
+
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +15,7 @@ export const GET = withAuth(async (session) => {
 
 /** Solo quien configura la cambia (D5); cada persona elige la suya en su cookie. */
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!canConfigure(session.role)) {
+  if (!puedeConfigurar(session)) {
     return apiError(403, "forbidden", "Solo el dueño o un administrador cambia la apariencia del negocio");
   }
   const body = await parseBody(req, aparienciaSchema);
@@ -23,4 +26,4 @@ export const PUT = withAuth(async (session, req: Request) => {
   }
   await guardarAparienciaDelNegocio(session.organizationId, body.data);
   return Response.json({ ok: true });
-});
+}, SOPORTE_CONFIGURACION);

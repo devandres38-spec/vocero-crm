@@ -9,6 +9,9 @@ import {
 } from "@/server/agenda/settings";
 import { agendaActiva } from "@/server/modulos/consulta";
 
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -74,4 +77,4 @@ export const PUT = withAuth(async (session, req: Request) => {
     }
     throw err;
   }
-});
+}, SOPORTE_CONFIGURACION);

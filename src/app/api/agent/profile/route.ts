@@ -13,6 +13,9 @@ import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
 import { agendaActiva } from "@/server/modulos/consulta";
 
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
+
 export const dynamic = "force-dynamic";
 
 export const GET = withAuth(async (session) => {
@@ -85,7 +88,7 @@ export const PUT = withAuth(async (session, req: Request) => {
     .returning();
   if (!updated[0]) return apiError(404, "not_found", "Perfil no encontrado");
   return Response.json({ ok: true });
-});
+}, SOPORTE_CONFIGURACION);
 
 /** Por qué no se puede encender el agente, o `null` si hay cerebro sano. */
 async function problemaDelCerebro(): Promise<string | null> {
