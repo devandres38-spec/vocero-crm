@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
@@ -187,13 +188,13 @@ function MediaBlock({ media }: { media: MessageMediaDto }) {
   );
 }
 
-function dayLabel(iso: string): string {
+function dayLabel(iso: string, locale: string): string {
   const d = new Date(iso);
   const today = new Date();
   const yesterday = new Date(today.getTime() - 86400000);
   if (d.toDateString() === today.toDateString()) return "Hoy";
   if (d.toDateString() === yesterday.toDateString()) return "Ayer";
-  return d.toLocaleDateString("es-MX", { day: "numeric", month: "long" });
+  return d.toLocaleDateString(locale, { day: "numeric", month: "long" });
 }
 
 /**
@@ -202,6 +203,7 @@ function dayLabel(iso: string): string {
  * reenviar.
  */
 function NotaInterna({ nota, onBorrar }: { nota: NotaDto; onBorrar?: (n: NotaDto) => void }) {
+  const { locale } = useRegion();
   return (
     <div
       data-nota-id={nota.id}
@@ -211,7 +213,7 @@ function NotaInterna({ nota, onBorrar }: { nota: NotaDto; onBorrar?: (n: NotaDto
         <Lock className="h-3 w-3" strokeWidth={2} aria-hidden />
         <span>Nota interna</span>
         <span className="font-normal opacity-80">
-          · {nota.autor?.nombre ?? "Alguien del equipo"} · {bubbleTime(nota.createdAt)}
+          · {nota.autor?.nombre ?? "Alguien del equipo"} · {bubbleTime(nota.createdAt, locale)}
         </span>
         {nota.puedeBorrar && onBorrar && (
           <button
@@ -343,13 +345,14 @@ function GestosBurbuja({
  * línea discreta y centrada, no una burbuja. No se responde ni se reenvía.
  */
 function EventoHilo({ evento }: { evento: EventoHiloDto }) {
+  const { locale } = useRegion();
   const Icono = evento.tipo === "etapa" ? ArrowRightLeft : UserRoundCheck;
   return (
     <div data-evento-id={evento.id} className="my-2 flex justify-center px-2">
       <span className="inline-flex max-w-full items-center gap-1.5 rounded-2xl border border-border bg-background/80 px-3 py-1 text-center text-[11.5px] text-text-2 shadow-sm">
         <Icono className="h-3.5 w-3.5 shrink-0 text-text-3" strokeWidth={1.8} aria-hidden />
         <span className="min-w-0 break-words">{evento.texto}</span>
-        <span className="shrink-0 font-mono text-[10px] text-text-3">{bubbleTime(evento.createdAt)}</span>
+        <span className="shrink-0 font-mono text-[10px] text-text-3">{bubbleTime(evento.createdAt, locale)}</span>
       </span>
     </div>
   );
@@ -360,8 +363,8 @@ type Intercalado =
   | ({ clase: "nota" } & NotaDto)
   | ({ clase: "evento" } & EventoHiloDto);
 
-function bubbleTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-MX", {
+function bubbleTime(iso: string, locale: string): string {
+  return new Date(iso).toLocaleTimeString(locale, {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -392,6 +395,7 @@ export function MessageThread({
   /** 054 — Cambios de etapa y traspaso, intercalados por hora. */
   eventos?: EventoHiloDto[];
 }) {
+  const { locale } = useRegion();
   const scrollRef = useRef<HTMLDivElement>(null);
   // 045 — El hilo se queda abajo mientras crece (una foto o un audio que
   // terminan de cargar), salvo que el operador haya subido a leer.
@@ -518,7 +522,7 @@ export function MessageThread({
             {newDay && (
               <div className="my-3 flex justify-center">
                 <span className="kicker rounded-full border border-border-strong bg-background px-3 py-1 text-text-2 shadow-sm">
-                  {dayLabel(m.createdAt)}
+                  {dayLabel(m.createdAt, locale)}
                 </span>
               </div>
             )}
@@ -595,7 +599,7 @@ export function MessageThread({
                     </span>
                   )}
                   <span className="font-mono text-[10px] tracking-[0.04em] text-text-3">
-                    {bubbleTime(m.createdAt)}
+                    {bubbleTime(m.createdAt, locale)}
                   </span>
                   {out && <StatusTicks status={m.status} />}
                 </span>

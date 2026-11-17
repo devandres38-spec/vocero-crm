@@ -126,7 +126,7 @@ ok(
 
 console.log("\n== Cambiar la moneda del negocio ==");
 const marca = (await api("/api/settings/branding")).json?.branding;
-const nuevaMoneda = marca.currency === "USD" ? "MXN" : "USD";
+const nuevaMoneda = marca.currency === "USD" ? "COP" : "USD";
 const put = await api("/api/settings/branding", {
   method: "PUT",
   body: JSON.stringify({

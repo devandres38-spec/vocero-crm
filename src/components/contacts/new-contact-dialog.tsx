@@ -1,5 +1,7 @@
-﻿"use client";
+"use client";
 
+import { useRegion } from "@/lib/region-context";
+import { paisDeTelefono } from "@/lib/phone";
 import { useEffect, useState } from "react";
 import type { SourceValue, StageDto } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,8 @@ export function NewContactDialog({
   /** Duplicado: en vez de un error seco, se ofrece ir a quien ya existe. */
   onOpenExisting: (contactId: string) => void;
 }) {
+  const region = useRegion();
+  const pais = paisDeTelefono(region.country, region.locale);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [source, setSource] = useState<SourceValue>("referido");
@@ -89,9 +93,9 @@ export function NewContactDialog({
     onCreated();
   }
 
-  // 11 dígitos = código de país + número. Ver la nota del endpoint sobre por
-  // qué el código de país no puede faltar ni asumirse.
-  const listo = name.trim().length > 0 && phone.replace(/\D/g, "").length >= 11;
+  // 068 — Con código de país o como número local de la región: el servidor
+  // decide si es válido (`lib/phone.ts`); aquí solo se pide algo plausible.
+  const listo = name.trim().length > 0 && phone.replace(/\D/g, "").length >= 7;
 
   return (
     <div
@@ -125,19 +129,20 @@ export function NewContactDialog({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium" htmlFor="nc-phone">
-              Teléfono con código de país
+              Teléfono
             </label>
             <Input
               id="nc-phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="52 555 000 1234"
+              placeholder={pais.codigo ? `+${pais.codigo} …` : "+…"}
             />
             <p className="text-[11px] text-text-3">
-              Escríbelo con espacios si quieres, pero{" "}
-              <strong>incluye el código de país</strong> (52 para México). Sin
-              él, WhatsApp no lo reconoce como la misma persona que te escriba
-              después.
+              Escríbelo con espacios si quieres: como número local de{" "}
+              {pais.nombre} o <strong>con su código de país</strong>
+              {pais.codigo ? ` (${pais.codigo} para ${pais.nombre})` : ""} si es
+              de otro país. Así WhatsApp lo reconoce como la misma persona que
+              te escriba después.
             </p>
           </div>
 

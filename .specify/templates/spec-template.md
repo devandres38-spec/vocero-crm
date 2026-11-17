@@ -103,6 +103,13 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+### Tenancy, Localización y Marca *(mandatory — constitución I, III, X, XI)*
+
+- **Modo**: ¿cambia algo entre `TENANCY=single` y `TENANCY=multi`? Describe ambos.
+- **Aislamiento**: ¿qué datos lee/escribe y cómo se resuelve su organización?
+- **Nicho**: ¿es núcleo, dato de un Vertical Pack, bandera por organización o módulo aislado?
+- **Localización/marca**: ¿muestra dinero, fechas, teléfonos o marca? Debe pasar por los módulos centrales.
+
 ## Success Criteria *(mandatory)*
 
 <!--

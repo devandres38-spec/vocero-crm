@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /*
-  Sistema de diseño de Vocero: la misma marca que vocerocrm.com dentro del CRM.
+  Sistema de diseño del CRM. La marca de plataforma por defecto es Aliantis (068).
   Papel frío (#f6f8fc), tinta azul marino, acento azul eléctrico con remate
   cian, tipografía Archivo para la interfaz, Instrument Serif itálica para los
   acentos editoriales e IBM Plex Mono para etiquetas y horas.
@@ -61,12 +61,12 @@
     --bubble-out-border: #d8e2dc;
     --bubble-out-text: var(--text);
 
-    /* Acento (default: azul Vocero; el white-label lo sobreescribe) */
-    --accent: #0d5bff;
-    --accent-hover: #0a4de6;
-    --accent-soft: #d3e2ff;
-    --accent-tint: #ebf1ff;
-    --accent-text: #0038d8;
+    /* Acento (default: azul Aliantis; el white-label lo sobreescribe) */
+    --accent: #0d3b9e;
+    --accent-hover: #0b3285;
+    --accent-soft: #d3dcee;
+    --accent-tint: #f0f3f9;
+    --accent-text: #0d3b9e;
     --accent-fg: #ffffff;
     /* El acento como TINTA (una hora, un enlace) y como anillo de foco. En
        claro son el acento mismo; en oscuro, sus variantes aclaradas: el
@@ -184,13 +184,13 @@
     --bubble-in: #e6eee9;
     --bubble-in-border: #e6eee9;
 
-    /* Acento: respaldo con el azul Vocero calculado para este fondo; el
+    /* Acento: respaldo con el azul Aliantis calculado para este fondo; el
        white-label lo recalcula (ver resolveAccentSet en lib/branding). */
-    --accent: #0d5bff;
-    --accent-hover: #3475ff;
-    --accent-soft: #143c82;
-    --accent-tint: #16335e;
-    --accent-text: #6f9eff;
+    --accent: #4f70b8;
+    --accent-hover: #6b87c4;
+    --accent-soft: #314563;
+    --accent-tint: #29394b;
+    --accent-text: #8ba1d0;
     --accent-fg: #ffffff;
     --accent-ink: var(--accent-text);
     --ring: var(--accent-text);

@@ -304,18 +304,18 @@ async function main() {
     await sleep(30);
     return r;
   };
-  await mover(1, { amountCents: 12_000_00, currency: "MXN" });
+  await mover(1, { amountCents: 12_000_00, currency: "COP" });
   await mover(1, { stageId: ganada.id });
   await mover(2, { stageId: perdida.id, lossReason: "precio" });
   // Ganado, sacado y vuelto a ganar: UN trato, su monto una vez.
-  await mover(4, { amountCents: 5_000_00, currency: "MXN" });
+  await mover(4, { amountCents: 5_000_00, currency: "COP" });
   await mover(4, { stageId: ganada.id });
   await mover(4, { stageId: abiertas[0].id });
   await mover(4, { stageId: ganada.id });
   // Ganado y devuelto al embudo: no es venta.
   await mover(7, { stageId: ganada.id });
   await mover(7, { stageId: abiertas.at(-1).id });
-  await mover(8, { amountCents: 3_000_00, currency: "MXN" });
+  await mover(8, { amountCents: 3_000_00, currency: "COP" });
 
   // Un envío que Meta rechaza (mismo camino que e2e-send-failure).
   await api("/api/dev/wa-mock/outbox", { method: "DELETE" });

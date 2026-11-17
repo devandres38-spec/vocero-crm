@@ -1,3 +1,5 @@
+import { REGION_DEFAULTS } from "@/lib/region";
+
 /**
  * Dinero. Vive en `lib/` (no en `server/`) porque el tablero suma sus columnas
  * en el cliente y no puede arrastrar la BD al bundle.
@@ -20,6 +22,8 @@
  * Añadir una es añadir un renglón: nada en la BD restringe el código.
  */
 export const CURRENCY_OPTIONS = [
+  // 068 — Primero la de la región por defecto (Colombia); luego, de norte a sur.
+  { code: "COP", name: "Peso colombiano", where: "Colombia", group: "latam" },
   { code: "MXN", name: "Peso mexicano", where: "México", group: "latam" },
   { code: "GTQ", name: "Quetzal", where: "Guatemala", group: "latam" },
   { code: "HNL", name: "Lempira", where: "Honduras", group: "latam" },
@@ -32,7 +36,6 @@ export const CURRENCY_OPTIONS = [
   { code: "HTG", name: "Gourde", where: "Haití", group: "latam" },
   { code: "JMD", name: "Dólar jamaiquino", where: "Jamaica", group: "latam" },
   { code: "TTD", name: "Dólar de Trinidad y Tobago", where: "Trinidad y Tobago", group: "latam" },
-  { code: "COP", name: "Peso colombiano", where: "Colombia", group: "latam" },
   { code: "VES", name: "Bolívar", where: "Venezuela", group: "latam" },
   { code: "PEN", name: "Sol", where: "Perú", group: "latam" },
   { code: "BOB", name: "Boliviano", where: "Bolivia", group: "latam" },
@@ -65,7 +68,27 @@ export const CURRENCIES = CURRENCY_OPTIONS.map((c) => c.code) as [
   ...Currency[],
 ];
 
-export const DEFAULT_CURRENCY: Currency = "MXN";
+/**
+ * La moneda por defecto de la región (068). La de la instancia la da
+ * `getRegion().currency` (servidor) y la de cada negocio, Ajustes → Marca.
+ */
+export const DEFAULT_CURRENCY: Currency = REGION_DEFAULTS.currency as Currency;
+
+/**
+ * Decimales que se MUESTRAN por moneda (068). Se guarda siempre en centavos;
+ * esto es solo la pantalla. En Colombia, Chile y Paraguay los precios se dicen
+ * sin decimales («$ 150.000»): enseñar «,00» en cada tarjeta es ruido. El resto
+ * conserva sus dos decimales.
+ */
+export const DISPLAY_FRACTION_DIGITS: Readonly<Record<string, number>> = {
+  COP: 0,
+  CLP: 0,
+  PYG: 0,
+};
+
+export function displayFractionDigits(currency: string): number {
+  return DISPLAY_FRACTION_DIGITS[currency] ?? 2;
+}
 
 export function isCurrency(v: unknown): v is Currency {
   return typeof v === "string" && (CURRENCIES as readonly string[]).includes(v);
@@ -85,24 +108,29 @@ export function sumable(
   return (amount.currency ?? businessCurrency) === businessCurrency;
 }
 
-/** Dinero para mostrar. Recibe centavos porque es como viaja y como se guarda. */
+/**
+ * Dinero para mostrar. Recibe centavos porque es como viaja y como se guarda.
+ * El locale es el de la región (`useRegion()` / `getRegion()`); los decimales,
+ * los de la moneda (`displayFractionDigits`).
+ */
 export function formatMoneyCents(
   cents: number | null | undefined,
   currency: string,
-  locale = "es-MX"
+  locale: string = REGION_DEFAULTS.locale
 ): string | null {
   if (cents === null || cents === undefined) return null;
+  const digitos = displayFractionDigits(currency);
   try {
     return new Intl.NumberFormat(locale, {
       style: "currency",
       currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
+      minimumFractionDigits: digitos,
+      maximumFractionDigits: digitos,
     }).format(cents / 100);
   } catch {
     // Moneda o locale que el runtime no conoce: mejor un número correcto sin
     // símbolo que una pantalla rota.
-    return `${(cents / 100).toFixed(2)} ${currency}`;
+    return `${(cents / 100).toFixed(digitos)} ${currency}`;
   }
 }
 

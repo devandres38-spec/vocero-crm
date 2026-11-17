@@ -1,11 +1,12 @@
 import type { Branding } from "@/lib/branding";
 import {
-  BRAND_CYAN,
-  BRAND_CYAN_ON_TILE,
-  BRAND_MARK_BODY,
+  BRAND_MARK_LEFT,
+  BRAND_MARK_RIGHT,
   BRAND_MARK_STROKE,
-  BRAND_MARK_TAIL,
-  isVoceroName,
+  BRAND_TEAL,
+  BRAND_TEAL_ON_TILE,
+  isPlatformBrandName,
+  PLATFORM_BRAND_NAME,
 } from "@/lib/brand";
 import { faviconHref, faviconInitial } from "@/lib/favicon";
 import { cn } from "@/lib/utils";
@@ -17,29 +18,29 @@ import { cn } from "@/lib/utils";
 export type BrandingMark = Pick<Branding, "name" | "accent" | "favicon">;
 
 /**
- * El trazo de la marca: la "v" caligráfica con remate cian de vocerocrm.com.
- * El cuerpo hereda `currentColor`; píntalo con `text-brand` (o blanco sobre el
- * mosaico) y el remate sigue siendo cian.
+ * El trazo de la marca: la "A" en chevron de Aliantis (068). La pierna
+ * izquierda hereda `currentColor`; píntala con `text-brand` (o blanco sobre el
+ * mosaico) y la derecha sigue en el verde azulado de la marca.
  */
 export function BrandMark({
   className,
-  cyan = BRAND_CYAN,
+  teal = BRAND_TEAL,
 }: {
   className?: string;
-  cyan?: string;
+  teal?: string;
 }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={className}>
       <path
-        d={BRAND_MARK_BODY}
+        d={BRAND_MARK_LEFT}
         stroke="currentColor"
         strokeWidth={BRAND_MARK_STROKE}
         strokeLinecap="round"
         fill="none"
       />
       <path
-        d={BRAND_MARK_TAIL}
-        stroke={cyan}
+        d={BRAND_MARK_RIGHT}
+        stroke={teal}
         strokeWidth={BRAND_MARK_STROKE}
         strokeLinecap="round"
         fill="none"
@@ -52,7 +53,7 @@ export function BrandMark({
  * Mosaico cuadrado con degradado del acento: es el favicon en grande. Con un
  * logo subido lleva el logo (el MISMO archivo y la MISMA URL versionada que
  * la pestaña, así lo que se sube en Ajustes → Marca se ve en los dos sitios);
- * sin él, la "v" de Vocero o la inicial del nombre white-label.
+ * sin él, la "A" de la plataforma o la inicial del nombre white-label.
  */
 export function BrandTile({
   branding,
@@ -78,8 +79,8 @@ export function BrandTile({
           alt=""
           className="h-full w-full object-contain"
         />
-      ) : isVoceroName(branding.name) ? (
-        <BrandMark className="h-[64%] w-[64%]" cyan={BRAND_CYAN_ON_TILE} />
+      ) : isPlatformBrandName(branding.name) ? (
+        <BrandMark className="h-[64%] w-[64%]" teal={BRAND_TEAL_ON_TILE} />
       ) : (
         <span className="font-bold leading-none">{faviconInitial(branding.name)}</span>
       )}
@@ -103,8 +104,7 @@ const TILE_SIZE = {
 } as const;
 
 /**
- * La marca completa, como en la cabecera de la landing: trazo + wordmark
- * "vocero" en minúsculas y bien apretado. Una instancia rebautizada ve en su
+ * La marca completa: la "A" + el nombre de la plataforma, bien apretado. Una instancia rebautizada ve en su
  * lugar el mosaico con la inicial y su nombre (white-label). Con logo subido
  * gana el logo, se llame como se llame: quien sube un archivo quiere verlo.
  */
@@ -117,7 +117,7 @@ export function BrandLogo({
   size?: keyof typeof WORDMARK_SIZE;
   className?: string;
 }) {
-  if (isVoceroName(branding.name) && !branding.favicon) {
+  if (isPlatformBrandName(branding.name) && !branding.favicon) {
     return (
       <span className={cn("flex items-center gap-2 text-foreground", className)}>
         <BrandMark className={cn("shrink-0 text-brand", MARK_SIZE[size])} />
@@ -127,7 +127,7 @@ export function BrandLogo({
             WORDMARK_SIZE[size]
           )}
         >
-          vocero
+          {PLATFORM_BRAND_NAME}
         </span>
       </span>
     );

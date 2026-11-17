@@ -1831,7 +1831,7 @@ async function guiaChecks() {
   const htmlManual = await pantallaHtml();
   ok(
     "la tarjeta final dice «bandeja manual» y no ofrece encender",
-    htmlManual.includes("Vocero funciona como bandeja manual") && !htmlManual.includes("Encender a Sofi"),
+    htmlManual.includes("el CRM funciona como bandeja manual") && !htmlManual.includes("Encender a Sofi"),
     htmlManual.includes("Encender a Sofi") ? "ofrece encender" : "sin el texto de bandeja manual"
   );
   const sinCerebro = await api("/api/agent/profile", {
@@ -2257,7 +2257,7 @@ async function agendaChecks() {
   );
   ok(
     "…con la etiqueta del día en palabras, en la zona del negocio",
-    ctxConCita.json?.booking?.timezone === "America/Mexico_City" &&
+    ctxConCita.json?.booking?.timezone === "America/Bogota" &&
       typeof proxima?.label === "string" &&
       proxima.label.endsWith(`, ${slotsA[0].time}`) &&
       proxima.label.length > `, ${slotsA[0].time}`.length + 8,

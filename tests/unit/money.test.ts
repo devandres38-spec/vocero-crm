@@ -4,6 +4,7 @@ import {
   CURRENCY_GROUPS,
   CURRENCY_OPTIONS,
   DEFAULT_CURRENCY,
+  displayFractionDigits,
   formatMoneyCents,
   isCurrency,
   parseMoneyToCents,
@@ -67,9 +68,39 @@ describe("sumable", () => {
 });
 
 describe("formatMoneyCents", () => {
-  it("formatea en la moneda pedida", () => {
-    const out = formatMoneyCents(1_250_050, "MXN");
+  it("formatea en la moneda y el locale pedidos", () => {
+    const out = formatMoneyCents(1_250_050, "MXN", "es-MX");
     expect(out).toContain("12,500.50");
+  });
+
+  // 068 — Colombia: se guarda en centavos y se muestra sin decimales.
+  it("COP en es-CO: «$ 150.000», sin decimales", () => {
+    expect(formatMoneyCents(15_000_000, "COP", "es-CO")).toMatch(/^\$\s150\.000$/);
+  });
+
+  it("COP redondea al peso en pantalla sin tocar lo guardado", () => {
+    expect(formatMoneyCents(123_456, "COP", "es-CO")).toMatch(/^\$\s1\.235$/);
+  });
+
+  it("sin locale usa el de la región por defecto (es-CO)", () => {
+    expect(formatMoneyCents(15_000_000, "COP")).toMatch(/^\$\s150\.000$/);
+    // Otra moneda conserva sus dos decimales, con el formato colombiano.
+    expect(formatMoneyCents(1_250_050, "USD")).toContain("12.500,50");
+  });
+
+  it("los decimales de pantalla dependen de la moneda", () => {
+    expect(displayFractionDigits("COP")).toBe(0);
+    expect(displayFractionDigits("CLP")).toBe(0);
+    expect(displayFractionDigits("MXN")).toBe(2);
+    expect(displayFractionDigits("USD")).toBe(2);
+  });
+
+  it("lo que escribe un dueño colombiano se guarda en centavos", () => {
+    expect(parseMoneyToCents("150.000")).toBe(15_000_000);
+    expect(parseMoneyToCents("$150.000")).toBe(15_000_000);
+    expect(parseMoneyToCents("$ 1.500.000")).toBe(150_000_000);
+    expect(parseMoneyToCents("150000")).toBe(15_000_000);
+    expect(parseMoneyToCents("1.234,56")).toBe(123_456);
   });
 
   it("null entra, null sale: no inventa un $0.00", () => {
@@ -98,8 +129,10 @@ describe("catálogo de monedas", () => {
     expect(new Set(CURRENCIES).size).toBe(CURRENCIES.length);
   });
 
-  it("la predeterminada existe y ningún grupo del selector queda vacío", () => {
+  it("la predeterminada es la de la región (COP), existe y va primero en el selector", () => {
+    expect(DEFAULT_CURRENCY).toBe("COP");
     expect(isCurrency(DEFAULT_CURRENCY)).toBe(true);
+    expect(CURRENCY_OPTIONS[0]?.code).toBe("COP");
     for (const g of CURRENCY_GROUPS) {
       expect(CURRENCY_OPTIONS.some((c) => c.group === g.id), g.id).toBe(true);
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Copy, RefreshCw } from "lucide-react";
@@ -65,11 +66,12 @@ function hace(iso: string, now: number): string {
   return `hace ${Math.round(h / 24)} días`;
 }
 
-function fecha(iso: string): string {
-  return new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
+function fecha(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function ChannelsClient() {
+  const { locale } = useRegion();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -212,7 +214,7 @@ export function ChannelsClient() {
                     {r.lastInboundAt ? (
                       <>
                         {hace(r.lastInboundAt, now)}
-                        <span className="text-text-2"> · {fecha(r.lastInboundAt)}</span>
+                        <span className="text-text-2"> · {fecha(r.lastInboundAt, locale)}</span>
                       </>
                     ) : (
                       <span className="text-text-2">Todavía no entra ninguno por este canal</span>
@@ -250,7 +252,7 @@ export function ChannelsClient() {
             <CardTitle>Webhook de Zernio</CardTitle>
             <CardDescription>
               Es el aviso con el que Zernio le entrega cada mensaje a esta
-              instancia. Vocero lo da de alta al conectar un canal, con el evento{" "}
+              instancia. El CRM lo da de alta al conectar un canal, con el evento{" "}
               <code>message.received</code> y limitado a tus cuentas conectadas.
               Si se desactivó o quedó sin una cuenta, aquí se repara.
             </CardDescription>
@@ -290,7 +292,7 @@ export function ChannelsClient() {
                   <p className="text-xs text-text-2">
                     En Zernio → Webhooks, da de alta esta URL con el evento{" "}
                     <code>message.received</code> y limítalo a tus cuentas. El
-                    secreto de firma lo lee Vocero de Zernio: no hay que
+                    secreto de firma lo lee el CRM de Zernio: no hay que
                     copiarlo aquí.
                   </p>
                   <div className="flex gap-2">

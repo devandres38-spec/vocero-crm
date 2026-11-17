@@ -5,17 +5,24 @@ modificación viven ahí; este archivo solo añade lo específico de Claude Code
 
 Vocero es un CRM de WhatsApp open source (MIT), self-hosted, con el perfil y el
 conocimiento del agente y un Laboratorio de auto-evaluación. Desde la 2.0 no
-trae agente: contesta un cerebro conectado al lado (Nea u otro). Una
-instancia = un negocio. Este archivo guía a Claude Code (u otro asistente)
-para operar y **modificar** este repositorio —
-el caso típico: una agencia adaptando Vocero para un cliente.
+trae agente: contesta un cerebro conectado al lado (Nea u otro). Este
+repositorio es la base de **Aliantis CRM** (constitución 2.0.0): dos modos de
+despliegue, `TENANCY=single` (default, una instancia = un negocio) y
+`TENANCY=multi` (plataforma SaaS multi-tenant multi-nicho para Colombia). El
+plan de fases vive en `../ROADMAP-ALIANTIS.md`. Este archivo guía a Claude Code
+(u otro asistente) para operar y **modificar** este repositorio.
+
+**Equipo local modesto**: NO correr `next build`, Docker pesado ni E2E con
+Playwright en la máquina local. Verificar con `npx pnpm@11.5.0 typecheck`,
+`npx pnpm@11.5.0 lint` y Vitest con `--maxWorkers=1 --no-file-parallelism`
+(o solo los archivos afectados); `build` y E2E corren en CI/staging.
 
 ## Stack
 
 **Next.js 15 (App Router) + React 19** en monolito · TypeScript estricto
 (`strict` + `noUncheckedIndexedAccess`) · Tailwind CSS (sistema de diseño de la
-marca Vocero, el mismo de vocerocrm.com: tokens en `src/app/globals.css`, tema
-claro/oscuro, acento white-label por defecto `#0d5bff`, fuentes Archivo +
+marca de plataforma Aliantis desde la 068: tokens en `src/app/globals.css`, tema
+claro/oscuro, acento white-label por defecto `#0d3b9e`, fuentes Archivo +
 Instrument Serif + IBM Plex Mono self-hosted vía `next/font`; el logo vive en
 `src/lib/brand.ts` y se dibuja con `src/components/brand-mark.tsx`) ·
 **PostgreSQL + Drizzle ORM** (migraciones versionadas en
@@ -43,6 +50,9 @@ es in-process.
 | Campos/tablas | `src/lib/db/schema.ts` → `pnpm db:generate` → migración nueva en `drizzle/` |
 | La ingesta/envío de mensajes | `src/server/inbox/` (ingest idempotente, send con guard de sandbox, ventana 24h) |
 | Cómo se identifica a un contacto | `src/server/inbox/identity.ts` (teléfono normalizado o `bsuid:<id>`) |
+| País, formato, moneda y zona por defecto (068) | `src/lib/region.ts` (`getRegion`, formatters) + `src/lib/region-context.tsx` (`useRegion`); variables `REGION_*` |
+| Teléfonos escritos por una persona (068) | `src/lib/phone.ts` (`normalizarTelefonoHumano`, `libphonenumber-js`) |
+| La marca de la plataforma (068) | `src/lib/brand.ts` (Aliantis, logo «A») + `src/lib/branding.ts` (`DEFAULT_BRANDING`, presets) |
 | Conectar el cerebro (Nea o el tuyo) | despacho: `src/server/dispatch/encolar.ts` (`despacharAlCerebro`) + `src/server/brains/` (`config.ts`: `despachoActivo`, `urlSaludCerebro`) · `src/app/api/bot/*` + `src/server/bot/auth.ts` (X-API-Key o Bearer) · contrato en `docs/openapi.json` · quién responde (avisos `sin_cerebro`, `apagado`): `src/server/bot/status.ts` + `GET /api/agent/brain-status` |
 | La agenda (horarios, huecos, citas) | `src/server/agenda/` — detrás de la bandera `AGENDA` (`flag.ts`) |
 | Cómo se entrega la reunión (Zoom, Meet…) | `src/server/agenda/connectors/` + catálogo en `src/lib/agenda-connectors.ts` · guía: [docs/agenda-conectores.md](docs/agenda-conectores.md) |
@@ -85,8 +95,20 @@ Ver [.specify/memory/constitution.md](.specify/memory/constitution.md).
   apagado y encendido. Auth y BD self-hosted.
 - **Seguridad (I)**: secretos cifrados en reposo (AES-256-GCM, `lib/crypto`);
   jamás al cliente ni a logs. El token de WhatsApp solo muestra sus últimos 4.
-- **Multi-tenancy (III)**: `organization_id` NOT NULL en toda tabla de dominio;
-  toda query pasa por `scoped()` de `src/lib/db/tenant.ts`.
+- **Multi-tenancy (III, redefinido — 2.0.0)**: `organization_id` NOT NULL en
+  toda tabla de dominio; toda query pasa por `scoped()` de
+  `src/lib/db/tenant.ts`. En modo plataforma hay N organizaciones con slug
+  único, las da de alta la plataforma, y la organización se resuelve de una
+  fuente autenticada — nunca «la primera» (I).
+- **Acceso de plataforma (I)**: el Super-Admin no ve conversaciones salvo
+  acceso de soporte explícito y auditado. Toda superficie nueva lleva prueba
+  de cruce A↛B.
+- **Núcleo inmutable (X)**: sin lógica de nicho en el núcleo; nichos como
+  Vertical Pack, banderas por organización o módulos aislados. Los contratos
+  con el cerebro (`x-vocero-*`, `vocero:cerebro:v1`, despacho, `/api/bot/*`,
+  `/api/brains/*`) solo crecen de forma aditiva.
+- **Localización y marca como datos (XI)**: nada de valores regionales ni
+  marca cableados fuera de sus módulos centrales.
 - **Idempotencia (IV)**: webhooks dedup por `wa_message_id` UNIQUE; estados
   monotónicos; seeds y migraciones re-ejecutables.
 - **Sandbox del Laboratorio**: las conversaciones `is_test` JAMÁS tocan la API
@@ -143,6 +165,10 @@ Gate técnico:
 ```bash
 pnpm typecheck && pnpm lint && pnpm build && pnpm test
 ```
+
+En este equipo (constitución V/IX, 2.0.0): localmente `typecheck`, `lint` y
+Vitest acotado; `build` y el self-test E2E se ejecutan en CI/staging y la
+feature no está «Hecha» hasta que ahí estén en verde.
 
 Guiones E2E por historia en `tests/e2e/*.md`. Parte de ellos ya están
 automatizados: con la app viva y los mocks encendidos, `pnpm test:e2e`

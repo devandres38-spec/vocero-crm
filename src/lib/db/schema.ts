@@ -10,6 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import { REGION_DEFAULTS } from "../region";
 
 /**
  * Tiempo: todas las columnas son `timestamp without time zone` y el marco es
@@ -800,7 +801,9 @@ export const calendarSettings = pgTable(
     bufferMinutes: integer("buffer_minutes").notNull().default(0),
     minNoticeHours: integer("min_notice_hours").notNull().default(2),
     maxDaysAhead: integer("max_days_ahead").notNull().default(7),
-    timezone: text("timezone").notNull().default("America/Mexico_City"),
+    // 068 — Default de la región (Bogotá). La app siempre escribe la zona
+    // explícita; esto solo cubre una fila insertada a mano.
+    timezone: text("timezone").notNull().default(REGION_DEFAULTS.timezone),
     /**
      * Cómo se entrega la reunión. `enlace-fijo` no habla con nadie: es el
      * default y la razón de que encender la agenda no exija terceros.

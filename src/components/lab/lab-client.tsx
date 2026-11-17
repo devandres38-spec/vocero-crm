@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -185,7 +186,7 @@ export function LabClient() {
             <p className="mt-0.5 leading-relaxed text-text-2">
               El Laboratorio prueba al agente que contesta a tus clientes:
               clientes simulados conversan con él y un juez califica cada
-              conversación. Vocero no trae agente propio, y esta instancia aún
+              conversación. El CRM no trae agente propio, y esta instancia aún
               no tiene uno conectado.{" "}
               <a
                 href={GUIA_DEL_PAR_URL}
@@ -283,6 +284,7 @@ function HistoryList({
   selectedRunId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const { locale } = useRegion();
   return (
     <div className="space-y-2">
       <p className="kicker">
@@ -318,7 +320,7 @@ function HistoryList({
             )}
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            {new Date(run.startedAt).toLocaleString("es-MX", {
+            {new Date(run.startedAt).toLocaleString(locale, {
               day: "numeric",
               month: "short",
               hour: "2-digit",

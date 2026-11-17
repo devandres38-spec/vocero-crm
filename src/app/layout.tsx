@@ -1,3 +1,5 @@
+import { getRegion } from "@/lib/region";
+import { RegionProvider } from "@/lib/region-context";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { accentCssVariables, DEFAULT_BRANDING } from "@/lib/branding";
@@ -91,6 +93,7 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
+  const region = getRegion();
   // 062 · D6 — La apariencia (tema, letra, tamaño y densidad) se resuelve en
   // el servidor: el primer pintado ya la trae, sin parpadeo.
   const { apariencia } = await aparienciaActual().catch(() => ({
@@ -98,7 +101,7 @@ export default async function RootLayout({
   }));
   return (
     <html
-      lang="es"
+      lang={region.locale}
       className={`${urbanist.variable} ${archivo.variable} ${inter.variable} ${plexSans.variable} ${instrumentSerif.variable} ${plexMono.variable}`}
       // La preferencia siempre es explícita: viaja resuelta en el HTML del
       // servidor, así que no hay divergencia con el cliente ni parpadeo.
@@ -116,7 +119,8 @@ export default async function RootLayout({
         />
       </head>
       <body className="font-sans">
-        {children}
+        {/* 068 — La región de la instancia baja a los componentes de cliente. */}
+        <RegionProvider value={region}>{children}</RegionProvider>
         <RegistrarServiceWorker />
       </body>
     </html>

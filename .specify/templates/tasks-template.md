@@ -69,6 +69,12 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T007 Create base models/entities that all stories depend on
 - [ ] T008 Configure error handling and logging infrastructure
 - [ ] T009 Setup environment configuration management
+- [ ] T010 [P] Prueba de cruce de tenant (constitución I): la organización A no lee ni modifica datos de B en cada superficie nueva
+
+**Verificación (constitución V/IX)**: marca cada tarea de verificación como
+`[local]` (typecheck, lint, Vitest acotado, pytest) o `[CI/staging]` (build,
+E2E con navegador). Una historia no está "Hecha" hasta que sus tareas
+`[CI/staging]` estén en verde.
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { PLATFORM_BRAND_NAME } from "@/lib/brand";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Inbox } from "lucide-react";
@@ -127,7 +128,7 @@ export function BrandingClient({
               maxLength={30}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Vocero"
+              placeholder={PLATFORM_BRAND_NAME}
               className="max-w-xs"
             />
           </div>

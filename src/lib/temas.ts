@@ -50,8 +50,8 @@ export const TEMAS: Record<TemaId, Tema> = {
     tokens: {},
   },
   vocero: {
-    nombre: "Vocero",
-    descripcion: "El azul papel frío de la 2.x.",
+    nombre: "Aliantis",
+    descripcion: "Azul papel frío, el de la marca de la plataforma.",
     modo: "light",
     pareja: "vocero-oscuro",
     tokens: {
@@ -92,8 +92,8 @@ export const TEMAS: Record<TemaId, Tema> = {
     },
   },
   "vocero-oscuro": {
-    nombre: "Vocero oscuro",
-    descripcion: "El azul marino de la 2.x.",
+    nombre: "Aliantis oscuro",
+    descripcion: "Azul marino, la pareja oscura de Aliantis.",
     modo: "dark",
     pareja: "vocero",
     tokens: {

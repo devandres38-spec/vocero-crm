@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useState } from "react";
 import { AlertTriangle, CheckCircle2, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,8 @@ type Entregas = {
 /** Cada cuánto se refresca mientras hay algo en reintento. */
 const REFRESCO_MS = 15_000;
 
-function hora(iso: string): string {
-  return new Date(iso).toLocaleString("es-MX", {
+function hora(iso: string, locale: string): string {
+  return new Date(iso).toLocaleString(locale, {
     day: "numeric",
     month: "short",
     hour: "2-digit",
@@ -33,6 +34,7 @@ function hora(iso: string): string {
  * API responde 403 y la tarjeta no aparece.
  */
 export function EntregasCard() {
+  const { locale } = useRegion();
   const [estado, setEstado] = useState<Entregas | null>(null);
   const [reintentando, setReintentando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -102,7 +104,7 @@ export function EntregasCard() {
               </p>
               {estado.ultimoError && (
                 <p className="break-words text-danger-text opacity-80">
-                  {estado.ultimoFalloEn ? `${hora(estado.ultimoFalloEn)} · ` : ""}
+                  {estado.ultimoFalloEn ? `${hora(estado.ultimoFalloEn, locale)} · ` : ""}
                   {estado.ultimoError}
                 </p>
               )}

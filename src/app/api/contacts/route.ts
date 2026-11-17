@@ -4,7 +4,8 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
-import { normalizeMx } from "@/lib/meta/client";
+import { normalizarTelefonoHumano } from "@/lib/phone";
+import { getRegion } from "@/lib/region";
 import { digitsOnly, normalizeText } from "@/lib/search";
 import { serializeContact } from "@/server/contacts";
 import { createLeadForContact } from "@/server/inbox/lead-activity";
@@ -103,16 +104,13 @@ export const GET = withAuth(async (session, req: Request) => {
 const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
   /**
-   * EXIGE código de país. Un número local crearía un contacto que jamás casaría
-   * con los mensajes entrantes —Meta siempre manda la identidad completa— y el
-   * dueño acabaría con dos fichas de la misma persona. No se asume un país:
-   * diez dígitos son válidos en varios, y asumir mal produce un número
-   * silenciosamente equivocado.
+   * 068 — Como lo escribe una persona: con código de país («+57 300 123
+   * 4567», «573001234567») o como número local VÁLIDO del país de la región
+   * («300 123 4567»). Lo resuelve `normalizarTelefonoHumano` (`lib/phone.ts`):
+   * un número local que no es válido ahí se rechaza, porque inventarle un país
+   * crearía un contacto que jamás casa con los mensajes entrantes.
    */
-  phone: z
-    .string()
-    .trim()
-    .regex(/^\d{7,15}$/, "Teléfono en dígitos, con código de país (ej. 5215512345678)"),
+  phone: z.string().trim().min(1).max(40),
   notes: z.string().max(4000).optional(),
   source: z.enum(["anuncio", "organico", "referido", "conocido", "otro"]).optional(),
   /** Etapa inicial del lead; si no viene, la primera abierta del tablero. */
@@ -123,9 +121,19 @@ export const POST = withAuth(async (session, req: Request) => {
   const body = await parseBody(req, createSchema);
   if (!body.ok) return body.response;
 
-  const db = getDb();
   // 003: la identidad WhatsApp se deriva del teléfono normalizado.
-  const phone = normalizeMx(body.data.phone);
+  const telefono = normalizarTelefonoHumano(body.data.phone, getRegion().country);
+  if (!telefono.ok) {
+    return apiError(
+      422,
+      telefono.reason,
+      telefono.reason === "sin_codigo_pais"
+        ? "Ese número no es válido aquí: escríbelo con su código de país"
+        : "Teléfono inválido"
+    );
+  }
+  const phone = telefono.phone;
+  const db = getDb();
   const inserted = await db
     .insert(schema.contact)
     .values({

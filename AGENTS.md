@@ -10,7 +10,10 @@ de skills, scripts ni plugins de ningún asistente.
 
 ## Principios inviolables
 
-- **Una instancia = un negocio.** Self-hosted; aun así, toda tabla de dominio lleva `organization_id` y toda consulta pasa por `scoped()`.
+- **Dos modos de despliegue** (constitución 2.0.0): `TENANCY=single` (default, una instancia = un negocio) y `TENANCY=multi` (modo plataforma Aliantis: N organizaciones aisladas; la bandera y el panel Super-Admin llegan con la spec 069). En ambos, toda tabla de dominio lleva `organization_id` y toda consulta pasa por `scoped()`.
+- **La organización se resuelve, nunca se supone.** Sesión, credencial del cerebro, identificador del canal en el webhook o subdominio. En modo plataforma está prohibido tomar «la primera organización» (`.from(organization).limit(1)` sin `where`). Toda superficie nueva lleva su prueba de cruce A↛B.
+- **Núcleo inmutable, nichos por datos** (Principio X): nada de `if (nicho === …)` en el núcleo; un nicho es un Vertical Pack de datos, banderas por organización o un módulo aislado.
+- **Localización y marca como datos** (Principio XI): moneda, formato regional, zona horaria, país del teléfono y marca salen de sus módulos centrales; nada de `es-MX`, `MXN` ni «Vocero» cableados en la UI. Los identificadores técnicos (`x-vocero-*`, `vocero:cerebro:v1`, `VOCERO_MODE`, `/vocero/dispatch`) NO son marca y no se renombran.
 - **Solo WhatsApp Cloud API oficial.** Nada de Baileys ni sesiones web. Todo tráfico a Meta pasa por `src/lib/meta/client.ts`.
 - **Secretos cifrados en reposo** (AES-256-GCM, `src/lib/crypto/`); jamás al cliente ni a logs. Los tokens de WhatsApp y del proveedor de IA solo enseñan sus últimos 4.
 - **El token de WhatsApp nunca sale del CRM.** Un bot externo conversa a través de `/api/bot/*`, no con Meta.
@@ -24,7 +27,7 @@ de skills, scripts ni plugins de ningún asistente.
 |---|---|
 | Framework | Next.js 15 (App Router) + React 19, TypeScript estricto (`strict` + `noUncheckedIndexedAccess`), alias `@/` → `src/` |
 | BD / ORM | PostgreSQL 16 + Drizzle ORM; migraciones SQL versionadas en `drizzle/`, aplicadas al arrancar el contenedor (`scripts/migrate.mjs`) |
-| Auth | Better Auth + plugin organization (`src/lib/auth/`); registro público cerrado tras la primera organización |
+| Auth | Better Auth + plugin organization (`src/lib/auth/`); modo instancia: registro público cerrado tras la primera organización. Modo plataforma (069): sin registro público, las organizaciones las da de alta el Super-Admin |
 | Validación | Zod en todo input externo (`parseBody` en `src/lib/api.ts`) |
 | Tiempo real | SSE en `GET /api/events` sobre un bus in-process (`src/server/events/bus.ts`); sin WebSockets ni colas: el trabajo en segundo plano corre dentro del proceso |
 | UI | Tailwind CSS con tokens en `src/app/globals.css`, tema claro/oscuro, white-label por organización |
@@ -136,8 +139,11 @@ La ráfaga del despacho es lo posterior al último saliente más lo que el despa
 
 ## Invariantes al modificar
 
-- **Identidad del contacto**: la llave estable es `contact.wa_identity` (teléfono normalizado 521→52, `bsuid:<id>`, `ig:<id>`, `fb:<id>`, `tt:<id>`); `phone` es opcional. Nunca asumas que un contacto tiene teléfono.
-- **Alcance de organización**: `organization_id` NOT NULL en toda tabla de dominio y toda consulta construida con `scoped()` de `src/lib/db/tenant.ts`.
+- **Identidad del contacto**: la llave estable es `contact.wa_identity` (teléfono normalizado 521→52, `bsuid:<id>`, `ig:<id>`, `fb:<id>`, `tt:<id>`); `phone` es opcional. Nunca asumas que un contacto tiene teléfono. 068 — Lo que escribe una PERSONA (alta manual, CSV) pasa por `normalizarTelefonoHumano` (`src/lib/phone.ts`, `libphonenumber-js`): número local válido en el país de la región o con su código; lo que llega de Meta NO (el `wa_id` ya trae país).
+- **Región** (068, constitución XI): país, locale, moneda y zona por defecto salen de `src/lib/region.ts` (`getRegion()` en el servidor, `useRegion()` en el cliente; `REGION_*` en el entorno, default Colombia). Dos guardarraíles escanean `src/`: `region-sin-literales` y `marca-sin-vocero`. La marca de plataforma (Aliantis, logo «A») vive en `src/lib/brand.ts`.
+- **Alcance de organización**: `organization_id` NOT NULL en toda tabla de dominio y toda consulta construida con `scoped()` de `src/lib/db/tenant.ts`. Deuda conocida de modo instancia que 069/070 retiran: `resolveInstanceOrg()` (`src/server/bot/auth.ts`, las 12 rutas `/api/bot/*`), la marca y la apariencia sin sesión (`src/server/branding.ts`, `src/server/apariencia.ts`) y el `slug: "principal"` fijo de `src/server/auth/on-signup.ts`. No agregues usos nuevos de ese patrón.
+- **Acceso de plataforma** (constitución I): el Super-Admin administra organizaciones pero no ve conversaciones, contactos ni mensajes salvo un acceso de soporte explícito, con motivo y caducidad, registrado en auditoría.
+- **Verificación en equipos modestos** (constitución V/IX): `build` y E2E con navegador pueden correr en CI/staging; localmente bastan `typecheck`, `lint` y Vitest acotado (`--maxWorkers=1 --no-file-parallelism`). Nada es «Hecho» hasta que CI/staging esté en verde.
 - **Zod en todo input externo** (body, query, webhooks, respuestas del LLM). Un 422 lleva el detalle; la salida del modelo se extrae con tolerancia y reintentos: un hipo del proveedor nunca tumba el turno.
 - **Migraciones aditivas**: cambia `src/lib/db/schema.ts`, corre `pnpm db:generate`, revisa el SQL y súbelo con el cambio. Se aplican al arrancar el contenedor; una instalación vieja debe actualizar sin pasos manuales (si no, es versión mayor).
 - **Sandbox y ventana**: una conversación `is_test` jamás toca la API real (el sender lanza; es un guardarraíl, no un bug) y el texto libre solo sale dentro de la ventana del canal tras el último entrante: 24 h en WhatsApp, Instagram y Messenger, 48 h en TikTok. Nunca escribas «24 h» en el núcleo: pregunta `windowMsFor(channel)` (`src/server/channels/capabilities.ts`). 024 — Instagram y Messenger declaran además una ventana humana (`humanAgentWindowMs`, 7 días): quién puede escribir y con qué etiqueta lo decide `replyWindow` (`src/server/inbox/window.ts`) y lo aplica `assertReplyWindow` en el pre-vuelo del envío; la IA nunca usa la etiqueta de agente humano. El texto generado por IA sale sin formato en los canales con `textFormat: "plain"` (`src/lib/social-text.ts`, aplicado en `sendText`).

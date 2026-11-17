@@ -1,63 +1,89 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Versión: 1.3.0 → 1.4.0
+Versión: 1.4.0 → 2.0.0
 
-Cambios:
-  - Principio II "Soberanía / Self-Hosted" → EXPANDIDO: la lista cerrada de
-    dependencias de runtime gana una tercera categoría, **conectores
-    opcionales**, admisible SOLO bajo cinco condiciones (apagados por defecto
-    tras una bandera de despliegue, aislados tras adaptador dedicado con
-    contrato público, instancia completa sin ellos con degradación definida,
-    credenciales cifradas del propio negocio, y verificables en CI apagados y
-    encendidos). La frase de prohibición se acota: de "PROHIBIDO en v1 … y
-    servicios de Google" a "PROHIBIDO como dependencia del núcleo", con la vía
-    única del conector opcional para servicios de terceros.
-  - Principios I, III, IV, V, VI, VII, VIII y IX: íntegros (sin cambio).
-  - "Restricciones de Plataforma y Seguridad": sin cambio — su regla de
-    aislamiento tras adaptadores dedicados ya cubre a los conectores.
-  - Governance: sin cambio.
+Cambios (spec 067-enmienda-multitenant-aliantis, ratificada 2026-11-17):
+  - Título: "Vocero CRM Constitution" → "Aliantis CRM Constitution". El aviso
+    MIT original de LICENSE se conserva íntegro.
+  - Preámbulo → REDEFINIDO: "una instancia = un negocio" pasa a dos modos de
+    despliegue elegidos con la bandera TENANCY=single|multi (default single):
+    modo instancia (comportamiento 1.x) y modo plataforma (N organizaciones).
+  - Principio I → ENDURECIDO: la organización se resuelve de una fuente
+    autenticada, nunca se supone; acceso de plataforma auditado; el
+    Super-Admin no ve conversaciones salvo acceso de soporte explícito y
+    registrado; prueba de cruce entre tenants obligatoria.
+  - Principio II → ACLARADO: condición 4 distingue credenciales por
+    organización y credenciales del operador de la plataforma; "self-hosted"
+    en modo plataforma; librería embebida ≠ servicio de terceros.
+  - Principio III → REDEFINIDO: N organizaciones en modo plataforma, slug
+    único sin valores cableados, altas solo por la plataforma, configuración
+    por negocio como dato de la organización.
+  - Principio V → ACLARADO: la verificación puede correr en CI/staging.
+  - Principio VIII → REDEFINIDO: "CRM Conversacional, Multi-Nicho";
+    administrar varias organizaciones entra al alcance (modo plataforma);
+    billing sigue fuera.
+  - Principio IX → ACLARADO: el self-test en vivo puede correr en
+    CI/staging cuando el equipo local no tiene capacidad.
+  - Principio X (NUEVO): Núcleo Inmutable, Nichos por Datos.
+  - Principio XI (NUEVO): Localización y Marca como Datos.
+  - "Restricciones de Plataforma y Seguridad": registro por modo,
+    `/api/bot/*` 404 en modo plataforma, resolución de marca sin sesión por
+    subdominio con respaldo a la marca de plataforma.
+  - Principios IV, VI, VII y Governance: íntegros.
 
-Bump: MINOR (1.3.0 → 1.4.0) — expansión material de un principio; no elimina ni
-redefine nada de forma incompatible: una instancia default sigue cumpliendo
-exactamente la promesa vigente ("un VPS, un dominio, credenciales de Meta y un
-token de OpenRouter. Nada más").
+Bump: MAJOR (1.4.0 → 2.0.0) — redefinición incompatible del Principio III
+("cada instancia sirve a UN negocio"), del Principio VIII ("multi-instancia
+queda FUERA") y de la restricción "el registro se cierra tras la primera
+organización". Una instalación con TENANCY=single (default) conserva
+exactamente la promesa de la 1.x.
 
 Motivación:
-  El canal de Instagram (014 / ADR-001) entró como integración opcional detrás
-  de CHANNELS sin tocar este principio, porque es la misma Meta Graph API del
-  canal permitido. El motor de agendamiento (feature 015) necesita Zoom y
-  Google — proveedores nuevos — y el principio no daba ninguna vía, ni siquiera
-  apagados por defecto; la única salida habría sido "cada quien su fork", que
-  ADR-001 ya demostró insostenible (la rama 004-motor-agenda quedó irrescatable
-  en 26 días: 76 commits atrás y migración colisionada). La soberanía que el
-  principio protege no se toca: el costo lo paga únicamente la instancia que
-  enciende la bandera y pega SUS credenciales, y la condición 5 lo vuelve
-  verificable en vez de prometido.
-  Propuesta por escrito y ratificación del responsable (2026-08-26):
-  specs/015-motor-agenda-universal/enmienda-constitucional.md.
+  Proyecto Aliantis: operar el producto como SaaS multi-tenant multi-nicho de
+  marca blanca para Colombia, con una sola instancia del CRM y una sola Nea en
+  modo cloud. Propuesta por escrito y ratificación del responsable
+  (2026-11-17): specs/067-enmienda-multitenant-aliantis/spec.md.
 
 Plantillas dependientes:
-  - .specify/templates/spec-template.md — ✅ compatible (sin cambios).
-  - .specify/templates/plan-template.md — ✅ compatible; su Constitution Check
-    se evalúa contra esta versión (un conector externo pasa el gate si y solo
-    si cumple las cinco condiciones).
-  - .specify/templates/tasks-template.md — ✅ compatible.
-  - CLAUDE.md — ✅ actualizado en este mismo cambio (regla de Soberanía).
+  - .specify/templates/plan-template.md — ✅ actualizada: el Constitution
+    Check enumera los gates de I–XI, incluida la prueba de cruce de tenant.
+  - .specify/templates/spec-template.md — ✅ actualizada: sección de impacto
+    en tenancy y localización.
+  - .specify/templates/tasks-template.md — ✅ actualizada: tarea de prueba de
+    cruce de tenant y nota de verificación local vs. CI/staging.
+  - AGENTS.md — ✅ actualizado (Principios inviolables, Stack, Invariantes).
+  - CLAUDE.md — ✅ actualizado (intro, Reglas de la constitución, Definición
+    de Hecho).
+  - specs/README.md — ✅ actualizado (067 y 068).
+  - nea-agent/CLAUDE.md — ✅ sin cambios: sus reglas de multi-organización
+    (conversación por organización+identidad, piensa el CRM, credencial
+    derivada `vocero:cerebro:v1`) ya son compatibles.
 
 TODOs diferidos:
   - Deuda documental heredada de la 1.3.0 (features entre `003` y la app 1.2.0
-    sin spec): sigue igual; esta enmienda no la toca.
+    sin spec): sigue igual.
+  - Billing: fuera de alcance hasta una enmienda propia.
+  - Dominio propio por organización: fase posterior a 069.
 -->
 
-# Vocero CRM Constitution
+# Aliantis CRM Constitution
 
-Vocero CRM es un CRM de WhatsApp con agente de IA, open source (MIT), self-hosted y
-gratuito, diseñado para que las agencias de IA lo desplieguen en el VPS de sus
-clientes: una instancia = un negocio. Esta constitución define las reglas no
-negociables del producto. Aplica a todas las fases del flujo de trabajo (specify,
-plan, tasks, implement). Cualquier conflicto entre una decisión de implementación y
-esta constitución SE RESUELVE A FAVOR de esta constitución.
+Aliantis CRM es un CRM conversacional con agente de IA, derivado de un proyecto
+open source (MIT), que opera en uno de dos **modos de despliegue**, elegidos con
+la bandera `TENANCY` y nunca mezclados en una misma instancia:
+
+- **Modo instancia** (`TENANCY=single`, default): self-hosted, una instancia =
+  un negocio. Es el comportamiento de la 1.x y sigue siendo el default de una
+  instalación nueva.
+- **Modo plataforma** (`TENANCY=multi`): una instancia operada por una agencia
+  (p. ej. **Aliantis**) sirve a N organizaciones aisladas entre sí, de uno o
+  varios nichos, con una marca de plataforma y la marca propia de cada negocio.
+
+Esta constitución define las reglas no negociables del producto en ambos modos;
+cuando una regla aplica a un solo modo, lo dice explícitamente. Aplica a todas
+las fases del flujo de trabajo (specify, plan, tasks, implement). Cualquier
+conflicto entre una decisión de implementación y esta constitución SE RESUELVE
+A FAVOR de esta constitución.
 
 ## Core Principles
 
@@ -70,16 +96,33 @@ velocidad de entrega o conveniencia de desarrollo.
   app, respuestas de API) ni se escriben en logs, trazas o mensajes de error.
 - Todo secreto se almacena cifrado en reposo. Las claves de cifrado se gestionan
   fuera del código fuente y fuera del control de versiones.
-- Si el producto es multi-tenant, todo dato de un tenant está aislado de los demás:
-  ninguna consulta, endpoint o tarea en segundo plano debe devolver o modificar datos
-  de un tenant distinto al del solicitante. El aislamiento se aplica por defecto.
+- Todo dato de una organización está aislado de las demás: ninguna consulta,
+  endpoint, evento en tiempo real, archivo de medios, tarea en segundo plano ni
+  despacho al cerebro puede devolver o modificar datos de una organización
+  distinta a la del solicitante. El aislamiento se aplica por defecto.
+- **La organización se resuelve, nunca se supone.** Cada petición obtiene su
+  organización de una fuente autenticada: la sesión, la credencial derivada del
+  cerebro, el identificador del canal en el webhook o, para superficies
+  públicas sin sesión, el host/subdominio. En modo plataforma está PROHIBIDO
+  resolver "la primera" o "la única" organización.
+- **Acceso de plataforma auditado.** Los operadores de la plataforma
+  (Super-Admin) administran organizaciones (alta, suspensión, marca, nicho,
+  módulos) pero NO ven conversaciones, contactos ni mensajes por defecto. Solo
+  un **acceso de soporte explícito** —solicitado para una organización, con
+  motivo y caducidad— lo permite, y cada acceso queda en un registro de
+  auditoría (quién, cuándo, a qué organización, por qué). Ningún acceso de
+  plataforma expone secretos de una organización.
+- **Prueba de cruce obligatoria.** Toda superficie nueva que lea o escriba datos
+  de dominio lleva una prueba automática que demuestra que la organización A no
+  puede ver ni tocar datos de la organización B.
 
 **Rationale**: Una fuga de credenciales o un cruce de datos entre clientes es un
 fallo catastrófico e irreversible; prevenirlo siempre cuesta menos que remediarlo.
+En una plataforma con N negocios, un solo cruce compromete a todos.
 
 ### II. Soberanía / Self-Hosted (ENDURECIDO)
 
-Vocero CRM opera completo sobre la infraestructura del operador. La lista de
+El producto opera completo sobre la infraestructura del operador. La lista de
 dependencias externas en runtime es CERRADA:
 
 - Dependencias externas permitidas en runtime, ÚNICAMENTE:
@@ -100,9 +143,13 @@ dependencias externas en runtime es CERRADA:
         `enlace-fijo` de la agenda), y el fallo del proveedor degrada de forma
         definida — NUNCA bloquea ni pierde la operación core (la cita se crea
         con link pendiente; el mensaje se responde; el dato se guarda).
-     4. **Credenciales del propio negocio, cifradas en reposo** (Principio I):
-        cada instancia habla con SU cuenta del proveedor; jamás credenciales de
-        una plataforma central.
+     4. **Credenciales por organización, cifradas en reposo** (Principio I):
+        cada organización habla con SU cuenta del proveedor. En modo
+        plataforma, las únicas credenciales compartidas admisibles son **del
+        operador de la plataforma** (la app de Meta del registro integrado, el
+        secreto del despliegue del cerebro): viven en la configuración de
+        entorno del operador, nunca se muestran a los miembros de una
+        organización y nunca permiten a una organización actuar sobre otra.
      5. **Verificables apagados y encendidos**: la CI ejercita ambas
         configuraciones y cada conector externo tiene mock con camino infeliz.
 - **PROHIBIDO como dependencia del núcleo** (todo lo que el producto necesite
@@ -110,28 +157,43 @@ dependencias externas en runtime es CERRADA:
   servicios de email, billing (Stripe u otro) y cualquier servicio de terceros.
   Un servicio de terceros solo puede entrar como conector opcional bajo las
   cinco condiciones anteriores.
+- Una **librería embebida** (código que corre dentro del proceso, sin llamadas
+  de red; p. ej. validación de teléfonos) no es un servicio de terceros: entra
+  con la justificación normal de dependencias en el plan.
 - El instalador solo necesita: un VPS con Coolify o Docker, un dominio, credenciales
   de Meta y (opcional) un token de OpenRouter. Nada más.
 - Las funciones core —autenticación y base de datos— corren self-hosted (Better
-  Auth + PostgreSQL propios de la instancia).
+  Auth + PostgreSQL propios de la instancia). En modo plataforma, "self-hosted"
+  significa: la plataforma corre en infraestructura del operador (VPS de la
+  agencia), con su propio Postgres y su propia autenticación; ninguna
+  organización depende de un servicio de terceros que no haya encendido como
+  conector.
 - Las integraciones externas permitidas se aíslan tras adaptadores dedicados
   (cliente Graph API propio; adaptador LLM) para no acoplar el dominio a ellas.
 
-**Rationale**: El producto se regala para que agencias lo desplieguen en VPS de
-clientes; cada dependencia externa adicional es un costo, un punto de fallo y una
-fuga de soberanía que rompe la promesa "gratis y tuyo".
+**Rationale**: Cada dependencia externa adicional es un costo, un punto de fallo
+y una fuga de soberanía. Que el operador sea una agencia con N clientes no cambia
+eso: lo multiplica.
 
 ### III. Multi-Tenancy Real
 
 El sistema sirve a organizaciones independientes desde una sola instancia lógica.
-En Vocero cada instancia sirve a UN negocio, pero el modelo de datos es
-multi-tenant real (organización del plugin de auth) para mantener el aislamiento
-exigible y no cerrar la puerta a evoluciones.
+En modo instancia hay una sola organización; en modo plataforma hay N. El modelo
+de datos y la capa de acceso son idénticos en ambos modos.
 
 - Cada organización (tenant) gestiona sus propios usuarios, roles y permisos.
 - El identificador de tenant (`organization_id`) es un parámetro de primer nivel en
   el modelo de datos y en la capa de acceso a datos, no un campo opcional añadido a
-  posteriori. Toda tabla de dominio lo lleva NOT NULL e indexado org-first.
+  posteriori. Toda tabla de dominio lo lleva NOT NULL e indexado org-first, y
+  toda consulta pasa por `scoped()`.
+- Toda organización tiene un **slug único** generado al darla de alta; ningún
+  slug está cableado en el código.
+- En modo plataforma, **las organizaciones las crea la plataforma** (Super-Admin
+  o un flujo de alta controlado por ella), nunca un registro público abierto.
+- Lo que hoy sea configuración global de la instancia y deba variar por negocio
+  (marca, moneda, idioma, zona horaria, destino del despacho, banderas de
+  módulos) se modela como **dato de la organización**, con el valor de la
+  instancia como default.
 
 **Rationale**: Multi-tenancy diseñado desde el inicio evita reescrituras costosas y
 hace cumplible el aislamiento del Principio I.
@@ -159,6 +221,11 @@ Ninguna tarea se considera terminada sin pasar verificación.
   "pendiente de verificación humana"; no se reporta como completado sin esa marca.
 - No se reporta una tarea como terminada describiendo que "debería funcionar": o pasa
   la verificación, o se declara su estado real (incluyendo fallos).
+- La verificación puede ejecutarse en CI o en un entorno de staging en lugar de
+  la máquina del implementador cuando el equipo local no tenga capacidad (p. ej.
+  `build` y E2E con navegador). La tarea no se declara "Hecha" hasta que esa
+  ejecución remota esté en verde, y el reporte cita su resultado. Lo verificado
+  solo localmente se marca como tal.
 
 **Rationale**: La verificación automática es la única definición de "hecho" que no
 depende de optimismo.
@@ -173,9 +240,9 @@ la decisión queda por escrito:
 
 - **Ciclo completo** (`specify → plan → tasks → implement`) — obligatorio cuando la
   feature toca el **modelo de datos** (cualquier migración) o un **contrato
-  publicado** (`/api/bot/*`, el webhook, SSE, o un DTO que consuma algo fuera de
-  este repo). Ahí el coste de equivocarse no lo paga quien programa: lo paga quien
-  ya tiene datos guardados o un cliente conectado.
+  publicado** (`/api/bot/*`, `/api/brains/*`, el webhook, SSE, o un DTO que
+  consuma algo fuera de este repo). Ahí el coste de equivocarse no lo paga quien
+  programa: lo paga quien ya tiene datos guardados o un cliente conectado.
 
 - **Carril ligero** (`spec.md` únicamente) — para features con comportamiento
   observable nuevo que NO tocan el modelo de datos ni un contrato. El `spec.md`
@@ -217,25 +284,28 @@ Las decisiones tomadas sin contexto suficiente se documentan para revisión huma
 **Rationale**: Las decisiones implícitas bajo incertidumbre son la principal fuente
 de deuda oculta; hacerlas visibles permite corregirlas a tiempo.
 
-### VIII. Foco Vertical — CRM de Conversaciones y Leads de WhatsApp
+### VIII. Foco Vertical — CRM Conversacional, Multi-Nicho
 
-Es un CRM de conversaciones y leads de WhatsApp que las agencias despliegan para
-negocios. No es plataforma de marketing masivo, ni constructor visual de flujos, ni
-herramienta de scraping. Lo que no ayude a *atender, organizar y convertir
-conversaciones de WhatsApp de UN negocio* se rechaza.
+Es un CRM de conversaciones y leads que las agencias operan para negocios. No es
+plataforma de marketing masivo, ni constructor visual de flujos, ni herramienta
+de scraping. Lo que no ayude a *atender, organizar y convertir conversaciones de
+un negocio* se rechaza.
 
-- El modelo de datos y los flujos MUST reflejar ese dominio: contactos que escriben
-  por WhatsApp, conversaciones con ventana de 24h, leads en un pipeline, un agente
-  de IA que atiende con el conocimiento del negocio y escala a humanos.
-- WhatsApp Cloud API es el canal; el producto es el CRM. Features de canal que no
-  sirvan a atender/organizar/convertir (broadcast masivo, scraping de números,
-  flujos visuales genéricos) quedan FUERA del alcance de v1.
-- Toda feature MUST servir a la agencia que despliega o al negocio que opera UNA
-  instancia. Lo que solo sirva a una plataforma centralizada (billing, planes,
-  multi-instancia) queda FUERA.
+- El dominio es el mismo para todos los nichos: contactos que escriben por un
+  canal, conversaciones con la ventana de su canal, leads en un pipeline, un
+  agente de IA que atiende con el conocimiento del negocio y escala a humanos.
+- **Un nicho es una configuración, no un producto aparte** (Principio X).
+- Toda feature MUST servir a la agencia que opera la plataforma o la instancia,
+  o al negocio que opera su organización.
+- **Dentro del alcance** en modo plataforma: administrar varias organizaciones
+  desde la plataforma (alta, suspensión, marca, nicho, módulos).
+- **Fuera del alcance**: broadcast masivo, scraping de números, constructor
+  visual de flujos genérico. **Billing y planes de cobro** siguen fuera hasta
+  una enmienda propia.
 
 **Rationale**: Un foco vertical explícito mantiene el modelo de datos alineado con el
-negocio real y da un criterio claro para aceptar o rechazar alcance.
+negocio real y da un criterio claro para aceptar o rechazar alcance; abrirlo a
+varios nichos sin abrirlo a cualquier cosa exige decir qué es igual en todos.
 
 ### IX. Verificación de Comportamiento en Vivo (NO NEGOCIABLE)
 
@@ -259,7 +329,9 @@ el piso, no el techo.
   —incluyendo integraciones externas vía túnel (p. ej. ngrok + handshake del webhook desde
   el panel del proveedor)—, SHOULD probarse ahí antes de desplegar. El deploy a la nube se
   reserva para lo que el entorno local no pueda reproducir, porque desplegar consume tiempo
-  y reduce la agilidad del ciclo.
+  y reduce la agilidad del ciclo. Cuando el equipo local no tenga capacidad para el
+  self-test (navegador, build de producción), se ejecuta en CI o staging con el mismo
+  rigor (Principio V).
 - **Guardarraíles con herramientas no oficiales.** Cuando la prueba use herramientas no
   oficiales vinculadas a un número/cuenta real, MUST respetarse reglas duras: enviar solo a
   destinatarios de una allowlist, NUNCA mensajes en ráfaga (anti-flood obligatorio), y
@@ -273,9 +345,60 @@ cerrarlo: el implementador itera hasta verde en vez de devolver trabajo a medias
 en local primero mantiene el ciclo ágil; y sin guardarraíles duros, una prueba con
 herramientas no oficiales podría provocar un baneo irreversible.
 
+### X. Núcleo Inmutable, Nichos por Datos
+
+El núcleo es uno solo para todos los nichos y todas las organizaciones.
+
+- El núcleo (bandeja, ingesta, envío, pipeline, despacho, agenda, Laboratorio,
+  autenticación) **no contiene lógica de un nicho**: prohibido ramificar por
+  nombre de nicho u organización.
+- El comportamiento de un nicho se expresa, en este orden de preferencia:
+  1. **Datos** — un *Vertical Pack* versionado (etapas del pipeline, campos
+     personalizados, plantillas de conocimiento, personas del Laboratorio,
+     herramientas del agente habilitadas).
+  2. **Banderas por organización** guardadas en la base, que encienden o apagan
+     módulos para ese negocio. No sustituyen las banderas de despliegue: un
+     módulo apagado por despliegue está apagado para todos.
+  3. **Módulos aislados** — código propio de un nicho (p. ej. Alquiler de
+     Mobiliario) en su propia carpeta, con sus tablas (con `organization_id`),
+     sus rutas y sus herramientas. El núcleo no los importa: los descubre por un
+     registro. Apagado para una organización, su superficie responde 404.
+- Un módulo de nicho jamás escribe en una tabla del núcleo saltándose su puerta
+  única (p. ej. `lead.stage_id` solo por `leads/stage-history.ts`).
+- **Los contratos con el cerebro son del núcleo**: el despacho, `/api/bot/*`,
+  `/api/brains/*`, las cabeceras `x-vocero-*` y el dominio de la credencial
+  derivada `vocero:cerebro:v1` solo crecen de forma aditiva. Un nicho que
+  necesite herramientas nuevas en el agente las expone por un mecanismo aditivo
+  y versionado, nunca cambiando la forma de lo existente.
+
+**Rationale**: Un fork por nicho es la forma en que ADR-001 vio morir la rama
+`004-motor-agenda` en 26 días. Un núcleo único con nichos como datos mantiene un
+solo lugar donde corregir un error de seguridad.
+
+### XI. Localización y Marca como Datos
+
+- Moneda, idioma/formato regional, zona horaria y país por defecto para teléfonos
+  son **datos de la organización**, con default de la instancia (configurable por
+  entorno). Prohibido cablear un valor regional (`es-MX`, `MXN`,
+  `America/Mexico_City`, `es-CO`, `COP`…) en componentes o lógica: se consulta un
+  único módulo de localización.
+- La marca (nombre, logo, colores, favicon, icono de la app) de la plataforma y
+  de cada organización es dato. **Ninguna marca cableada en la UI** fuera del
+  módulo de marca — tampoco la del proyecto de origen.
+- Los identificadores técnicos internos (nombres de cabeceras, dominios de firma,
+  variables de entorno, rutas de contrato) no son marca y no se renombran por
+  marca blanca.
+- Lo que el Laboratorio y la demo dicen (modismos, teléfonos sintéticos, precios)
+  sigue la localización de la instancia o de la organización.
+
+**Rationale**: Un valor regional cableado es una decisión de producto escondida
+en un componente; centralizarlo es lo que permite servir a otro país o a otro
+negocio sin buscar cadenas por todo el código.
+
 ## Restricciones de Plataforma y Seguridad
 
-Estas restricciones derivan de los Principios I y II y son verificables en revisión:
+Estas restricciones derivan de los Principios I, II y III y son verificables en
+revisión:
 
 - **Gestión de secretos**: los secretos se inyectan vía configuración de entorno o un
   gestor de secretos; nunca se comprometen a control de versiones.
@@ -287,9 +410,19 @@ Estas restricciones derivan de los Principios I y II y son verificables en revis
   través de adaptadores dedicados (cliente Graph API propio, adaptador LLM
   OpenRouter-compatible), no dispersas por el dominio.
 - **Instancia pública endurecida**: las rutas de mock/desarrollo devuelven 404
-  incondicional en producción; el registro se cierra tras la primera organización
-  (salvo habilitación explícita); los entornos de prueba internos JAMÁS alcanzan la
+  incondicional en producción y los entornos de prueba internos JAMÁS alcanzan la
   API real de WhatsApp.
+- **Registro por modo**: en modo instancia, el registro público se cierra tras la
+  primera organización (salvo habilitación explícita). En modo plataforma no hay
+  registro público de organizaciones: las da de alta la plataforma.
+- **Superficies de organización única**: lo diseñado para "la organización única"
+  (hoy `/api/bot/*`) responde 404 en modo plataforma; el cerebro usa la superficie
+  por organización (`/api/brains/*`).
+- **Marca sin sesión**: las superficies públicas sin sesión (login, manifest,
+  favicon, icono) resuelven la organización por subdominio
+  (`negocio.<dominio-de-plataforma>`) y, en el dominio raíz o sin coincidencia,
+  muestran la marca de la plataforma; nunca la de "la primera organización".
+  El dominio propio por organización llega en una fase posterior.
 
 ## Flujo de Desarrollo y Puertas de Calidad
 
@@ -311,7 +444,7 @@ Estas restricciones derivan de los Principios I y II y son verificables en revis
   tests donde apliquen; lo no verificable automáticamente se marca como pendiente de
   verificación humana (Principio V). Para features con comportamiento observable de cara
   al usuario, "Hecho" exige además el self-test de comportamiento en vivo ejecutado por el
-  implementador, con sus guardarraíles (Principio IX).
+  implementador, con sus guardarraíles (Principio IX), localmente o en CI/staging.
 - **Trazabilidad**: decisiones bajo incertidumbre y supuestos se documentan de forma
   visible (Principio VII), no en comentarios enterrados.
 
@@ -334,4 +467,4 @@ práctica, convención o preferencia; ante un conflicto, gana la constitución.
 - **Propagación**: al enmendar la constitución se revisan y, si procede, se actualizan
   las plantillas dependientes (plan, spec, tasks).
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-08-26
+**Version**: 2.0.0 | **Ratified**: 2026-07-09 | **Last Amended**: 2026-11-17

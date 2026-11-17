@@ -1,3 +1,4 @@
+import { formatNumber, getRegion } from "@/lib/region";
 import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
 
 /**
@@ -200,7 +201,7 @@ export const MAX_TEXT_CHARS_ANY_CHANNEL = Math.max(
 );
 
 /** Lo que se le dice a quien manda un texto más largo que eso. */
-export const TEXT_TOO_LONG_ANY_CHANNEL = `El mensaje es demasiado largo: el máximo es ${MAX_TEXT_CHARS_ANY_CHANNEL.toLocaleString("es-MX")} caracteres`;
+export const TEXT_TOO_LONG_ANY_CHANNEL = `El mensaje es demasiado largo: el máximo es ${formatNumber(MAX_TEXT_CHARS_ANY_CHANNEL, getRegion().locale)} caracteres`;
 
 /** ¿Este texto cabe en el canal? Mira el límite que su plataforma mida. */
 export function textFits(channel: Channel, text: string): boolean {
@@ -221,7 +222,7 @@ export function textLimitMessage(channel: Channel): string {
   const caps = capabilitiesFor(channel);
   const limite =
     caps.maxTextChars !== null
-      ? `${caps.maxTextChars.toLocaleString("es-MX")} caracteres`
+      ? `${formatNumber(caps.maxTextChars, getRegion().locale)} caracteres`
       : `${caps.maxTextBytes} bytes`;
   return `${caps.label} no acepta mensajes de más de ${limite}: acorta el texto`;
 }

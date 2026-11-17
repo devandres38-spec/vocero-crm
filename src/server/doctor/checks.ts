@@ -4,6 +4,7 @@ import type { ZodIssue } from "zod";
 import { getDb, PG_CONNECTION_OPTIONS, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { envSchema, safeParseEnv, type Env } from "@/lib/env";
+import { REGION_DEFAULTS, REGION_ENV_KEYS, resolveRegion } from "@/lib/region";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { GENERATED_SECRETS, PLACEHOLDER_PREFIX } from "@/server/doctor/init-env";
 import { probeBucket, probeMediaDir } from "@/server/media-dir";
@@ -178,6 +179,27 @@ export function evaluateEnv(source: Record<string, string | undefined>): EnvEval
     results.push(checkVar(key, value, undefined, false));
   }
   return { results, env: parsed.success ? parsed.data : null };
+}
+
+/**
+ * 068 — La región de la instancia. Un valor inválido no tumba el arranque (se
+ * usa el default), así que aquí es un aviso, no un ✗.
+ */
+export function checkRegion(source: Record<string, string | undefined>): CheckResult[] {
+  const { region, invalidas } = resolveRegion(source);
+  const campos = Object.keys(REGION_ENV_KEYS) as (keyof typeof REGION_ENV_KEYS)[];
+  return campos.map((campo) => {
+    const clave = REGION_ENV_KEYS[campo];
+    if (invalidas.includes(clave)) {
+      return {
+        status: "warn",
+        label: clave,
+        detail: `«${source[clave]}» no es válido: se usa ${REGION_DEFAULTS[campo]}`,
+        fix: `Corrige ${clave} o bórrala para usar el default`,
+      };
+    }
+    return { status: "ok", label: clave, detail: region[campo] };
+  });
 }
 
 /** Variables que no lee la app pero sí docker-compose.yml (Ruta B). */

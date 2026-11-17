@@ -1,6 +1,6 @@
 {
   "name": "vocero-crm",
-  "version": "2.7.0",
+  "version": "2.8.0",
   "description": "CRM de WhatsApp open source y self-hosted con agente de IA y Laboratorio de auto-evaluación",
   "license": "MIT",
   "type": "module",
@@ -37,6 +37,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.4",
+    "libphonenumber-js": "^1.13.16",
     "lucide-react": "^0.469.0",
     "nanoid": "^5.0.9",
     "next": "^15.5.28",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useState } from "react";
 import { ExternalLink, Megaphone } from "lucide-react";
 import type { AnuncioDto } from "@/lib/types";
@@ -51,12 +52,13 @@ export function MiniaturaDeAnuncio({
  * el conjunto no vienen ahí, y pedirlos exigiría la API de Marketing.
  */
 export function AnuncioOrigen({ anuncio }: { anuncio: AnuncioDto }) {
+  const { locale } = useRegion();
   // La imagen puede no estar (caducó antes de copiarse, host no permitido) o
   // dejar de servirse: la tarjeta sigue diciendo lo importante sin ella.
   const [imagenRota, setImagenRota] = useState(false);
   const etiqueta = etiquetaDeOrigen(anuncio.sourceType);
   const titular = titularDeOrigen(anuncio.headline, anuncio.sourceType);
-  const fecha = new Date(anuncio.capturedAt).toLocaleDateString("es-MX", {
+  const fecha = new Date(anuncio.capturedAt).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",

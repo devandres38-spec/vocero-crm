@@ -1,5 +1,7 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
+import { paisDeTelefono } from "@/lib/phone";
 import { useState } from "react";
 import {
   PROBLEM_LABELS,
@@ -26,6 +28,8 @@ export function ImportContactsDialog({
   onClose: () => void;
   onImported: () => void;
 }) {
+  const region = useRegion();
+  const pais = paisDeTelefono(region.country, region.locale);
   const [fileName, setFileName] = useState("");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [aiPaused, setAiPaused] = useState(false);
@@ -39,7 +43,7 @@ export function ImportContactsDialog({
     setResult(null);
     if (!file) return;
     setFileName(file.name);
-    const read = readImportFile(await file.text());
+    const read = readImportFile(await file.text(), region.country);
     if (!read.ok) {
       setError(read.error);
       return;
@@ -82,9 +86,10 @@ export function ImportContactsDialog({
         <h3 className="mb-1 font-semibold">Importar contactos</h3>
         <p className="mb-4 text-xs text-text-3">
           Un archivo CSV con una columna <strong>nombre</strong> y una{" "}
-          <strong>telefono</strong> en el primer renglón. El teléfono va con
-          código de país (52 para México). A quien ya exista no se le duplica ni
-          se le cambia el nombre.
+          <strong>telefono</strong> en el primer renglón. El teléfono puede ir
+          con código de país{pais.codigo ? ` (${pais.codigo} para ${pais.nombre})` : ""} o
+          como número local de {pais.nombre}. A quien ya exista no se le duplica
+          ni se le cambia el nombre.
         </p>
 
         {result ? (

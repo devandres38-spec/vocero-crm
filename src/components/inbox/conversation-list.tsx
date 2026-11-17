@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useEffect, useRef, useState } from "react";
 import { Clock3, Inbox, Megaphone, SlidersHorizontal, Search, Sparkles, UserRound, X } from "lucide-react";
 import type { ConversationDto } from "@/lib/types";
@@ -95,6 +96,7 @@ export function ConversationList({
   onSelect: (id: string) => void;
   onSeeded: () => void;
 }) {
+  const { locale } = useRegion();
   const [query, setQuery] = useState("");
   // 052 (enmienda) — Dos pestañas y un botón «Filtrar» con lo demás.
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -473,7 +475,7 @@ export function ConversationList({
                             unread ? "font-semibold text-brand-ink" : "text-text-3"
                           )}
                         >
-                          {formatTime(c.lastMessageAt)}
+                          {formatTime(c.lastMessageAt, locale)}
                         </span>
                       </span>
                       <span className="mt-0.5 flex items-center justify-between gap-2">

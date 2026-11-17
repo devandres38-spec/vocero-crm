@@ -1,11 +1,11 @@
 import { ImageResponse } from "next/og";
 import { DEFAULT_BRANDING, resolveAccentSet, type Branding } from "@/lib/branding";
 import {
-  BRAND_CYAN_ON_TILE,
-  BRAND_MARK_BODY,
+  BRAND_MARK_LEFT,
+  BRAND_MARK_RIGHT,
   BRAND_MARK_STROKE,
-  BRAND_MARK_TAIL,
-  isVoceroName,
+  BRAND_TEAL_ON_TILE,
+  isPlatformBrandName,
 } from "@/lib/brand";
 import { FAVICON_ASSET, faviconInitial } from "@/lib/favicon";
 import type { AppIconPurpose, AppIconSize } from "@/lib/pwa";
@@ -69,8 +69,8 @@ function dibujo(
   const aSangre = purpose === "maskable" || size === 180;
   // Zona segura del maskable: lo importante dentro del 60 % central.
   const contenido = Math.round(size * (purpose === "maskable" ? 0.6 : 0.72));
-  const vocero = !logo && isVoceroName(branding.name);
-  const fondo = vocero
+  const plataforma = !logo && isPlatformBrandName(branding.name);
+  const fondo = plataforma
     ? `linear-gradient(135deg, ${accent}, ${hover})`
     : logo
       ? "#ffffff"
@@ -92,9 +92,9 @@ function dibujo(
       {logo ? (
         // eslint-disable-next-line @next/next/no-img-element -- ImageResponse dibuja <img>, no next/image
         <img src={logo} width={contenido} height={contenido} style={{ objectFit: "contain" }} alt="" />
-      ) : vocero ? (
+      ) : plataforma ? (
         // eslint-disable-next-line @next/next/no-img-element -- ImageResponse dibuja <img>, no next/image
-        <img src={marcaVocero()} width={contenido} height={contenido} alt="" />
+        <img src={marcaPlataforma()} width={contenido} height={contenido} alt="" />
       ) : (
         <span
           style={{
@@ -122,13 +122,13 @@ function grosor(color: string, size: number): string {
   return pasos.map(([x, y]) => `${x}px ${y}px 0 ${color}`).join(", ");
 }
 
-/** La V de Vocero sola, sin mosaico: el mosaico lo pone el contenedor. */
-function marcaVocero(): string {
+/** La "A" de la plataforma sola, sin mosaico: el mosaico lo pone el contenedor. */
+function marcaPlataforma(): string {
   const svg = [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="240" height="240">`,
     `<g fill="none" stroke-linecap="round">`,
-    `<path d="${BRAND_MARK_BODY}" stroke="#ffffff" stroke-width="${BRAND_MARK_STROKE}"/>`,
-    `<path d="${BRAND_MARK_TAIL}" stroke="${BRAND_CYAN_ON_TILE}" stroke-width="${BRAND_MARK_STROKE}"/>`,
+    `<path d="${BRAND_MARK_LEFT}" stroke="#ffffff" stroke-width="${BRAND_MARK_STROKE}"/>`,
+    `<path d="${BRAND_MARK_RIGHT}" stroke="${BRAND_TEAL_ON_TILE}" stroke-width="${BRAND_MARK_STROKE}"/>`,
     `</g></svg>`,
   ].join("");
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;

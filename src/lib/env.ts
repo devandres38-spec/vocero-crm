@@ -86,6 +86,13 @@ export const envSchema = z.object({
   MEDIA_BUCKET_REGION: z.string().default("auto"),
   MEDIA_BUCKET_KEY_ID: z.string().optional(),
   MEDIA_BUCKET_SECRET: z.string().optional(),
+  // 068: región de la instancia (src/lib/region.ts). Opcionales y sin validar
+  // aquí, por lo mismo que BRAIN_HEALTH_URL: un valor mal escrito no puede
+  // tumbar el CRM; se usa el default (Colombia) y `pnpm doctor` lo avisa.
+  REGION_COUNTRY: z.string().optional(),
+  REGION_LOCALE: z.string().optional(),
+  REGION_CURRENCY: z.string().optional(),
+  REGION_TIMEZONE: z.string().optional(),
   NODE_ENV: z.string().default("development"),
 });
 

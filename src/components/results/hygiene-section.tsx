@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import type { HygieneBlockDto } from "@/lib/analytics";
 import { formatMoneyCents } from "@/lib/money";
+import { useRegion } from "@/lib/region-context";
 import { Section, Subhead } from "./section";
 
 /**
@@ -23,7 +24,8 @@ export function HygieneSection({
   error: string | null;
   currency: string;
 }) {
-  const money = (c: number) => formatMoneyCents(c, currency) ?? "—";
+  const { locale } = useRegion();
+  const money = (c: number) => formatMoneyCents(c, currency, locale) ?? "—";
   const enLista = data ? Math.min(data.silent.length, 8) : 0;
 
   return (
