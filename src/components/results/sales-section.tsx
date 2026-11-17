@@ -2,6 +2,7 @@
 
 import type { SalesBlockDto } from "@/lib/analytics";
 import { formatMoneyCents } from "@/lib/money";
+import { useRegion } from "@/lib/region-context";
 import { Funnel } from "./funnel";
 import { Section, Subhead } from "./section";
 import { RateCard, StatCard } from "./stat-card";
@@ -21,7 +22,8 @@ export function SalesSection({
   error: string | null;
   currency: string;
 }) {
-  const money = (c: number | null) => formatMoneyCents(c, currency) ?? "—";
+  const { locale } = useRegion();
+  const money = (c: number | null) => formatMoneyCents(c, currency, locale) ?? "—";
   return (
     <Section
       id="ventas"

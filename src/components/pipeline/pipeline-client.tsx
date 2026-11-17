@@ -15,7 +15,8 @@ import {
 } from "@dnd-kit/core";
 import { MessageSquareText, Settings2, Trophy, XCircle } from "lucide-react";
 import type { LossReason, PriorityValue, StageDto } from "@/lib/types";
-import { formatMoneyCents, sumable } from "@/lib/money";
+import { DEFAULT_CURRENCY, formatMoneyCents, sumable } from "@/lib/money";
+import { useRegion } from "@/lib/region-context";
 import { cn } from "@/lib/utils";
 import { ContactAvatar } from "@/components/avatar";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,8 @@ export type BoardLead = {
 
 export function PipelineClient() {
   const [stages, setStages] = useState<StageDto[]>([]);
-  const [currency, setCurrency] = useState("MXN");
+  // 068 — Hasta que el tablero diga la del negocio, la de la región.
+  const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
   const [leads, setLeads] = useState<BoardLead[]>([]);
   const [activeLead, setActiveLead] = useState<BoardLead | null>(null);
   const [managing, setManaging] = useState(false);
@@ -341,6 +343,7 @@ function StageColumn({
 
 /** Cuánto dinero hay en esta etapa, y qué quedó fuera de la cuenta. */
 function StageFooter({ leads, currency }: { leads: BoardLead[]; currency: string }) {
+  const { locale } = useRegion();
   const { totalCents, sinMonto, otraMoneda } = totalesDeEtapa(leads, currency);
   const conMonto = leads.length - sinMonto - otraMoneda;
 
@@ -355,7 +358,7 @@ function StageFooter({ leads, currency }: { leads: BoardLead[]; currency: string
             Total{sinMonto > 0 ? ` · ${sinMonto} sin monto` : ""}
           </span>
           <span className="font-semibold tabular-nums">
-            {formatMoneyCents(totalCents, currency)}
+            {formatMoneyCents(totalCents, currency, locale)}
           </span>
         </div>
       )}
@@ -422,6 +425,7 @@ function LeadCard({
   overlay?: boolean;
   onEditAmount?: (lead: BoardLead) => void;
 }) {
+  const { locale } = useRegion();
   return (
     <div
       className={cn(
@@ -474,12 +478,12 @@ function LeadCard({
         >
           {lead.amountCents === null
             ? "+ monto"
-            : formatMoneyCents(lead.amountCents, lead.currency ?? currency)}
+            : formatMoneyCents(lead.amountCents, lead.currency ?? currency, locale)}
         </button>
       )}
       {overlay && lead.amountCents !== null && (
         <p className="mt-1.5 text-right text-xs font-semibold tabular-nums">
-          {formatMoneyCents(lead.amountCents, lead.currency ?? currency)}
+          {formatMoneyCents(lead.amountCents, lead.currency ?? currency, locale)}
         </p>
       )}
     </div>

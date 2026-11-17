@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoneyCents, parseMoneyToCents } from "@/lib/money";
+import { displayFractionDigits, formatMoneyCents, parseMoneyToCents } from "@/lib/money";
+import { useRegion } from "@/lib/region-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PriorityPicker } from "./priority-picker";
@@ -34,8 +35,9 @@ export function AmountDialog({
   onCancel: () => void;
   onSave: (cents: number | null) => void;
 }) {
+  const { locale } = useRegion();
   const [texto, setTexto] = useState(
-    amountCents === null ? "" : (amountCents / 100).toFixed(2)
+    amountCents === null ? "" : (amountCents / 100).toFixed(displayFractionDigits(currency))
   );
   const parsed = texto.trim() ? parseMoneyToCents(texto) : null;
   const invalido = texto.trim().length > 0 && parsed === null;
@@ -71,7 +73,7 @@ export function AmountDialog({
           <p className="mt-1 text-xs text-text-3">
             {parsed === null
               ? "Déjalo vacío para quitar el monto."
-              : `Se guardará como ${formatMoneyCents(parsed, currency)}`}
+              : `Se guardará como ${formatMoneyCents(parsed, currency, locale)}`}
           </p>
         )}
 

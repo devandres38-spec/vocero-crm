@@ -10,7 +10,8 @@ import type {
   PriorityValue,
   StageDto,
 } from "@/lib/types";
-import { formatMoneyCents, parseMoneyToCents } from "@/lib/money";
+import { displayFractionDigits, formatMoneyCents, parseMoneyToCents } from "@/lib/money";
+import { useRegion } from "@/lib/region-context";
 import { cn, formatPhone } from "@/lib/utils";
 import { AnuncioOrigen } from "@/components/anuncio-origen";
 import { ContactAvatar } from "@/components/avatar";
@@ -55,6 +56,7 @@ export function LeadDrawer({
 
   const contactId = lead.contact.id;
   const moneda = lead.currency ?? currency;
+  const { locale } = useRegion();
 
   const cargarFicha = useCallback(async () => {
     const detail = await fetch(`/api/contacts/${contactId}`)
@@ -69,9 +71,13 @@ export function LeadDrawer({
 
   useEffect(() => {
     setEditandoMonto(false);
-    setMonto(lead.amountCents === null ? "" : (lead.amountCents / 100).toFixed(2));
+    setMonto(
+      lead.amountCents === null
+        ? ""
+        : (lead.amountCents / 100).toFixed(displayFractionDigits(moneda))
+    );
     void cargarFicha();
-  }, [cargarFicha, lead.amountCents]);
+  }, [cargarFicha, lead.amountCents, moneda]);
 
   // Escape cierra: un cajón que solo se cierra con el ratón estorba a quien
   // revisa el tablero con el teclado.
@@ -196,7 +202,7 @@ export function LeadDrawer({
                     ? "No se entiende ese importe."
                     : montoParseado === null
                       ? "Déjalo vacío para quitar el monto."
-                      : `Se guardará como ${formatMoneyCents(montoParseado, moneda)}`}
+                      : `Se guardará como ${formatMoneyCents(montoParseado, moneda, locale)}`}
                 </p>
                 <div className="mt-2 flex gap-1.5">
                   <Button
@@ -231,7 +237,7 @@ export function LeadDrawer({
               >
                 {lead.amountCents === null
                   ? "Sin monto — captúralo"
-                  : formatMoneyCents(lead.amountCents, moneda)}
+                  : formatMoneyCents(lead.amountCents, moneda, locale)}
               </button>
             )}
           </section>
