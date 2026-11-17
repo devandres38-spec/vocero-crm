@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { parseBody, withAuth } from "@/lib/api";
-import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
+import { agendaDisabledResponse } from "@/server/agenda/flag";
 import {
   cancelBooking,
   markBookingStatus,
@@ -8,6 +8,7 @@ import {
   retryMeetingLink,
 } from "@/server/agenda/service";
 import { bookingErrorResponse } from "@/server/agenda/http";
+import { agendaActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ const patchSchema = z.discriminatedUnion("action", [
  * el enlace que el proveedor no entregó.
  */
 export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
-  if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!agendaActiva(session)) return agendaDisabledResponse();
   const { id } = await ctx.params;
   const body = await parseBody(req, patchSchema);
   if (!body.ok) return body.response;

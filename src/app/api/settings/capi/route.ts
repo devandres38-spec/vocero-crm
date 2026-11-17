@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
-import {
-  atribucionDisabledResponse,
-  atribucionEnabled,
-} from "@/server/attribution/flag";
+import { atribucionDisabledResponse } from "@/server/attribution/flag";
 import {
   deleteCapiSettings,
   getCapiSettingsView,
@@ -11,6 +8,7 @@ import {
   stageBelongsToOrg,
 } from "@/server/attribution/settings";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
+import { atribucionActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +20,7 @@ export const dynamic = "force-dynamic";
  */
 
 export const GET = withAuth(async (session) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!atribucionActiva(session)) return atribucionDisabledResponse();
   const capi = await getCapiSettingsView(session.organizationId);
   return Response.json({ capi });
 });
@@ -40,7 +38,7 @@ const putSchema = z.object({
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!atribucionActiva(session)) return atribucionDisabledResponse();
 
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
@@ -80,7 +78,7 @@ export const PUT = withAuth(async (session, req: Request) => {
 });
 
 export const DELETE = withAuth(async (session) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!atribucionActiva(session)) return atribucionDisabledResponse();
   await deleteCapiSettings(session.organizationId);
   return Response.json({ ok: true });
 });

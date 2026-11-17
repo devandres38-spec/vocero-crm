@@ -9,9 +9,9 @@ import {
   rolDe,
   type ClaveHerramienta,
 } from "@/lib/agent-roles";
-import { agendaEnabled } from "@/server/agenda/flag";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
+import { agendaActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export const GET = withAuth(async (session) => {
       tools: herramientasEfectivas(p.tools),
     },
     // 034 — Sin la bandera, la pantalla no ofrece agendar ni reprogramar.
-    agendaEnabled: agendaEnabled(),
+    agendaEnabled: agendaActiva(session),
     aiConfigured: estado.activa,
     // Por qué no (sin configurar, llave rechazada, sin saldo): la pantalla
     // Agente lo dice con el enlace a Ajustes → IA.

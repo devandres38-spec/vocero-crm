@@ -46,7 +46,6 @@ import {
   windowMsFor,
   aiWindowClosedMessage,
 } from "@/server/channels/capabilities";
-import { isChannelEnabled } from "@/server/channels/enabled";
 import { serializeMessage } from "@/server/inbox/ingest";
 import { conCita, type CitaEncontrada } from "@/server/inbox/quotes";
 import {
@@ -56,6 +55,7 @@ import {
 } from "@/server/whatsapp/media";
 import { esPlataforma } from "@/lib/tenancy";
 import { organizacionSuspendida } from "@/server/platform/estado";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /** Error tipado del envío; `code` mapea a HTTP en la capa de API. */
 export class SendError extends Error {
@@ -180,7 +180,7 @@ async function prepareSend(
   if (row.conversation.channel === "instagram") {
     // Una conversacion de un canal apagado puede existir (se apago despues de
     // recibirla): falla claro en vez de intentar un transporte que no aplica.
-    if (!isChannelEnabled("instagram")) {
+    if (!(await modulosDeOrganizacion(organizationId)).channels.includes("instagram")) {
       throw new SendError(
         "not_connected",
         "El canal de Instagram está desactivado en esta instancia"
@@ -218,7 +218,7 @@ async function prepareSend(
   // 017: Messenger, mismo trato que Instagram: transporte propio, ventana
   // propia (con etiqueta fuera de ella) y sin plantillas.
   if (row.conversation.channel === "messenger") {
-    if (!isChannelEnabled("messenger")) {
+    if (!(await modulosDeOrganizacion(organizationId)).channels.includes("messenger")) {
       throw new SendError(
         "not_connected",
         "El canal de Messenger está desactivado en esta instancia"
@@ -258,7 +258,7 @@ async function prepareSend(
   // y se comprueban AQUÍ, antes de llamar a nadie: el envío que la plataforma
   // rechazaría no sale, y falla con un motivo que el operador entiende.
   if (row.conversation.channel === "tiktok") {
-    if (!isChannelEnabled("tiktok")) {
+    if (!(await modulosDeOrganizacion(organizationId)).channels.includes("tiktok")) {
       throw new SendError(
         "not_connected",
         "El canal de TikTok está desactivado en esta instancia"

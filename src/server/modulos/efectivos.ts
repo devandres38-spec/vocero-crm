@@ -2,7 +2,7 @@ import { z } from "zod";
 import { CHANNEL_ORDER, isChannel, type Channel } from "@/lib/channels";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { atribucionEnabled } from "@/server/attribution/flag";
-import { enabledChannels } from "@/server/channels/enabled";
+import { isChannelEnabled } from "@/server/channels/enabled";
 
 /**
  * 069 (D11) — Módulos por organización. La instancia es el TECHO (lo que el
@@ -59,11 +59,12 @@ export type ModulosEfectivos = {
   modules: string[];
 };
 
+/** El techo, con las mismas funciones que la instancia usaba antes de la 069. */
 export function techoDeInstancia(): TechoInstancia {
   return {
     agenda: agendaEnabled(),
     atribucion: atribucionEnabled(),
-    channels: enabledChannels(),
+    channels: new Set(CHANNEL_ORDER.filter((c) => isChannelEnabled(c))),
   };
 }
 

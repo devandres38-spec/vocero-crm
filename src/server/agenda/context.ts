@@ -2,8 +2,8 @@ import { eq, gte, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { dayLabelInTz, timeInTz } from "@/lib/time/slots";
-import { agendaEnabled } from "@/server/agenda/flag";
 import { getSettings } from "@/server/agenda/settings";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * 015 — Las citas del contacto, para el contexto de un cerebro externo
@@ -188,8 +188,9 @@ export async function citasParaContexto(
   contactId: string,
   now = new Date()
 ): Promise<CitasEnContexto | null> {
-  if (!agendaEnabled()) return null;
   try {
+    // 069 — La agenda de ESTA organización (techo ∧ organización).
+    if (!(await modulosDeOrganizacion(organizationId)).agenda) return null;
     return await leerCitas(organizationId, contactId, now);
   } catch (err) {
     console.error(

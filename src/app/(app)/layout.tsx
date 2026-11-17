@@ -6,11 +6,11 @@ import { aparienciaActual } from "@/server/apariencia";
 import { getBranding } from "@/server/branding";
 import { AppShell } from "@/components/app-shell";
 import { resolveCommit } from "@/lib/version";
-import { agendaEnabled } from "@/server/agenda/flag";
-import { enabledChannels } from "@/server/channels/enabled";
 import { navKicker } from "@/lib/channels";
 import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
+import { agendaActiva, modulosDe } from "@/server/modulos/consulta";
+import { dominioBase, esPlataforma } from "@/lib/tenancy";
 
 export default async function AppLayout({
   children,
@@ -41,11 +41,19 @@ export default async function AppLayout({
       // Qué módulos opcionales existen se decide en el servidor y baja por
       // prop, igual que los canales de la Bandeja. El nav es un componente de
       // cliente: no puede —ni debe— leer variables de entorno.
-      agenda={agendaEnabled()}
-      kicker={navKicker([...enabledChannels()])}
+      agenda={agendaActiva(session)}
+      kicker={navKicker(modulosDe(session).channels)}
+      empresasUrl={empresasUrl()}
       aviso={<AvisoIaBanner aviso={aviso} />}
     >
       {children}
     </AppShell>
   );
+}
+
+/** 069 — En modo plataforma, el selector de empresas vive en el dominio raíz. */
+function empresasUrl(): string | undefined {
+  if (!esPlataforma()) return undefined;
+  const base = dominioBase();
+  return base ? `https://${base}/empresas` : "/empresas";
 }

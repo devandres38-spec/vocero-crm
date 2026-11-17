@@ -6,19 +6,17 @@ import {
   saveMessengerCredentials,
   tokenLast4,
 } from "@/server/messenger/credentials";
-import {
-  channelDisabledResponse,
-  isChannelEnabled,
-} from "@/server/channels/enabled";
+import { channelDisabledResponse } from "@/server/channels/enabled";
 import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
 import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
 import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { canalActivo } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
 /** 017 — Estado de la conexión de Messenger (el token nunca sale entero). */
 export const GET = withAuth(async (session) => {
-  if (!isChannelEnabled("messenger")) return channelDisabledResponse();
+  if (!canalActivo(session, "messenger")) return channelDisabledResponse();
   const creds = await getMessengerCredentialsByOrg(session.organizationId);
   if (!creds) return Response.json({ connection: null });
   return Response.json({
@@ -47,7 +45,7 @@ const putSchema = z.object({
  * de la organización puede hacerlo.
  */
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!isChannelEnabled("messenger")) return channelDisabledResponse();
+  if (!canalActivo(session, "messenger")) return channelDisabledResponse();
   if (session.role !== "owner") {
     return apiError(403, "forbidden", "Solo el propietario puede conectar la página");
   }

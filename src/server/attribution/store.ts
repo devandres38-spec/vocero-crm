@@ -10,6 +10,7 @@ import {
   sinIdentificadorDeClic,
   type AnuncioDeOrigen,
 } from "@/server/attribution/referral";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * 016 + 018 — De qué anuncio vino una conversación.
@@ -45,7 +46,9 @@ export async function registrarAnuncioDeOrigen(input: {
   anuncio: AnuncioDeOrigen;
 }): Promise<void> {
   const db = getDb();
-  const a = anuncioParaGuardar(input.anuncio);
+  // 069 — La atribución de ESTA organización (techo ∧ organización).
+  const { atribucion } = await modulosDeOrganizacion(input.organizationId);
+  const a = anuncioParaGuardar(input.anuncio, atribucion);
   const creadas = await db
     .insert(schema.adAttribution)
     .values({
@@ -127,7 +130,8 @@ export async function anuncioDelContacto(
   contactId: string
 ): Promise<AnuncioDto | null> {
   const fila = await primeraFilaDelContacto(organizationId, contactId);
-  return fila ? serializarAnuncio(fila) : null;
+  if (!fila) return null;
+  return serializarAnuncio(fila, (await modulosDeOrganizacion(organizationId)).atribucion);
 }
 
 /** Como mucho un intento de reparación por anuncio en esta ventana. */

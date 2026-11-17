@@ -4,9 +4,9 @@ import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { sendBusinessMessagingEvent } from "@/lib/meta/capi";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
-import { atribucionEnabled } from "@/server/attribution/flag";
 import { getCapiSettings } from "@/server/attribution/settings";
 import { getAttributionForConversation } from "@/server/attribution/store";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * 016 — Reporte de conversiones a Meta.
@@ -173,7 +173,7 @@ export async function reportStageChange(input: {
   toStageId: string;
   toStageKind: "open" | "won" | "lost";
 }): Promise<void> {
-  if (!atribucionEnabled()) return;
+  if (!(await modulosDeOrganizacion(input.organizationId)).atribucion) return;
 
   try {
     const settings = await getCapiSettings(input.organizationId);
