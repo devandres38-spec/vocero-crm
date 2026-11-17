@@ -16,7 +16,7 @@ import {
  * superficies sin organización (guardarraíl `modulos-por-organizacion`).
  */
 
-type ConModulos = { modulos?: ModulosEfectivos } | null | undefined;
+type ConModulos = { organizationId?: string; modulos?: ModulosEfectivos } | null | undefined;
 
 /**
  * Los módulos de la sesión (ya calculados por el resolvedor, sin consultas).
