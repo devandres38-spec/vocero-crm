@@ -1,13 +1,11 @@
-import {
-  MAX_TEXT_CHARS_ANY_CHANNEL,
-  TEXT_TOO_LONG_ANY_CHANNEL,
-} from "@/server/channels/capabilities";
+import { MAX_TEXT_CHARS_ANY_CHANNEL, textoDemasiadoLargo } from "@/server/channels/capabilities";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getConversation, listMessages } from "@/server/inbox/queries";
 import { serializeMessage } from "@/server/inbox/ingest";
 import { resolverCitas } from "@/server/inbox/quotes";
 import { SendError, sendStructured, sendText } from "@/server/inbox/send";
+import { localeDeOrganizacion } from "@/server/region";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +47,15 @@ const replyToMessageId = z.string().trim().min(1).max(64).optional();
 
 // 008: además de texto, el body acepta ubicación y contactos (discriminado
 // por `type`; sin `type` sigue siendo texto — compat con clientes previos).
-const sendSchema = z.union([
+//
+// 069 (H-07): el aviso de «demasiado largo» va en el locale del negocio; un
+// esquema por locale, construido una vez.
+const sendSchemaPara = (locale: string) => z.union([
   z.object({
     type: z.literal("text").optional(),
     // 022: el tope de aquí es el del canal que más admite; el de cada
     // canal lo comprueba el envío (`text_too_long`).
-    text: z.string().trim().min(1).max(MAX_TEXT_CHARS_ANY_CHANNEL, TEXT_TOO_LONG_ANY_CHANNEL),
+    text: z.string().trim().min(1).max(MAX_TEXT_CHARS_ANY_CHANNEL, textoDemasiadoLargo(locale)),
     replyToMessageId,
   }),
   z.object({
@@ -82,6 +83,16 @@ const sendSchema = z.union([
   }),
 ]);
 
+const ESQUEMAS = new Map<string, ReturnType<typeof sendSchemaPara>>();
+function sendSchema(locale: string) {
+  let e = ESQUEMAS.get(locale);
+  if (!e) {
+    e = sendSchemaPara(locale);
+    ESQUEMAS.set(locale, e);
+  }
+  return e;
+}
+
 const SEND_ERROR_STATUS: Record<SendError["code"], number> = {
   sandbox_violation: 403,
   not_connected: 409,
@@ -98,7 +109,7 @@ const SEND_ERROR_STATUS: Record<SendError["code"], number> = {
 
 export const POST = withAuth(async (session, req: Request, ctx: Params) => {
   const { id } = await ctx.params;
-  const body = await parseBody(req, sendSchema);
+  const body = await parseBody(req, sendSchema(await localeDeOrganizacion(session.organizationId)));
   if (!body.ok) return body.response;
 
   try {

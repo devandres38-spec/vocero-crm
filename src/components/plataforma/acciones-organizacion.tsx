@@ -17,7 +17,7 @@ export function AccionesOrganizacion({
 }: {
   id: string;
   status: "activa" | "suspendida";
-  invitaciones: { id: string; email: string; role: string | null; expiresAt: string }[];
+  invitaciones: { id: string; email: string; role: string | null; expiresAt: string; vencida: boolean }[];
 }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -94,6 +94,11 @@ export function AccionesOrganizacion({
                   <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>
                       {i.email} <span className="text-text-3">· {i.role ?? "member"}</span>
+                      {i.vencida && (
+                        <span className="ml-2 rounded bg-warning-tint px-1.5 py-0.5 text-[11px] text-warning-text">
+                          Vencida
+                        </span>
+                      )}
                     </span>
                     <Button
                       size="sm"
@@ -103,7 +108,7 @@ export function AccionesOrganizacion({
                         if (await llamar(`/invitations/${i.id}`, { method: "DELETE" })) router.refresh();
                       }}
                     >
-                      Revocar
+                      {i.vencida ? "Quitar" : "Revocar"}
                     </Button>
                   </li>
                 ))}

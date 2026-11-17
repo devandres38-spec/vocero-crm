@@ -24,6 +24,7 @@ import {
 import { ConnectorError } from "@/server/agenda/connectors/types";
 import { moveLeadToStage } from "@/server/leads/stage-history";
 import { publish } from "@/server/events/bus";
+import { localeDeOrganizacion } from "@/server/region";
 
 /**
  * 015 — Ciclo de vida de la cita y las dos reglas INNEGOCIABLES:
@@ -245,7 +246,7 @@ export async function createSessionBooking(input: {
     booking: delivered,
     meetingLink: delivered.meetingLink,
     linkPending: delivered.linkPending,
-    label: labelInTz(slot.startUtc, settings.timezone),
+    label: labelInTz(slot.startUtc, settings.timezone, await localeDeOrganizacion(input.organizationId)),
   };
 }
 
@@ -343,7 +344,7 @@ export async function rescheduleBooking(input: {
     booking: next,
     meetingLink: next.meetingLink,
     linkPending: next.linkPending,
-    label: labelInTz(slot.startUtc, settings.timezone),
+    label: labelInTz(slot.startUtc, settings.timezone, await localeDeOrganizacion(input.organizationId)),
   };
 }
 
@@ -497,7 +498,11 @@ export async function retryMeetingLink(input: {
     booking: delivered,
     meetingLink: delivered.meetingLink,
     linkPending: delivered.linkPending,
-    label: labelInTz(delivered.scheduledAt.toISOString(), settings.timezone),
+    label: labelInTz(
+      delivered.scheduledAt.toISOString(),
+      settings.timezone,
+      await localeDeOrganizacion(input.organizationId)
+    ),
   };
 }
 

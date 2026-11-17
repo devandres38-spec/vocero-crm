@@ -54,7 +54,8 @@ export type DetalleOrganizacion = ResumenOrganizacion & {
   modulosGuardados: unknown;
   modulos: ModulosEfectivos;
   equipo: { email: string; name: string; role: string }[];
-  invitaciones: { id: string; email: string; role: string | null; expiresAt: string }[];
+    /** Pendientes; `vencida` si pasó su fecha (ya no sirve: revócala o genera otra). */
+  invitaciones: { id: string; email: string; role: string | null; expiresAt: string; vencida: boolean }[];
 };
 
 export async function detalleOrganizacion(organizationId: string): Promise<DetalleOrganizacion | null> {
@@ -65,6 +66,7 @@ export async function detalleOrganizacion(organizationId: string): Promise<Detal
     .where(eq(schema.organization.id, organizationId))
     .limit(1);
   if (!org) return null;
+  const ahora = Date.now();
   const meta = leerMetadata(org.metadata);
   const equipo = await db
     .select({ email: schema.user.email, name: schema.user.name, role: schema.member.role })
@@ -93,7 +95,9 @@ export async function detalleOrganizacion(organizationId: string): Promise<Detal
     modulosGuardados: org.modules ?? null,
     modulos: modulosEfectivos(techoDeInstancia(), org.modules),
     equipo,
-    invitaciones: invitaciones.map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString() })),
+    invitaciones: invitaciones
+      .map((i) => ({ ...i, expiresAt: i.expiresAt.toISOString(), vencida: i.expiresAt.getTime() <= ahora }))
+      .sort((a, b) => Number(a.vencida) - Number(b.vencida)),
   };
 }
 

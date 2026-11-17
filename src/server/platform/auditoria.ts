@@ -7,23 +7,28 @@ import { newId } from "@/lib/db/ids";
  * contenido de clientes, textos del conocimiento ni credenciales.
  */
 
-export type AccionAuditoria =
-  | "admin_registrado"
-  | "organizacion_creada"
-  | "organizacion_suspendida"
-  | "organizacion_reactivada"
-  | "modulos_cambiados"
-  | "invitacion_creada"
-  | "invitacion_revocada"
-  | "invitacion_aceptada"
-  | "blueprint_aplicado"
-  | "token_creado"
-  | "token_revocado"
-  | "token_rechazado"
-  | "soporte_otorgado"
-  | "soporte_revocado"
-  | "soporte_peticion"
-  | "acceso_denegado";
+/** Todas las acciones auditables (el filtro de /platform/auditoria las lista). */
+export const ACCIONES_AUDITORIA = [
+  "admin_registrado",
+  "organizacion_creada",
+  "organizacion_suspendida",
+  "organizacion_reactivada",
+  "modulos_cambiados",
+  "invitacion_creada",
+  "invitacion_revocada",
+  "invitacion_aceptada",
+  "blueprint_aplicado",
+  "blueprint_exportado",
+  "token_creado",
+  "token_revocado",
+  "token_rechazado",
+  "soporte_otorgado",
+  "soporte_revocado",
+  "soporte_peticion",
+  "acceso_denegado",
+] as const;
+
+export type AccionAuditoria = (typeof ACCIONES_AUDITORIA)[number];
 
 export type EntradaAuditoria = {
   actorUserId: string;

@@ -4,6 +4,8 @@ import { normalizeBranding, type Branding } from "@/lib/branding";
 import { esClaveHerramienta, ROLES, type ClaveHerramienta, type ClaveRol } from "@/lib/agent-roles";
 import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
 import { getSettings } from "@/server/agenda/settings";
+import { auditar } from "@/server/platform/auditoria";
+import type { Actor } from "@/server/platform/invitaciones";
 import { leerMetadata, regionGuardada } from "./secciones/metadata";
 
 type Entrada = NonNullable<OrganizationBlueprint["knowledge"]>["entries"][number];
@@ -16,7 +18,8 @@ type Entrada = NonNullable<OrganizationBlueprint["knowledge"]>["entries"][number
  * exporta, para no fijar como propia la de la instancia.
  *
  * Expone instrucciones y conocimiento del negocio —configuración, no datos de
- * clientes—; queda auditado como lectura de plataforma en la ruta que lo sirve.
+ * clientes—. Para servirlo a una persona o a una IA, `leerBlueprint` (lo
+ * audita); esta función sola es para uso interno (pruebas, precarga).
  */
 export async function exportarBlueprint(organizationId: string): Promise<OrganizationBlueprint | null> {
   const db = getDb();
@@ -94,5 +97,28 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
       meetingLink: s.meetingLink,
     };
   }
+  return bp;
+}
+
+/**
+ * 069 (H-04) — Exportar para servirlo (REST `GET …/blueprint`, MCP
+ * `get_blueprint`): queda auditado como `blueprint_exportado`, con la vía y
+ * el token. Un servicio para las dos superficies: auditan igual.
+ */
+export async function leerBlueprint(
+  actor: Actor,
+  organizationId: string
+): Promise<OrganizationBlueprint | null> {
+  const bp = await exportarBlueprint(organizationId);
+  if (!bp) return null;
+  await auditar({
+    actorUserId: actor.userId,
+    action: "blueprint_exportado",
+    organizationId,
+    via: actor.via,
+    tokenId: actor.tokenId,
+    ip: actor.ip,
+    detail: { sections: Object.keys(bp).filter((k) => k !== "version") },
+  });
   return bp;
 }

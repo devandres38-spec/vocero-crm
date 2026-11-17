@@ -49,6 +49,49 @@ export function dominioBase(source: Fuente = process.env): string | null {
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(limpio) ? limpio : null;
 }
 
+/**
+ * Raíz pública de la plataforma: protocolo y host (con puerto) para armar
+ * URLs absolutas del dominio base y de cada subdominio. El protocolo y el
+ * puerto salen de `APP_BASE_URL` (staging por HTTP, desarrollo en
+ * `http://localhost:3000`); sin una URL legible, `https:` —lo seguro—.
+ * Null sin dominio base.
+ */
+export type RaizPlataforma = { protocolo: "http:" | "https:"; host: string };
+
+export function raizPlataforma(source: Fuente = process.env): RaizPlataforma | null {
+  const base = dominioBase(source);
+  if (!base) return null;
+  let protocolo: RaizPlataforma["protocolo"] = "https:";
+  let puerto = "";
+  try {
+    const url = new URL((source.APP_BASE_URL ?? "").trim());
+    if (url.protocol === "http:" || url.protocol === "https:") protocolo = url.protocol;
+    puerto = url.port;
+  } catch {
+    // Sin APP_BASE_URL legible: https y puerto por defecto.
+  }
+  return { protocolo, host: puerto ? `${base}:${puerto}` : base };
+}
+
+function conRuta(ruta: string): string {
+  return ruta.startsWith("/") ? ruta : `/${ruta}`;
+}
+
+/** URL absoluta en el dominio raíz (`https://aliantis.co/empresas`). */
+export function urlDeRaiz(raiz: RaizPlataforma, ruta = "/"): string {
+  return `${raiz.protocolo}//${raiz.host}${conRuta(ruta)}`;
+}
+
+/** URL absoluta en el subdominio de un negocio (`https://clinica.aliantis.co/`). */
+export function urlDeNegocio(raiz: RaizPlataforma, slug: string, ruta = "/"): string {
+  return `${raiz.protocolo}//${slug}.${raiz.host}${conRuta(ruta)}`;
+}
+
+/** Orígenes de confianza de Better Auth en modo plataforma (raíz y comodín). */
+export function origenesDePlataforma(raiz: RaizPlataforma): string[] {
+  return [`${raiz.protocolo}//${raiz.host}`, `${raiz.protocolo}//*.${raiz.host}`];
+}
+
 /** Correos de arranque del rol de plataforma, normalizados. */
 export function correosSuperAdmin(source: Fuente = process.env): Set<string> {
   return new Set(

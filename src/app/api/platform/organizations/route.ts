@@ -21,12 +21,15 @@ export async function GET(req: Request): Promise<Response> {
  * `organization.name`. `?dryRun=true` devuelve el plan sin crear nada.
  */
 export async function POST(req: Request): Promise<Response> {
-  const g = await requirePlataforma(req, { scope: "provision" });
+  // H-05 — Planificar no escribe: basta `read`, igual que PUT …/blueprint
+  // y que `plan_blueprint` en el MCP.
+  const dryRun = esDryRun(req);
+  const g = await requirePlataforma(req, { scope: dryRun ? "read" : "provision" });
   if (!g.ok) return g.response;
   const body = await leerJson(req);
   if (!body.ok) return body.response;
   try {
-    const r = await aplicarBlueprint(g.actor, { crear: true }, body.data, { dryRun: esDryRun(req) });
+    const r = await aplicarBlueprint(g.actor, { crear: true }, body.data, { dryRun });
     return Response.json(r, { status: r.dryRun ? 200 : 201 });
   } catch (err) {
     return respuestaDeError(err);

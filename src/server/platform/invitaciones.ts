@@ -3,7 +3,7 @@ import { and, eq, gt } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { getEnv } from "@/lib/env";
-import { dominioBase, normalizarCorreo } from "@/lib/tenancy";
+import { normalizarCorreo, raizPlataforma, urlDeNegocio } from "@/lib/tenancy";
 import { auditar } from "@/server/platform/auditoria";
 
 /**
@@ -33,10 +33,9 @@ export function hashToken(token: string): string {
  * base configurado, en la URL de la instancia.
  */
 export function urlInvitacion(slug: string | null, token: string): string {
-  const base = dominioBase();
-  const origen =
-    base && slug ? `https://${slug}.${base}` : getEnv().APP_BASE_URL.replace(/\/+$/, "");
-  return `${origen}/invitacion/${token}`;
+  const raiz = raizPlataforma();
+  if (raiz && slug) return urlDeNegocio(raiz, slug, `/invitacion/${token}`);
+  return `${getEnv().APP_BASE_URL.replace(/\/+$/, "")}/invitacion/${token}`;
 }
 
 export type InvitacionVigente = { id: string; expiresAt: Date };

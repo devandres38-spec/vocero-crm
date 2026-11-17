@@ -1,4 +1,4 @@
-import { dominioBase } from "@/lib/tenancy";
+import { raizPlataforma } from "@/lib/tenancy";
 import { GestorSoporte } from "@/components/plataforma/gestor-soporte";
 import { listarOrganizaciones } from "@/server/platform/organizaciones";
 import { listarAccesos, MAX_HORAS_SOPORTE } from "@/server/platform/soporte";
@@ -13,7 +13,7 @@ export default async function SoportePage() {
   const [orgs, accesos] = await Promise.all([listarOrganizaciones(), listarAccesos()]);
   return (
     <GestorSoporte
-      base={dominioBase()}
+      raiz={raizPlataforma()}
       maxHoras={MAX_HORAS_SOPORTE}
       organizaciones={orgs.map((o) => ({ id: o.id, name: o.name, slug: o.slug }))}
       accesos={accesos}

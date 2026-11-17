@@ -1,7 +1,8 @@
 import { clientIp } from "@/lib/rate-limit";
-import { dominioBase, mcpActivo } from "@/lib/tenancy";
+import { mcpActivo } from "@/lib/tenancy";
+import { origenPermitido } from "@/server/platform/mcp/origen";
 import type { ActorPlataforma } from "@/server/platform/guardia";
-import { ERRORES_RPC, procesarMensaje, type RespuestaRpc } from "@/server/platform/mcp/servidor";
+import { ERRORES_RPC, procesarMensaje, versionDePeticion, type RespuestaRpc } from "@/server/platform/mcp/servidor";
 import { tokenDeHeaders, verificarToken } from "@/server/platform/tokens";
 
 export const dynamic = "force-dynamic";
@@ -21,21 +22,20 @@ function noAutorizado(): Response {
   );
 }
 
-/** Contra DNS rebinding: un Origin presente debe ser de la plataforma. */
-function origenPermitido(origin: string | null): boolean {
-  if (!origin) return true;
-  const base = dominioBase();
-  try {
-    const host = new URL(origin).hostname;
-    return !!base && (host === base || host.endsWith(`.${base}`));
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(req: Request): Promise<Response> {
   if (!mcpActivo()) return new Response(null, { status: 404 });
   if (!origenPermitido(req.headers.get("origin"))) return new Response(null, { status: 403 });
+  const version = versionDePeticion(req.headers.get("mcp-protocol-version"));
+  if (!version) {
+    return Response.json(
+      {
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: ERRORES_RPC.invalidRequest, message: "MCP-Protocol-Version no soportada" },
+      } satisfies RespuestaRpc,
+      { status: 400 }
+    );
+  }
 
   const token = tokenDeHeaders(req.headers);
   if (!token) return noAutorizado();
@@ -58,12 +58,12 @@ export async function POST(req: Request): Promise<Response> {
   if (Array.isArray(cuerpo)) {
     const respuestas: RespuestaRpc[] = [];
     for (const m of cuerpo) {
-      const r = await procesarMensaje(actor, (m ?? {}) as Record<string, unknown>);
+      const r = await procesarMensaje(actor, (m ?? {}) as Record<string, unknown>, version);
       if (r) respuestas.push(r);
     }
     return respuestas.length ? Response.json(respuestas) : new Response(null, { status: 202 });
   }
-  const r = await procesarMensaje(actor, (cuerpo ?? {}) as Record<string, unknown>);
+  const r = await procesarMensaje(actor, (cuerpo ?? {}) as Record<string, unknown>, version);
   return r ? Response.json(r) : new Response(null, { status: 202 });
 }
 

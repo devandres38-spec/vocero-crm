@@ -200,8 +200,16 @@ export const MAX_TEXT_CHARS_ANY_CHANNEL = Math.max(
   ...Object.values(CHANNEL_CAPABILITIES).map((c) => c.maxTextChars ?? 0)
 );
 
-/** Lo que se le dice a quien manda un texto más largo que eso. */
-export const TEXT_TOO_LONG_ANY_CHANNEL = `El mensaje es demasiado largo: el máximo es ${formatNumber(MAX_TEXT_CHARS_ANY_CHANNEL, getRegion().locale)} caracteres`;
+/**
+ * Lo que se le dice a quien manda un texto más largo que eso. 069 (H-07):
+ * con el locale del negocio; la constante es la de la instancia (superficie
+ * del bot, que solo existe en `single`).
+ */
+export function textoDemasiadoLargo(locale: string = getRegion().locale): string {
+  return `El mensaje es demasiado largo: el máximo es ${formatNumber(MAX_TEXT_CHARS_ANY_CHANNEL, locale)} caracteres`;
+}
+
+export const TEXT_TOO_LONG_ANY_CHANNEL = textoDemasiadoLargo();
 
 /** ¿Este texto cabe en el canal? Mira el límite que su plataforma mida. */
 export function textFits(channel: Channel, text: string): boolean {
@@ -217,12 +225,12 @@ export function textFits(channel: Channel, text: string): boolean {
   return true;
 }
 
-/** El límite de texto del canal, dicho para el operador. */
-export function textLimitMessage(channel: Channel): string {
+/** El límite de texto del canal, dicho para el operador (en su locale, H-07). */
+export function textLimitMessage(channel: Channel, locale: string = getRegion().locale): string {
   const caps = capabilitiesFor(channel);
   const limite =
     caps.maxTextChars !== null
-      ? `${formatNumber(caps.maxTextChars, getRegion().locale)} caracteres`
+      ? `${formatNumber(caps.maxTextChars, locale)} caracteres`
       : `${caps.maxTextBytes} bytes`;
   return `${caps.label} no acepta mensajes de más de ${limite}: acorta el texto`;
 }

@@ -33,6 +33,7 @@ export function AppShell({
   agenda = false,
   kicker,
   empresasUrl,
+  plataformaUrl,
   aviso = null,
   children,
 }: {
@@ -48,6 +49,8 @@ export function AppShell({
   kicker?: string;
   /** 069 — Modo plataforma: el selector de empresas. */
   empresasUrl?: string;
+  /** 069 (H-02) — Super-Admin en modo plataforma: enlace a `/platform`. */
+  plataformaUrl?: string;
   /**
    * Franja de aviso por encima de TODA la aplicación (#85).
    *
@@ -100,6 +103,7 @@ export function AppShell({
         agenda={agenda}
         kicker={kicker}
         empresasUrl={empresasUrl}
+        plataformaUrl={plataformaUrl}
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />

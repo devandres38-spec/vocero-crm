@@ -2,7 +2,7 @@ import { z } from "zod";
 import { apiError } from "@/lib/api";
 import { getAuth } from "@/lib/auth";
 import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
-import { dominioBase } from "@/lib/tenancy";
+import { raizPlataforma, urlDeNegocio } from "@/lib/tenancy";
 import { AceptarError, aceptarInvitacion } from "@/server/platform/aceptar";
 
 export const dynamic = "force-dynamic";
@@ -45,13 +45,13 @@ export async function POST(req: Request): Promise<Response> {
           : undefined,
       ip,
     });
-    const base = dominioBase();
+    const raiz = raizPlataforma();
     return Response.json({
       ok: true,
       organizationId: r.organizationId,
       cuentaCreada: r.cuentaCreada,
       // A dónde ir: el subdominio del negocio (ahí el host decide).
-      destino: base && r.slug ? `https://${r.slug}.${base}/` : "/",
+      destino: raiz && r.slug ? urlDeNegocio(raiz, r.slug) : "/",
     });
   } catch (err) {
     if (err instanceof AceptarError) return apiError(err.status, err.code, err.code);

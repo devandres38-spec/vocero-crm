@@ -4,6 +4,7 @@ import { scoped } from "@/lib/db/tenant";
 import type { DateRange } from "@/lib/time/calendar";
 import { addDaysISO, partsInTz, zonedWallClockToUtc } from "@/lib/time/slots";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import { localeDeOrganizacion } from "@/server/region";
 
 /** 015 — Listado de citas para la UI, con la hora en la zona del negocio. */
 
@@ -69,11 +70,12 @@ export async function listBookings(
   settings?: CalendarSettings
 ): Promise<BookingListItem[]> {
   const resolved = settings ?? (await getSettings(organizationId));
+  const locale = await localeDeOrganizacion(organizationId);
   const rows = await baseQuery()
     .where(scoped(schema.booking.organizationId, organizationId))
     .orderBy(desc(schema.booking.scheduledAt))
     .limit(LIST_LIMIT);
-  return rows.map((r) => toListItem(r, resolved.timezone));
+  return rows.map((r) => toListItem(r, resolved.timezone, locale));
 }
 
 /**
@@ -90,6 +92,7 @@ export async function listBookingsInRange(
 ): Promise<{ bookings: BookingListItem[]; truncated: boolean }> {
   const resolved = settings ?? (await getSettings(organizationId));
   const tz = resolved.timezone;
+  const locale = await localeDeOrganizacion(organizationId);
   // Fechas ya validadas (`parseRangeQuery`): la conversión no puede fallar.
   const start = zonedWallClockToUtc(range.from, "00:00", tz)!;
   const end = zonedWallClockToUtc(addDaysISO(range.to, 1), "00:00", tz)!;
@@ -113,14 +116,14 @@ export async function listBookingsInRange(
       start.getTime()
   );
   return {
-    bookings: inRange.map((r) => toListItem(r, tz)),
+    bookings: inRange.map((r) => toListItem(r, tz, locale)),
     truncated: rows.length === RANGE_LIMIT,
   };
 }
 
-function toListItem(r: Row, timezone: string): BookingListItem {
+function toListItem(r: Row, timezone: string, locale: string): BookingListItem {
   const scheduledAtUtc = r.booking.scheduledAt.toISOString();
-  const parts = partsInTz(scheduledAtUtc, timezone);
+  const parts = partsInTz(scheduledAtUtc, timezone, locale);
   return {
     id: r.booking.id,
     kind: r.booking.kind,

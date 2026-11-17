@@ -11,8 +11,9 @@ import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
 import { BandaSoporte } from "@/components/plataforma/banda-soporte";
 import { agendaActiva, modulosDe } from "@/server/modulos/consulta";
-import { dominioBase, esPlataforma } from "@/lib/tenancy";
+import { esPlataforma, raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
 import { getRegionDeOrganizacion } from "@/server/region";
+import { esSuperAdmin } from "@/server/tenant/consultas";
 
 export default async function AppLayout({
   children,
@@ -46,6 +47,7 @@ export default async function AppLayout({
       agenda={agendaActiva(session)}
       kicker={navKicker(modulosDe(session).channels)}
       empresasUrl={empresasUrl()}
+      plataformaUrl={await plataformaUrl(session.userId)}
       aviso={
         <>
           {session.via === "soporte" && session.grant && (
@@ -60,9 +62,16 @@ export default async function AppLayout({
   );
 }
 
+/** 069 (H-02) — El Super-Admin dentro de un negocio vuelve a su panel en un clic. */
+async function plataformaUrl(userId: string): Promise<string | undefined> {
+  if (!esPlataforma() || !(await esSuperAdmin(userId))) return undefined;
+  const raiz = raizPlataforma();
+  return raiz ? urlDeRaiz(raiz, "/platform") : "/platform";
+}
+
 /** 069 — En modo plataforma, el selector de empresas vive en el dominio raíz. */
 function empresasUrl(): string | undefined {
   if (!esPlataforma()) return undefined;
-  const base = dominioBase();
-  return base ? `https://${base}/empresas` : "/empresas";
+  const raiz = raizPlataforma();
+  return raiz ? urlDeRaiz(raiz, "/empresas") : "/empresas";
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { urlDeNegocio, type RaizPlataforma } from "@/lib/tenancy";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,12 +26,12 @@ const fecha = (iso: string) => new Date(iso).toLocaleString(undefined, { dateSty
 
 /** 069 (US5) — Pedir y cerrar accesos de soporte. */
 export function GestorSoporte({
-  base,
+  raiz,
   maxHoras,
   organizaciones,
   accesos,
 }: {
-  base: string | null;
+  raiz: RaizPlataforma | null;
   maxHoras: number;
   organizaciones: { id: string; name: string; slug: string | null }[];
   accesos: Acceso[];
@@ -158,9 +159,9 @@ export function GestorSoporte({
                     </div>
                     {a.vigente && (
                       <div className="flex gap-2">
-                        {base && slug && (
+                        {raiz && slug && (
                           <a
-                            href={`https://${slug}.${base}/`}
+                            href={urlDeNegocio(raiz, slug)}
                             className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-brand-fg"
                           >
                             Entrar

@@ -1,7 +1,7 @@
 import { blueprintJsonSchema } from "@/lib/platform/blueprint";
 import { aplicarBlueprint, buscarOrganizacion } from "@/server/platform/blueprint/aplicar";
 import { BlueprintError } from "@/server/platform/blueprint/errores";
-import { exportarBlueprint } from "@/server/platform/blueprint/exportar";
+import { leerBlueprint } from "@/server/platform/blueprint/exportar";
 import { catalogoPlataforma } from "@/server/platform/catalogo";
 import type { ActorPlataforma } from "@/server/platform/guardia";
 import { invitarAOrganizacion } from "@/server/platform/invitaciones";
@@ -121,7 +121,7 @@ export function herramientas(): Herramienta[] {
       inputSchema: conOrganizacion(),
       scope: "read",
       annotations: { readOnlyHint: true },
-      run: async (_a, args) => exportarBlueprint((await organizacion(args)).id),
+      run: async (actor, args) => leerBlueprint(actor, (await organizacion(args)).id),
     },
     {
       name: "plan_blueprint",

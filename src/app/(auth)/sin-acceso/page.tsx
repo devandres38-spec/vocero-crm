@@ -1,4 +1,4 @@
-import { dominioBase } from "@/lib/tenancy";
+import { raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonSalir } from "@/components/plataforma/boton-salir";
 
@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 export default function SinAccesoPage() {
   // El selector vive en el dominio raíz: en el subdominio de otro negocio el
   // host seguiría decidiendo por él.
-  const base = dominioBase();
-  const raiz = base ? `https://${base}/empresas` : "/empresas";
+  const plataforma = raizPlataforma();
+  const raiz = plataforma ? urlDeRaiz(plataforma, "/empresas") : "/empresas";
   return (
     <Card className="shadow-md">
       <CardHeader>

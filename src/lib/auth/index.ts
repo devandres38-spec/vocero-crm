@@ -9,9 +9,10 @@ import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
 import {
   onUserCreated,
   resolveActiveOrganizationId,
+  sincronizarSuperAdmin,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
-import { dominioBase, esPlataforma } from "@/lib/tenancy";
+import { dominioBase, esPlataforma, origenesDePlataforma, raizPlataforma } from "@/lib/tenancy";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -64,9 +65,11 @@ export function organizationPathBloqueado(path: string): boolean {
  */
 function opcionesDePlataforma() {
   const base = dominioBase();
-  if (!esPlataforma() || !base) return {};
+  const raiz = raizPlataforma();
+  if (!esPlataforma() || !base || !raiz) return {};
   return {
-    trustedOrigins: [`https://${base}`, `https://*.${base}`],
+    // Protocolo y puerto de APP_BASE_URL: staging por HTTP también funciona.
+    trustedOrigins: origenesDePlataforma(raiz),
     advanced: {
       crossSubDomainCookies: { enabled: true, domain: base },
     },
@@ -138,6 +141,12 @@ function createAuth() {
       session: {
         create: {
           before: async (session) => {
+            // 069 (H-03) — Al pasar de `single` a `multi`, el dueño que ya
+            // tenía cuenta entra a /platform con solo iniciar sesión. Un
+            // fallo aquí no impide entrar.
+            await sincronizarSuperAdmin(session.userId).catch((err) =>
+              console.error("[plataforma] no se pudo sincronizar el Super-Admin:", err)
+            );
             const organizationId = await resolveActiveOrganizationId(
               session.userId
             );

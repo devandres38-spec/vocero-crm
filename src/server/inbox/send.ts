@@ -56,6 +56,7 @@ import {
 import { esPlataforma } from "@/lib/tenancy";
 import { organizacionSuspendida } from "@/server/platform/estado";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
+import { localeDeOrganizacion } from "@/server/region";
 
 /** Error tipado del envío; `code` mapea a HTTP en la capa de API. */
 export class SendError extends Error {
@@ -494,7 +495,10 @@ export async function sendText(input: {
   // caracteres y se comprueba aquí, antes de llamar a nadie; Instagram y
   // Messenger (en bytes) lo siguen comprobando en su propio camino.
   if (capabilitiesFor(canal).maxTextChars !== null && !textFits(canal, text)) {
-    throw new SendError("text_too_long", textLimitMessage(canal));
+    throw new SendError(
+      "text_too_long",
+      textLimitMessage(canal, await localeDeOrganizacion(input.organizationId))
+    );
   }
 
   const cita = await resolverMensajeCitado(target, input.replyToMessageId);

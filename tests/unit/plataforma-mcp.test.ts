@@ -38,6 +38,8 @@ function rpc(body: unknown, token: string | null = TOKEN, extra: Record<string, 
     headers: {
       "content-type": "application/json",
       ...(token ? { authorization: `Bearer ${token}` } : {}),
+      // Auditoría H-08: structuredContent solo con la versión que lo trae.
+      "mcp-protocol-version": "2025-06-18",
       ...extra,
     },
     body: JSON.stringify(body),

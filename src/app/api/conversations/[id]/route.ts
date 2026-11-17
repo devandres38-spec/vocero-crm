@@ -1,4 +1,3 @@
-import { getRegion } from "@/lib/region";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { canConfigure } from "@/lib/auth/roles";
@@ -8,6 +7,7 @@ import { avisarOlvido, type ResultadoOlvido } from "@/server/brains/deliver";
 import { publish } from "@/server/events/bus";
 import { eliminarConversacion } from "@/server/inbox/eliminar";
 import { serializeConversation, getConversation, updateConversation } from "@/server/inbox/queries";
+import { localeDeOrganizacion } from "@/server/region";
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +45,6 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   return Response.json({ conversation: null });
 });
 
-const FECHA_DE_CITA = new Intl.DateTimeFormat(getRegion().locale, { dateStyle: "long" });
-
 /**
  * 026 — Elimina la conversación y le pide al cerebro que la olvide.
  *
@@ -72,7 +70,10 @@ export const DELETE = withAuth(async (session, req: Request, ctx: Params) => {
       return apiError(
         409,
         "cita_pendiente",
-        `Tiene una cita agendada para el ${FECHA_DE_CITA.format(resultado.cuando)}. Cancélala en Citas antes de eliminar.`
+        `Tiene una cita agendada para el ${new Intl.DateTimeFormat(
+          await localeDeOrganizacion(session.organizationId),
+          { dateStyle: "long" }
+        ).format(resultado.cuando)}. Cancélala en Citas antes de eliminar.`
       );
     }
     return apiError(404, "not_found", "Conversación no encontrada");

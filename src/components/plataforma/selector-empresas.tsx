@@ -1,5 +1,6 @@
 "use client";
 
+import { urlDeNegocio, type RaizPlataforma } from "@/lib/tenancy";
 import { useState } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth/client";
@@ -13,11 +14,11 @@ const ROL: Record<string, string> = { owner: "Dueño", admin: "Administrador", m
 
 /** 069 (US3) — Elegir empresa sin cerrar sesión. */
 export function SelectorEmpresas({
-  base,
+  raiz,
   superAdmin,
   empresas,
 }: {
-  base: string | null;
+  raiz: RaizPlataforma | null;
   superAdmin: boolean;
   empresas: Empresa[];
 }) {
@@ -54,9 +55,9 @@ export function SelectorEmpresas({
                     {e.suspendida ? " · suspendida" : ""}
                   </p>
                 </div>
-                {e.suspendida ? null : base && e.slug ? (
+                {e.suspendida ? null : raiz && e.slug ? (
                   <a
-                    href={`https://${e.slug}.${base}/`}
+                    href={urlDeNegocio(raiz, e.slug)}
                     className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-brand-fg"
                   >
                     Entrar

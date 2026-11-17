@@ -50,17 +50,7 @@ export async function sembrarOrganizacion(tx: Tx, orgId: string): Promise<void> 
 export async function onUserCreated(userId: string, userName: string, email?: string) {
   const db = getDb();
   if (esPlataforma()) {
-    if (!email || !correosSuperAdmin().has(normalizarCorreo(email))) return;
-    await db.transaction(async (tx) => {
-      const nuevos = await tx
-        .insert(schema.platformAdmin)
-        .values({ userId, createdBy: "PLATFORM_ADMIN_EMAILS" })
-        .onConflictDoNothing()
-        .returning({ userId: schema.platformAdmin.userId });
-      if (nuevos.length > 0) {
-        await auditar({ actorUserId: userId, action: "admin_registrado" }, tx);
-      }
-    });
+    await promoverSuperAdmin(userId, email, "registro");
     return;
   }
   await db.transaction(async (tx) => {
@@ -86,6 +76,44 @@ export async function onUserCreated(userId: string, userName: string, email?: st
     });
     await sembrarOrganizacion(tx, orgId);
   });
+}
+
+/**
+ * 069 — Deja Super-Admin a quien tenga su correo en PLATFORM_ADMIN_EMAILS.
+ * Idempotente: solo inserta y audita la primera vez. Corre al registrarse y
+ * —H-03— al iniciar sesión, para que una instancia que pasa de `single` a
+ * `multi` no deje fuera al dueño que ya tenía cuenta. Quitar un correo de la
+ * lista NO degrada a nadie: eso se hace a propósito, no por un deploy.
+ */
+export async function promoverSuperAdmin(
+  userId: string,
+  email: string | undefined,
+  origen: "registro" | "inicio_de_sesion"
+): Promise<boolean> {
+  if (!esPlataforma() || !email || !correosSuperAdmin().has(normalizarCorreo(email))) {
+    return false;
+  }
+  return getDb().transaction(async (tx) => {
+    const nuevos = await tx
+      .insert(schema.platformAdmin)
+      .values({ userId, createdBy: "PLATFORM_ADMIN_EMAILS" })
+      .onConflictDoNothing()
+      .returning({ userId: schema.platformAdmin.userId });
+    if (nuevos.length === 0) return false;
+    await auditar({ actorUserId: userId, action: "admin_registrado", detail: { origen } }, tx);
+    return true;
+  });
+}
+
+/** H-03 — Al crear una sesión en `multi`: promover si el correo está en la lista. */
+export async function sincronizarSuperAdmin(userId: string): Promise<void> {
+  if (!esPlataforma() || correosSuperAdmin().size === 0) return;
+  const [u] = await getDb()
+    .select({ email: schema.user.email })
+    .from(schema.user)
+    .where(eq(schema.user.id, userId))
+    .limit(1);
+  await promoverSuperAdmin(userId, u?.email, "inicio_de_sesion");
 }
 
 /**

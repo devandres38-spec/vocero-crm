@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
-import { dominioBase, esPlataforma } from "@/lib/tenancy";
+import { raizPlataforma, esPlataforma } from "@/lib/tenancy";
 import { SelectorEmpresas } from "@/components/plataforma/selector-empresas";
 import { esSuperAdmin, membresiasDe } from "@/server/tenant/consultas";
 
@@ -19,7 +19,7 @@ export default async function EmpresasPage() {
   const [empresas, admin] = await Promise.all([membresiasDe(s.user.id), esSuperAdmin(s.user.id)]);
   return (
     <SelectorEmpresas
-      base={dominioBase()}
+      raiz={raizPlataforma()}
       superAdmin={admin}
       empresas={empresas.map((e) => ({
         organizationId: e.organizationId,

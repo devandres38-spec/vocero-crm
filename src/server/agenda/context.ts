@@ -4,6 +4,7 @@ import { scoped } from "@/lib/db/tenant";
 import { dayLabelInTz, timeInTz } from "@/lib/time/slots";
 import { getSettings } from "@/server/agenda/settings";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
+import { localeDeOrganizacion } from "@/server/region";
 
 /**
  * 015 — Las citas del contacto, para el contexto de un cerebro externo
@@ -99,7 +100,7 @@ export type FilaCita = {
   updatedAt: Date;
 };
 
-function forma(fila: FilaCita, timezone: string, now: Date) {
+function forma(fila: FilaCita, timezone: string, now: Date, locale?: string) {
   const startUtc = fila.scheduledAt.toISOString();
   return {
     id: fila.id,
@@ -107,23 +108,23 @@ function forma(fila: FilaCita, timezone: string, now: Date) {
     endUtc: new Date(
       fila.scheduledAt.getTime() + fila.durationMinutes * 60_000
     ).toISOString(),
-    label: `${dayLabelInTz(startUtc, timezone, now)}, ${timeInTz(startUtc, timezone)}`,
+    label: `${dayLabelInTz(startUtc, timezone, now, locale)}, ${timeInTz(startUtc, timezone, locale)}`,
   };
 }
 
-function vigente(fila: FilaCita, timezone: string, now: Date): CitaEnContexto {
+function vigente(fila: FilaCita, timezone: string, now: Date, locale?: string): CitaEnContexto {
   return {
-    ...forma(fila, timezone, now),
+    ...forma(fila, timezone, now, locale),
     status: "agendada",
     meetingLink: fila.meetingLink,
     linkPending: fila.linkPending,
   };
 }
 
-function cerrada(fila: FilaCita, timezone: string, now: Date): CitaCerrada {
+function cerrada(fila: FilaCita, timezone: string, now: Date, locale?: string): CitaCerrada {
   const status = fila.status as EstadoCerrada;
   return {
-    ...forma(fila, timezone, now),
+    ...forma(fila, timezone, now, locale),
     status,
     closedAt: fila.updatedAt.toISOString(),
     cancelledBy: status === "cancelada" ? "equipo" : null,
@@ -139,7 +140,9 @@ function cerrada(fila: FilaCita, timezone: string, now: Date): CitaCerrada {
 export function citasEnContexto(
   filas: FilaCita[],
   timezone: string,
-  now: Date
+  now: Date,
+  /** 069 (H-07) — El del negocio; sin él, el de la instancia. */
+  locale?: string
 ): CitasEnContexto {
   const reales = filas.filter((f) => !f.isTest && f.kind === "session");
   const agendadas = reales.filter((f) => f.status === "agendada");
@@ -165,9 +168,9 @@ export function citasEnContexto(
 
   return {
     timezone,
-    next: next ? vigente(next, timezone, now) : null,
-    unresolved: unresolved ? vigente(unresolved, timezone, now) : null,
-    lastClosed: lastClosed ? cerrada(lastClosed, timezone, now) : null,
+    next: next ? vigente(next, timezone, now, locale) : null,
+    unresolved: unresolved ? vigente(unresolved, timezone, now, locale) : null,
+    lastClosed: lastClosed ? cerrada(lastClosed, timezone, now, locale) : null,
   };
 }
 
@@ -210,8 +213,9 @@ async function leerCitas(
   const desdeSinCerrar = new Date(now.getTime() - DIAS_SIN_CERRAR * DIA_MS);
   const desdeCerrada = new Date(now.getTime() - DIAS_CERRADA * DIA_MS);
 
-  const [settings, filas] = await Promise.all([
+  const [settings, locale, filas] = await Promise.all([
     getSettings(organizationId),
+    localeDeOrganizacion(organizationId),
     db
       .select({
         id: schema.booking.id,
@@ -242,5 +246,5 @@ async function leerCitas(
       ),
   ]);
 
-  return citasEnContexto(filas, settings.timezone, now);
+  return citasEnContexto(filas, settings.timezone, now, locale);
 }

@@ -36,6 +36,15 @@ export function regionDeMetadata(metadata: string | null, instancia: Region): Re
   };
 }
 
+/**
+ * 069 (H-07) — El locale con que se le habla al equipo de un negocio (fechas
+ * de citas, números de los avisos). En `single`, el de la instancia sin
+ * tocar la base.
+ */
+export async function localeDeOrganizacion(organizationId: string | null | undefined): Promise<string> {
+  return (await getRegionDeOrganizacion(organizationId)).locale;
+}
+
 export async function getRegionDeOrganizacion(organizationId: string | null | undefined): Promise<Region> {
   const instancia = getRegion();
   if (!organizationId || !esPlataforma()) return instancia;

@@ -1,5 +1,5 @@
 import { aplicarBlueprint, buscarOrganizacion } from "@/server/platform/blueprint/aplicar";
-import { exportarBlueprint } from "@/server/platform/blueprint/exportar";
+import { leerBlueprint } from "@/server/platform/blueprint/exportar";
 import { requirePlataforma } from "@/server/platform/guardia";
 import { errorPlataforma, esDryRun, leerJson, respuestaDeError } from "@/server/platform/http";
 
@@ -10,14 +10,14 @@ type Params = { params: Promise<{ idOrSlug: string }> };
 /**
  * 069 (D12, D13) — El Blueprint vigente de una organización. Aplicarlo tal
  * cual no cambia nada. Es configuración del negocio (agente, conocimiento),
- * no datos de sus clientes.
+ * no datos de sus clientes; aun así, cada lectura queda auditada (H-04).
  */
 export async function GET(req: Request, ctx: Params): Promise<Response> {
   const g = await requirePlataforma(req, { scope: "read" });
   if (!g.ok) return g.response;
   try {
     const org = await buscarOrganizacion((await ctx.params).idOrSlug);
-    const bp = org ? await exportarBlueprint(org.id) : null;
+    const bp = org ? await leerBlueprint(g.actor, org.id) : null;
     if (!bp) return errorPlataforma(404, "organizacion_inexistente");
     return Response.json(bp);
   } catch (err) {
