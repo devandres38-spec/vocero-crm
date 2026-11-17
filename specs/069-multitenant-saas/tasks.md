@@ -1,9 +1,16 @@
 # Tasks: Multi-Tenant SaaS (modo plataforma)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) (rev. 2)
-**Estado**: en ejecución. Bloque 1 (Fases 1–4: T001–T028) hecho y verificado en local
-(typecheck, lint, Vitest 138 archivos / 1606 pruebas). Bloque 2: US3, US7, US8.
-Bloque 3: US5, US4, US6, US9 y cierre.
+**Estado**: en ejecución. Bloques 1 y 2 hechos y verificados en local; Bloque 3
+(US5, US4, US6, US9 y cierre) pendiente de aprobación.
+
+| Bloque | Tareas | Commits | Verificación local |
+|---|---|---|---|
+| 1 — Base + US1 + US2 | T001–T028 | `3784baa` spec · `5425461` base + US1 · `04d76dc` US2 | typecheck ✓ · lint ✓ · Vitest 138 archivos / 1606 pruebas ✓ |
+| 2 — US3 + US7 + US8 | T029–T047 | `f4a5bcf` US3 · `91dccf8` + `b52bfff` US7 · `72f4a76` US8 | typecheck ✓ · lint ✓ · Vitest 142 archivos / 1646 pruebas ✓ |
+
+Antes de la 069: 130 archivos / 1489 pruebas. Ninguna expectativa existente
+cambió (SC-001); solo se añadieron casos.
 
 **Notas del Bloque 1**
 - Además de lo previsto: la API propia del plugin `organization` de Better Auth
@@ -14,12 +21,29 @@ Bloque 3: US5, US4, US6, US9 y cierre.
   plataforma (nunca «la primera»); la resolución por subdominio sigue en US4.
 - `/api/bot/openapi.json` (documentación estática, sin datos) sigue respondiendo
   en `multi`; el resto de `/api/bot/*` es 404.
-- La sección `modules` del Blueprint ya se aplica (columna); su efecto en las
-  pantallas llega con US7. `pipeline`, `agent`, `knowledge` y `agenda` responden
-  422 `seccion_no_disponible` hasta US8.
-- La API REST mínima del panel (`GET/POST /organizations`, detalle,
-  `suspend`/`reactivate`, `invitations`) se adelantó de T043 porque el panel la
-  necesita; T043 añade `blueprint` (GET/PUT) y `catalog`.
+- La API REST mínima del panel se adelantó de T043 porque el panel la necesita.
+
+**Notas del Bloque 2**
+- US3: aceptar = cuenta nueva por el bypass interno o cuenta existente SOLO con
+  su sesión; membresía + uso único en una transacción con la invitación
+  bloqueada (`FOR UPDATE`). `POST /api/invitaciones/aceptar` con límite por IP.
+  Selector `/empresas` (enlace al subdominio; `set-active` sin dominio base) y
+  acceso «Cambiar de empresa» en el menú.
+- US7: ~40 superficies pasan de la bandera de instancia a
+  `agendaActiva`/`atribucionActiva`/`canalActivo` (sesión, sin consultas) o
+  `modulosDeOrganizacion(id)` (en `single`, el techo sin tocar la base). La
+  ingesta descarta un canal apagado en la organización. Guardarraíl
+  `modulos-por-organizacion` con su lista de excepciones razonadas.
+- `enabledChannels()` lee `process.env` directo (como `agendaEnabled()`): el
+  techo se consulta en cada petición y no puede depender de que todo el entorno
+  valide. Mismo resultado que con `getEnv()`.
+- US8: `agenda/settings.ts` acepta la transacción del Blueprint y expone
+  `siguienteConfiguracion` (puro); los límites del Blueprint son los de la UI.
+  `aplicar(exportar(org))` = `sin_cambios` está probado.
+- Tokens: un token presentado e inválido responde 401 (no 404); los tokens se
+  gestionan solo con sesión. `GET /blueprint` y el `dryRun` piden alcance `read`.
+- Pendiente para el Bloque 3: el `owner` aún no ve accesos de soporte (US5) y la
+  marca del login sigue siendo la de plataforma hasta US4.
 
 **Formato**: `[ID] [P?] [Story] Descripción` · `[P]` = paralelizable ·
 Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
@@ -77,35 +101,35 @@ Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
 
 ## Phase 5: User Story 3 — Invitación y varias empresas (P1)
 
-- [ ] T029 [US3] `invitaciones.ts` `aceptarInvitacion(token, datos)`: transacción, usuario nuevo por `runInternalSignup` o existente con sesión, `member`, `accepted`
-- [ ] T030 [US3] `app/(auth)/invitacion/[token]/` (página + acción): estados vigente/vencida/usada/otro correo
-- [ ] T031 [US3] `app/(app)/empresas/`: selector en el dominio raíz (+ `organization/set-active`); `auth/index.ts`: `crossSubDomainCookies` y `trustedOrigins` comodín en `multi`
-- [ ] T032 [US3] Ajustes → Equipo en `multi`: correo existente → invitación (no membresía directa)
-- [ ] T033 [P] [US3] Pruebas: token vencido/usado/ajeno, idempotencia, hash (el token en claro nunca se guarda), A↛B: miembro de A en el host de B → ninguno `[local]`
+- [x] T029 [US3] `invitaciones.ts` `aceptarInvitacion(token, datos)`: transacción, usuario nuevo por `runInternalSignup` o existente con sesión, `member`, `accepted`
+- [x] T030 [US3] `app/(auth)/invitacion/[token]/` (página + acción): estados vigente/vencida/usada/otro correo
+- [x] T031 [US3] `app/(app)/empresas/`: selector en el dominio raíz (+ `organization/set-active`); `auth/index.ts`: `crossSubDomainCookies` y `trustedOrigins` comodín en `multi`
+- [x] T032 [US3] Ajustes → Equipo en `multi`: correo existente → invitación (no membresía directa)
+- [x] T033 [P] [US3] Pruebas: token vencido/usado/ajeno, idempotencia, hash (el token en claro nunca se guarda), A↛B: miembro de A en el host de B → ninguno `[local]`
 
 ---
 
 ## Phase 6: User Story 7 — Módulos por organización (P1)
 
-- [ ] T034 [US7] `server/modulos/consulta.ts`: `moduloActivo(ctx, "agenda" | "atribucion")`, `canalActivo(ctx, canal)`, respuestas 404 reutilizando las de cada bandera
-- [ ] T035 [US7] Migrar consumidores con organización (páginas de `(app)`, `settings/*`, `api/bookings`, `api/calendar/*`, `api/settings/{capi,channels,google,zoom,instagram,messenger,tiktok,webhook}`, `server/{agenda/context,inbox/send,onboarding/status,channels/status,analytics/bot,attribution/*,zernio/*}`) a `moduloActivo`/`canalActivo`
-- [ ] T036 [US7] Webhooks de canal (`ig`, `messenger`, `tiktok`): tras resolver la organización por token, canal apagado en la organización → 200 + descarte con log `canal_apagado_org`
-- [ ] T037 [US7] Sección `modules` del Blueprint + pestaña Módulos en `/platform/organizaciones/[id]` (techo deshabilitado «no disponible en esta instancia»)
-- [ ] T038 [US7] Guardarraíl `tests/unit/modulos-por-organizacion.test.ts` (lista corta de archivos permitidos) `[local]`
-- [ ] T039 [P] [US7] Pruebas: org sin módulos = techo; org apagada → 404 en agenda y atribución; canal apagado en webhook → descartado sin contacto; WhatsApp no se apaga (422); vertical desconocido 422; A↛B `[local]`
+- [x] T034 [US7] `server/modulos/consulta.ts`: `moduloActivo(ctx, "agenda" | "atribucion")`, `canalActivo(ctx, canal)`, respuestas 404 reutilizando las de cada bandera
+- [x] T035 [US7] Migrar consumidores con organización (páginas de `(app)`, `settings/*`, `api/bookings`, `api/calendar/*`, `api/settings/{capi,channels,google,zoom,instagram,messenger,tiktok,webhook}`, `server/{agenda/context,inbox/send,onboarding/status,channels/status,analytics/bot,attribution/*,zernio/*}`) a `moduloActivo`/`canalActivo`
+- [x] T036 [US7] Webhooks de canal (`ig`, `messenger`, `tiktok`): tras resolver la organización por token, canal apagado en la organización → 200 + descarte con log `canal_apagado_org`
+- [x] T037 [US7] Sección `modules` del Blueprint + pestaña Módulos en `/platform/organizaciones/[id]` (techo deshabilitado «no disponible en esta instancia»)
+- [x] T038 [US7] Guardarraíl `tests/unit/modulos-por-organizacion.test.ts` (lista corta de archivos permitidos) `[local]`
+- [x] T039 [P] [US7] Pruebas: org sin módulos = techo; org apagada → 404 en agenda y atribución; canal apagado en webhook → descartado sin contacto; WhatsApp no se apaga (422); vertical desconocido 422; A↛B `[local]`
 
 ---
 
 ## Phase 7: User Story 8 — `OrganizationBlueprint` completo (P1)
 
-- [ ] T040 [US8] Secciones `pipeline` (por nombre, reordenar, conservar etapas con leads + advertencia, anclas intactas) y `agent` (perfil sin `enabled`; `role`/`tools` contra catálogo)
-- [ ] T041 [US8] Sección `knowledge` (`merge` / `exact`, comparación normalizada) y `agenda` (validador de `weeklyHours` de Ajustes → Agenda; advertencia `modulo_apagado`)
-- [ ] T042 [US8] `blueprint/exportar.ts`: `exportarBlueprint(orgId)` (inverso exacto)
-- [ ] T043 [US8] REST `app/api/platform/organizations/**`: `GET/POST /organizations`, `GET /{idOrSlug}`, `GET/PUT /{idOrSlug}/blueprint` (`?dryRun=true`), `POST /{idOrSlug}/{suspend,reactivate,invitations}`, `GET /catalog`
-- [ ] T044 [US8] Asistente `/platform/nuevo`: pasos b–e (módulos, pipeline, agente + conocimiento, agenda), vista previa del `dryRun`, «Ver JSON» / «Importar JSON»; detalle: aplicar JSON
-- [ ] T045 [US8] Ajustes → Equipo: «Cambios de la plataforma» (entradas `blueprint_aplicado` de SU organización) para el `owner`
-- [ ] T046 [P] [US8] Pruebas: doble aplicación = `sin_cambios` y cero filas nuevas (SC-004); `aplicar(exportar(org))` = `sin_cambios`; sección ausente intacta; `dryRun` no escribe; campo desconocido / secreto / rol / zona / horario inválido → 422 con `path`; etapa con leads conservada; `owner` pendiente sin URL y `regenerate`; concurrencia serializada; A↛B `[local]`
-- [ ] T047 [US8] `server/platform/tokens.ts` + `/platform/tokens` (crear, revocar, mostrar una vez, `last4`); `requirePlataforma` acepta `Bearer` (`via: api`), alcances `read`/`provision`, `last_used_at`; pruebas de token revocado/vencido/alcance `[local]`
+- [x] T040 [US8] Secciones `pipeline` (por nombre, reordenar, conservar etapas con leads + advertencia, anclas intactas) y `agent` (perfil sin `enabled`; `role`/`tools` contra catálogo)
+- [x] T041 [US8] Sección `knowledge` (`merge` / `exact`, comparación normalizada) y `agenda` (validador de `weeklyHours` de Ajustes → Agenda; advertencia `modulo_apagado`)
+- [x] T042 [US8] `blueprint/exportar.ts`: `exportarBlueprint(orgId)` (inverso exacto)
+- [x] T043 [US8] REST `app/api/platform/organizations/**`: `GET/POST /organizations`, `GET /{idOrSlug}`, `GET/PUT /{idOrSlug}/blueprint` (`?dryRun=true`), `POST /{idOrSlug}/{suspend,reactivate,invitations}`, `GET /catalog`
+- [x] T044 [US8] Asistente `/platform/nuevo`: pasos b–e (módulos, pipeline, agente + conocimiento, agenda), vista previa del `dryRun`, «Ver JSON» / «Importar JSON»; detalle: aplicar JSON
+- [x] T045 [US8] Ajustes → Equipo: «Cambios de la plataforma» (entradas `blueprint_aplicado` de SU organización) para el `owner`
+- [x] T046 [P] [US8] Pruebas: doble aplicación = `sin_cambios` y cero filas nuevas (SC-004); `aplicar(exportar(org))` = `sin_cambios`; sección ausente intacta; `dryRun` no escribe; campo desconocido / secreto / rol / zona / horario inválido → 422 con `path`; etapa con leads conservada; `owner` pendiente sin URL y `regenerate`; concurrencia serializada; A↛B `[local]`
+- [x] T047 [US8] `server/platform/tokens.ts` + `/platform/tokens` (crear, revocar, mostrar una vez, `last4`); `requirePlataforma` acepta `Bearer` (`via: api`), alcances `read`/`provision`, `last_used_at`; pruebas de token revocado/vencido/alcance `[local]`
 
 ---
 
