@@ -40,7 +40,22 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Gates de la constitución v2.0.0 (marca ✅ / ❌ / N/A y justifica cada ❌ en Complexity Tracking):
+
+| # | Gate | Estado |
+|---|---|---|
+| I | Secretos cifrados y fuera de cliente/logs; la organización se **resuelve** de una fuente autenticada (nunca «la primera»); **prueba de cruce A↛B** para cada superficie nueva; acceso de plataforma auditado | |
+| II | Núcleo sin terceros nuevos; conector opcional solo con las 5 condiciones; librería embebida justificada | |
+| III | `organization_id` NOT NULL + `scoped()`; nada cableado a una sola organización; configuración por negocio como dato | |
+| IV | Eventos externos idempotentes | |
+| V | Gate técnico (typecheck, lint, build, tests) — indicar qué corre local y qué en CI/staging | |
+| VI | Carril declarado (ciclo completo si hay migración o contrato) | |
+| VII | Supuestos visibles (`NEEDS CLARIFICATION`) | |
+| VIII | Sirve a atender/organizar/convertir conversaciones; sin billing ni broadcast | |
+| IX | Self-test en vivo (feliz + infeliz), local o CI/staging | |
+| X | Sin lógica de nicho en el núcleo; contratos con el cerebro solo aditivos (`x-vocero-*`, `vocero:cerebro:v1`) | |
+| XI | Sin valores regionales ni marca cableados fuera de sus módulos | |
+| Modo | Comportamiento con `TENANCY=single` y con `TENANCY=multi` | |
 
 ## Project Structure
 

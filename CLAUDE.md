@@ -5,10 +5,17 @@ modificación viven ahí; este archivo solo añade lo específico de Claude Code
 
 Vocero es un CRM de WhatsApp open source (MIT), self-hosted, con el perfil y el
 conocimiento del agente y un Laboratorio de auto-evaluación. Desde la 2.0 no
-trae agente: contesta un cerebro conectado al lado (Nea u otro). Una
-instancia = un negocio. Este archivo guía a Claude Code (u otro asistente)
-para operar y **modificar** este repositorio —
-el caso típico: una agencia adaptando Vocero para un cliente.
+trae agente: contesta un cerebro conectado al lado (Nea u otro). Este
+repositorio es la base de **Aliantis CRM** (constitución 2.0.0): dos modos de
+despliegue, `TENANCY=single` (default, una instancia = un negocio) y
+`TENANCY=multi` (plataforma SaaS multi-tenant multi-nicho para Colombia). El
+plan de fases vive en `../ROADMAP-ALIANTIS.md`. Este archivo guía a Claude Code
+(u otro asistente) para operar y **modificar** este repositorio.
+
+**Equipo local modesto**: NO correr `next build`, Docker pesado ni E2E con
+Playwright en la máquina local. Verificar con `npx pnpm@11.5.0 typecheck`,
+`npx pnpm@11.5.0 lint` y Vitest con `--maxWorkers=1 --no-file-parallelism`
+(o solo los archivos afectados); `build` y E2E corren en CI/staging.
 
 ## Stack
 
@@ -85,8 +92,20 @@ Ver [.specify/memory/constitution.md](.specify/memory/constitution.md).
   apagado y encendido. Auth y BD self-hosted.
 - **Seguridad (I)**: secretos cifrados en reposo (AES-256-GCM, `lib/crypto`);
   jamás al cliente ni a logs. El token de WhatsApp solo muestra sus últimos 4.
-- **Multi-tenancy (III)**: `organization_id` NOT NULL en toda tabla de dominio;
-  toda query pasa por `scoped()` de `src/lib/db/tenant.ts`.
+- **Multi-tenancy (III, redefinido — 2.0.0)**: `organization_id` NOT NULL en
+  toda tabla de dominio; toda query pasa por `scoped()` de
+  `src/lib/db/tenant.ts`. En modo plataforma hay N organizaciones con slug
+  único, las da de alta la plataforma, y la organización se resuelve de una
+  fuente autenticada — nunca «la primera» (I).
+- **Acceso de plataforma (I)**: el Super-Admin no ve conversaciones salvo
+  acceso de soporte explícito y auditado. Toda superficie nueva lleva prueba
+  de cruce A↛B.
+- **Núcleo inmutable (X)**: sin lógica de nicho en el núcleo; nichos como
+  Vertical Pack, banderas por organización o módulos aislados. Los contratos
+  con el cerebro (`x-vocero-*`, `vocero:cerebro:v1`, despacho, `/api/bot/*`,
+  `/api/brains/*`) solo crecen de forma aditiva.
+- **Localización y marca como datos (XI)**: nada de valores regionales ni
+  marca cableados fuera de sus módulos centrales.
 - **Idempotencia (IV)**: webhooks dedup por `wa_message_id` UNIQUE; estados
   monotónicos; seeds y migraciones re-ejecutables.
 - **Sandbox del Laboratorio**: las conversaciones `is_test` JAMÁS tocan la API
@@ -143,6 +162,10 @@ Gate técnico:
 ```bash
 pnpm typecheck && pnpm lint && pnpm build && pnpm test
 ```
+
+En este equipo (constitución V/IX, 2.0.0): localmente `typecheck`, `lint` y
+Vitest acotado; `build` y el self-test E2E se ejecutan en CI/staging y la
+feature no está «Hecha» hasta que ahí estén en verde.
 
 Guiones E2E por historia en `tests/e2e/*.md`. Parte de ellos ya están
 automatizados: con la app viva y los mocks encendidos, `pnpm test:e2e`
