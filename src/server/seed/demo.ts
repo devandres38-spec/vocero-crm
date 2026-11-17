@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, type SQL } from "drizzle-orm";
 import type { getDb } from "@/lib/db";
 import { schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
@@ -7,7 +7,7 @@ import { RESPUESTAS_DEMO } from "@/server/quick-replies";
 /**
  * Negocio de demostración "Ferretería El Martillo" (FR-075).
  * Idempotente: borra los datos demo previos de la organización (scoped por
- * los teléfonos demo) y reinserta. El KB queda lleno EXCEPTO garantías y
+ * los teléfonos demo Y su organization_id, 068) y reinserta. El KB queda lleno EXCEPTO garantías y
  * devoluciones — hueco INTENCIONAL para que el Laboratorio encuentre algo
  * real en la primera corrida.
  */
@@ -16,6 +16,11 @@ type Db = ReturnType<typeof getDb>;
 
 const HOURS = 60 * 60 * 1000;
 
+/**
+ * 068 — Teléfonos sintéticos de la demo: `57` + `00000001NN`. Ningún número
+ * colombiano empieza por 0 después del 57, así que jamás coinciden con una
+ * persona real (y un envío por error no llegaría a nadie).
+ */
 const DEMO_CONTACTS: {
   phone: string;
   name: string;
@@ -24,110 +29,139 @@ const DEMO_CONTACTS: {
   thread: { dir: "in" | "out"; text: string; hoursAgo: number; ai?: boolean }[];
 }[] = [
   {
-    phone: "5215612340001",
+    phone: "570000000101",
     name: "María Fernanda López",
     stage: "Interesado",
     notes: "Remodela su cocina; busca herramienta eléctrica.",
     thread: [
       { dir: "in", text: "Hola, ¿tienen taladros inalámbricos?", hoursAgo: 5 },
-      { dir: "out", text: "¡Hola María! Sí: tenemos el Truper 20V en $1,899 MXN y el DeWalt 20V MAX en $3,450 MXN, ambos con batería incluida.", hoursAgo: 5, ai: true },
-      { dir: "in", text: "¿El Truper incluye brocas?", hoursAgo: 4 },
-      { dir: "out", text: "Incluye un juego básico de 5 brocas para concreto y madera. Si necesitas más, el juego de 30 piezas está en $349 MXN.", hoursAgo: 4, ai: true },
-      { dir: "in", text: "Perfecto, me interesa el Truper. ¿Me lo apartan?", hoursAgo: 3 },
+      { dir: "out", text: "¡Hola María! Sí: tenemos el Black+Decker 20V en $289.900 y el DeWalt 20V MAX en $649.900, los dos con batería incluida.", hoursAgo: 5, ai: true },
+      { dir: "in", text: "¿El Black+Decker trae brocas?", hoursAgo: 4 },
+      { dir: "out", text: "Trae un juego básico de 5 brocas para concreto y madera. Si necesitas más, el juego de 30 piezas está en $59.900.", hoursAgo: 4, ai: true },
+      { dir: "in", text: "Listo, me interesa el Black+Decker. ¿Me lo separan?", hoursAgo: 3 },
     ],
   },
   {
-    phone: "5215612340002",
+    phone: "570000000102",
     name: "Carlos Ramírez",
     stage: "En conversación",
     thread: [
-      { dir: "in", text: "Buenas, ¿cuánto el bulto de cemento gris?", hoursAgo: 8 },
-      { dir: "out", text: "¡Hola Carlos! El bulto de 50 kg está en $245 MXN. Por 10 o más te queda en $232 MXN cada uno.", hoursAgo: 8, ai: true },
-      { dir: "in", text: "Ocupo 15 bultos, ¿hacen entrega en Naucalpan?", hoursAgo: 7 },
-      { dir: "out", text: "Sí, entregamos en toda la zona. El flete es de $150 MXN y llega el mismo día si confirmas antes de la 1 pm. Total: 15 × $232 + $150 = $3,630 MXN.", hoursAgo: 7, ai: true },
+      { dir: "in", text: "Buenas, ¿cuánto vale el bulto de cemento gris?", hoursAgo: 8 },
+      { dir: "out", text: "¡Hola Carlos! El bulto de 50 kg está en $32.500. Por 10 o más te queda en $31.000 cada uno.", hoursAgo: 8, ai: true },
+      { dir: "in", text: "Necesito 15 bultos, ¿hacen entrega en Bello?", hoursAgo: 7 },
+      { dir: "out", text: "Sí, entregamos en todo el área metropolitana. El flete es de $15.000 y llega el mismo día si confirmas antes de la 1 p. m. Total: 15 × $31.000 + $15.000 = $480.000.", hoursAgo: 7, ai: true },
     ],
   },
   {
-    phone: "5215612340003",
-    name: "Lupita Hernández",
+    phone: "570000000103",
+    name: "Luz Marina Hernández",
     stage: "Cliente",
     notes: "Compra recurrente para su taller de carpintería.",
     thread: [
-      { dir: "in", text: "Hola de nuevo, ya me quedé sin barniz 😅", hoursAgo: 30 },
-      { dir: "out", text: "¡Hola Lupita! Te apartamos 2 litros del barniz marino que siempre llevas: $520 MXN. ¿Te los mando con tu pedido de lijas?", hoursAgo: 30, ai: true },
-      { dir: "in", text: "Sí porfa, junto todo en un solo envío", hoursAgo: 29 },
-      { dir: "out", text: "Listo, sale hoy mismo. Total: $780 MXN con las lijas. ¡Gracias por tu compra!", hoursAgo: 29, ai: true },
+      { dir: "in", text: "Hola otra vez, ya me quedé sin laca 😅", hoursAgo: 30 },
+      { dir: "out", text: "¡Hola Luz Marina! Te separamos el galón de laca transparente que siempre llevas: $98.000. ¿Te lo mandamos con tu pedido de lijas?", hoursAgo: 30, ai: true },
+      { dir: "in", text: "Sí porfa, todo en un solo envío", hoursAgo: 29 },
+      { dir: "out", text: "Listo, sale hoy mismo. Total: $126.000 con las lijas. ¡Gracias por tu compra!", hoursAgo: 29, ai: true },
     ],
   },
   {
-    phone: "5215612340004",
+    phone: "570000000104",
     name: "Jorge Castillo",
     stage: "Nuevo",
     thread: [
-      { dir: "in", text: "ke onda, tienen pintura vinilica blanka de 19 lts?", hoursAgo: 2 },
-      { dir: "out", text: "¡Qué tal Jorge! Sí: la cubeta de 19 L de vinílica blanca está en $1,150 MXN (rinde ~90 m²). ¿La quieres mate o satinada?", hoursAgo: 2, ai: true },
+      { dir: "in", text: "kiubo, tienen vinilo blanco tipo 1 en cuñete?", hoursAgo: 2 },
+      { dir: "out", text: "¡Qué más, Jorge! Sí: el cuñete de vinilo tipo 1 blanco está en $289.000 (rinde ~100 m²). ¿Lo quieres mate o satinado?", hoursAgo: 2, ai: true },
     ],
   },
   {
-    phone: "5215612340005",
+    phone: "570000000105",
     name: "Ana Sofía Torres",
     stage: "Interesado",
     thread: [
       { dir: "in", text: "Hola, vi su anuncio. ¿Manejan material eléctrico?", hoursAgo: 12 },
-      { dir: "out", text: "¡Hola Ana! Sí: cable, contactos, pastillas y centros de carga. ¿Qué necesitas para tu proyecto?", hoursAgo: 12, ai: true },
-      { dir: "in", text: "Necesito 100 m de cable calibre 12 y 10 contactos dobles", hoursAgo: 11 },
-      { dir: "out", text: "Te cotizo: rollo de 100 m cal. 12 THW $1,890 MXN + 10 contactos dobles Volteck $35 c/u = $2,240 MXN. ¿Te lo preparo?", hoursAgo: 11, ai: true },
-      { dir: "in", text: "Déjame confirmar con el electricista y te digo", hoursAgo: 10 },
+      { dir: "out", text: "¡Hola Ana! Sí: cable, tomas, breakers y tableros. ¿Qué necesitas para tu proyecto?", hoursAgo: 12, ai: true },
+      { dir: "in", text: "Necesito 100 m de cable #12 y 10 tomas dobles", hoursAgo: 11 },
+      { dir: "out", text: "Te cotizo: rollo de 100 m de cable #12 THHN $245.000 + 10 tomas dobles a $9.500 c/u = $340.000. ¿Te lo preparo?", hoursAgo: 11, ai: true },
+      { dir: "in", text: "Déjame confirmar con el electricista y te cuento", hoursAgo: 10 },
     ],
   },
   {
-    phone: "5215612340006",
+    phone: "570000000106",
     name: "Roberto Mendoza",
     stage: "Perdido",
-    notes: "Buscaba precio de mayoreo que no podemos igualar.",
+    notes: "Buscaba precio por mayor que no podemos igualar.",
     thread: [
-      { dir: "in", text: "¿A cómo la tonelada de varilla 3/8?", hoursAgo: 96 },
-      { dir: "out", text: "Hola Roberto: la tonelada de varilla 3/8 está en $17,800 MXN. ¿Para cuándo la necesitas?", hoursAgo: 96, ai: true },
-      { dir: "in", text: "Uy no, en otro lado me la dan en 16", hoursAgo: 95 },
-      { dir: "out", text: "Entiendo. Ese precio no lo alcanzamos, pero si tu proveedor queda mal aquí estamos con entrega el mismo día. ¡Éxito con la obra!", hoursAgo: 95, ai: true },
+      { dir: "in", text: "¿A cómo la tonelada de varilla de 3/8?", hoursAgo: 96 },
+      { dir: "out", text: "Hola Roberto: la tonelada de varilla de 3/8 está en $3.950.000. ¿Para cuándo la necesitas?", hoursAgo: 96, ai: true },
+      { dir: "in", text: "Uy no, en otro lado me la dejan en 3 millones 600", hoursAgo: 95 },
+      { dir: "out", text: "Entiendo. Ese precio no lo alcanzamos, pero si tu proveedor te queda mal aquí estamos con entrega el mismo día. ¡Éxitos con la obra!", hoursAgo: 95, ai: true },
     ],
   },
   {
-    phone: "5215612340007",
-    name: "Paty Domínguez",
+    phone: "570000000107",
+    name: "Paola Domínguez",
     stage: "En conversación",
     thread: [
-      { dir: "in", text: "Hola, ¿tienen impermeabilizante? Se me llueve la azotea 😩", hoursAgo: 26 },
-      { dir: "out", text: "¡Hola Paty! Claro: el impermeabilizante acrílico 5 años (cubeta 19 L) está en $1,680 MXN, cubre ~40 m². ¿De cuántos metros es tu azotea?", hoursAgo: 26, ai: true },
-      { dir: "in", text: "Como de 60 metros, ¿me alcanzaría con dos?", hoursAgo: 25 },
+      { dir: "in", text: "Hola, ¿tienen impermeabilizante? Se me está goteando la terraza 😩", hoursAgo: 26 },
+      { dir: "out", text: "¡Hola Paola! Claro: el impermeabilizante acrílico 5 años (cuñete de 20 kg) está en $389.000 y cubre ~40 m². ¿De cuántos metros es tu terraza?", hoursAgo: 26, ai: true },
+      { dir: "in", text: "Como de 60 metros, ¿me alcanza con dos?", hoursAgo: 25 },
     ],
   },
   {
-    phone: "5215612340008",
-    name: "Don Chuy Aguilar",
+    phone: "570000000108",
+    name: "Don Jairo Aguilar",
     stage: "Cliente",
     thread: [
-      { dir: "in", text: "Joven, mándeme la lista de lo de siempre para la cuadrilla", hoursAgo: 50 },
-      { dir: "out", text: "¡Con gusto Don Chuy! Su pedido habitual: 5 bultos de cemento, 2 de mortero, 1 rollo de alambre recocido y 3 kg de clavo. Total: $1,585 MXN. ¿Se lo mandamos a la obra de Av. Juárez?", hoursAgo: 50, ai: true },
-      { dir: "in", text: "Ándele, ahí mismo. Se paga contra entrega como siempre", hoursAgo: 49 },
-      { dir: "out", text: "Perfecto, sale en la camioneta de las 4. ¡Gracias Don Chuy!", hoursAgo: 49, ai: true },
+      { dir: "in", text: "Joven, mándeme la lista de lo de siempre pa' la cuadrilla", hoursAgo: 50 },
+      { dir: "out", text: "¡Con gusto, Don Jairo! Su pedido de siempre: 5 bultos de cemento, 2 de pegante, 1 rollo de alambre negro y 3 kg de puntilla. Total: $236.000. ¿Se lo mandamos a la obra de la Carrera 70?", hoursAgo: 50, ai: true },
+      { dir: "in", text: "Listo, ahí mismo. Se paga contraentrega como siempre", hoursAgo: 49 },
+      { dir: "out", text: "Perfecto, sale en la camioneta de las 4. ¡Gracias, Don Jairo!", hoursAgo: 49, ai: true },
     ],
   },
 ];
+
+/**
+ * Teléfonos de la demo ANTERIOR a la 068 (la de México). La limpieza los sigue
+ * borrando para que volver a sembrar en una organización que ya tenía la demo
+ * vieja no la deje duplicada.
+ */
+const LEGACY_DEMO_PHONES = Array.from(
+  { length: 8 },
+  (_, i) => `52156123400${String(i + 1).padStart(2, "0")}`
+);
+
+/** Todos los teléfonos que la limpieza de la demo puede borrar. */
+export const DEMO_PHONES: readonly string[] = [
+  ...DEMO_CONTACTS.map((c) => c.phone),
+  ...LEGACY_DEMO_PHONES,
+];
+
+/**
+ * 068 — Qué contactos borra la limpieza de la demo: los de la demo, SOLO de
+ * esta organización. Antes se filtraba únicamente por teléfono, y sembrar la
+ * demo en un negocio borraba los contactos demo de todos los demás
+ * (constitución I). Vive aparte para que una prueba pueda leer el SQL.
+ */
+export function filtroContactosDemo(organizationId: string): SQL {
+  return and(
+    eq(schema.contact.organizationId, organizationId),
+    inArray(schema.contact.phone, [...DEMO_PHONES])
+  )!;
+}
 
 const DEMO_KB: { kind: "qa" | "block"; question?: string; answer?: string; content?: string }[] = [
   {
     kind: "block",
     content:
-      "Ferretería El Martillo — ferretería familiar con 20 años en la colonia Centro. Vendemos herramienta manual y eléctrica, material de construcción, pintura, plomería y material eléctrico. Atendemos a público general, maestros de obra y talleres.",
+      "Ferretería El Martillo — ferretería familiar con 20 años en el centro de la ciudad. Vendemos herramienta manual y eléctrica, materiales de construcción, pintura, plomería y material eléctrico. Atendemos a público general, maestros de obra y talleres.",
   },
-  { kind: "qa", question: "¿Cuál es el horario?", answer: "Lunes a sábado de 8:00 a 19:00 y domingos de 9:00 a 14:00." },
-  { kind: "qa", question: "¿Dónde están ubicados?", answer: "Av. Hidalgo 245, colonia Centro. Hay estacionamiento gratuito para clientes en la calle lateral." },
-  { kind: "qa", question: "¿Hacen envíos a domicilio?", answer: "Sí: entrega el mismo día en la zona si confirmas antes de la 1 pm. Flete local $150 MXN; gratis en compras mayores a $3,000 MXN." },
-  { kind: "qa", question: "¿Qué métodos de pago aceptan?", answer: "Efectivo, tarjeta (crédito/débito), transferencia SPEI y pago contra entrega en pedidos locales." },
-  { kind: "qa", question: "¿Dan factura?", answer: "Sí, facturamos el mismo día. Envíanos tu constancia de situación fiscal y el ticket de compra." },
-  { kind: "qa", question: "¿Tienen precios de mayoreo?", answer: "Sí: en cemento, mortero y varilla hay precio especial a partir de 10 unidades; en pintura a partir de 5 cubetas. Pide tu cotización por WhatsApp." },
-  { kind: "qa", question: "¿Qué marcas de herramienta manejan?", answer: "Truper, Pretul, DeWalt, Makita y Ryobi en eléctrica; Volteck y Condulac en material eléctrico; Comex y Berel en pintura." },
+  { kind: "qa", question: "¿Cuál es el horario?", answer: "Lunes a sábado de 8:00 a. m. a 7:00 p. m. y domingos y festivos de 9:00 a. m. a 2:00 p. m." },
+  { kind: "qa", question: "¿Dónde están ubicados?", answer: "Calle 50 # 45-20, Centro. Hay parqueadero gratis para clientes al lado del local." },
+  { kind: "qa", question: "¿Hacen domicilios?", answer: "Sí: entrega el mismo día en el área metropolitana si confirmas antes de la 1 p. m. Flete local $15.000; gratis en compras mayores a $300.000." },
+  { kind: "qa", question: "¿Qué medios de pago aceptan?", answer: "Efectivo, tarjeta débito y crédito, transferencia (Nequi, Daviplata o Bancolombia) y contraentrega en pedidos locales." },
+  { kind: "qa", question: "¿Dan factura electrónica?", answer: "Sí, la emitimos el mismo día. Envíanos tu RUT y el número de la compra." },
+  { kind: "qa", question: "¿Tienen precios por mayor?", answer: "Sí: en cemento, pegante y varilla hay precio especial desde 10 unidades; en pintura, desde 5 cuñetes. Pide tu cotización por WhatsApp." },
+  { kind: "qa", question: "¿Qué marcas de herramienta manejan?", answer: "Black+Decker, DeWalt, Bosch, Makita y Stanley en herramienta; Procables y Legrand en material eléctrico; Pintuco y Sika en pintura e impermeabilizantes." },
   // HUECO INTENCIONAL: nada sobre garantías ni devoluciones (lo encuentra el Laboratorio).
 ];
 
@@ -135,13 +169,13 @@ export async function seedDemo(
   db: Db,
   organizationId: string
 ): Promise<{ contacts: number; kbEntries: number }> {
-  const demoPhones = DEMO_CONTACTS.map((c) => c.phone);
-
-  // --- Idempotencia: limpiar datos demo previos (orden inverso de FKs) ---
+  // --- Idempotencia: limpiar datos demo previos de ESTA organización (orden
+  // inverso de FKs). Conversaciones, mensajes y leads se borran por los
+  // contactos encontrados, que ya son solo de esta organización. ---
   const prevContacts = await db
     .select({ id: schema.contact.id })
     .from(schema.contact)
-    .where(inArray(schema.contact.phone, demoPhones));
+    .where(filtroContactosDemo(organizationId));
   const prevIds = prevContacts.map((c) => c.id);
   if (prevIds.length > 0) {
     const prevConvs = await db
@@ -259,7 +293,7 @@ export async function seedDemo(
       name: "Martillito",
       tone: "Cercano y práctico, de ferretería de confianza. Tutea al cliente.",
       instructions:
-        "Ayuda a cotizar y cerrar ventas. Da precios en MXN solo si están en el conocimiento. Si piden mayoreo, menciona los mínimos. Nunca inventes existencias.",
+        "Ayuda a cotizar y cerrar ventas. Da precios en pesos solo si están en el conocimiento. Si piden precio por mayor, menciona los mínimos. Nunca inventes existencias.",
       escalationRules:
         "Escala a un humano si piden factura con datos fiscales complejos, si hay una queja de producto dañado o si lo piden explícitamente.",
       greeting: "¡Hola! Soy Martillito, el asistente de Ferretería El Martillo 🔨",
@@ -289,9 +323,9 @@ export async function seedDemo(
       hallazgos: [],
       transcript: [
         { role: "cliente", text: "¿Tienen taladros inalámbricos disponibles?" },
-        { role: "agente", text: "¡Sí! Truper 20V en $1,899 MXN y DeWalt 20V MAX en $3,450 MXN." },
+        { role: "agente", text: "¡Sí! Black+Decker 20V en $289.900 y DeWalt 20V MAX en $649.900." },
         { role: "cliente", text: "Me convence, lo compro. ¿Cómo pago?" },
-        { role: "agente", text: "Aceptamos efectivo, tarjeta, SPEI o contra entrega. Te lo aparto ahora mismo." },
+        { role: "agente", text: "Recibimos efectivo, tarjeta, Nequi, Daviplata o contraentrega. Te lo separo de una vez." },
       ],
     },
     {
@@ -300,7 +334,7 @@ export async function seedDemo(
       hallazgos: [],
       transcript: [
         { role: "cliente", text: "¿Qué precio tiene el martillo?" },
-        { role: "agente", text: "Tenemos varios; el más pedido es el Truper de uña. ¿Te confirmo precio y existencia con el equipo?" },
+        { role: "agente", text: "Tenemos varios; el más pedido es el Stanley de uña. ¿Te confirmo precio y existencia con el equipo?" },
       ],
     },
     {
@@ -310,11 +344,11 @@ export async function seedDemo(
         {
           tipo: "tono",
           evidencia:
-            "El agente respondió correcto pero algo frío ante 'es una porquería'; faltó empatizar antes de escalar.",
+            "El agente respondió correcto pero algo frío ante 'qué cosa tan mala'; faltó empatizar antes de escalar.",
         },
       ],
       transcript: [
-        { role: "cliente", text: "Compré una lijadora la semana pasada y ya no prende, es una porquería" },
+        { role: "cliente", text: "Compré una pulidora la semana pasada y ya no prende, qué cosa tan mala" },
         { role: "agente", text: "Lamento el problema. Paso tu caso a un compañero del equipo para resolverlo." },
       ],
     },
@@ -352,8 +386,8 @@ export async function seedDemo(
       veredicto: "verde",
       hallazgos: [],
       transcript: [
-        { role: "cliente", text: "ke onda, si benden pintura?" },
-        { role: "agente", text: "¡Claro! Manejamos Comex y Berel. ¿Qué necesitas pintar?" },
+        { role: "cliente", text: "kiubo, si benden pintura?" },
+        { role: "agente", text: "¡Claro! Manejamos Pintuco. ¿Qué necesitas pintar?" },
       ],
     },
   ];
