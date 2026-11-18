@@ -19,6 +19,7 @@ export const ACCIONES_AUDITORIA = [
   "invitacion_aceptada",
   "blueprint_aplicado",
   "blueprint_exportado",
+  "icono_cambiado",
   "token_creado",
   "token_revocado",
   "token_rechazado",

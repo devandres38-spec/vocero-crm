@@ -17,6 +17,14 @@ const MENSAJES: Record<string, string> = {
   ya_miembro: "Ese correo ya es miembro del negocio.",
   secreto_detectado: "No pegues llaves ni tokens: el negocio conecta sus credenciales.",
   organizacion_inexistente: "Ese negocio no existe.",
+  slug_inmutable: "La dirección de un negocio no se puede cambiar.",
+  etapas_repetidas: "Hay dos etapas con el mismo nombre.",
+  horarios_solapados: "En la agenda, dos franjas del mismo día se pisan.",
+  intervalo_invertido: "En la agenda, una franja termina antes de empezar.",
+  tema_propio_ilegible: "Con esos colores el texto no se lee: ajusta el tema propio.",
+  atajo_invalido: "Un atajo de respuesta rápida está vacío o no es válido.",
+  atajos_repetidos: "Hay dos respuestas rápidas con el mismo atajo.",
+  invitacion_inexistente: "Esa invitación ya no existe.",
 };
 
 type Issue = { path?: string; message?: string };
