@@ -11,7 +11,7 @@ ambos).
 | 1 — Base + US1 + US2 | T001–T028 | `3784baa` spec · `5425461` base + US1 · `04d76dc` US2 | typecheck ✓ · lint ✓ · Vitest 138 archivos / 1606 pruebas ✓ |
 | 2 — US3 + US7 + US8 | T029–T047 | `f4a5bcf` US3 · `91dccf8` + `b52bfff` US7 · `72f4a76` US8 | typecheck ✓ · lint ✓ · Vitest 142 archivos / 1646 pruebas ✓ |
 | 3 — US5 + US4/US6 + US9 + cierre | T048–T070 | `10a6894` US5 · `c324fe2` US4/US6 · `56f8519` US9 · cierre (docs, E2E, 2.9.0) | typecheck ✓ · lint ✓ · Vitest 146 archivos / 1686 pruebas ✓ |
-| Auditoría 1 — Fix-A + Fix-B | T074–T085 | `99e6d2e` Fix-A (H-01…H-08) · Fix-B (Blueprint + MCP) | typecheck ✓ · lint ✓ · Vitest 148 archivos / 1729 pruebas ✓ |
+| Auditoría 1 — Fix-A + Fix-B | T074–T085 | `99e6d2e` Fix-A (H-01…H-08) · `741cdff` Fix-B (Blueprint + MCP) | typecheck ✓ · lint ✓ · Vitest 148 archivos / 1729 pruebas ✓ |
 
 Antes de la 069: 130 archivos / 1489 pruebas. Ninguna expectativa existente
 cambió (SC-001); solo se añadieron casos.
