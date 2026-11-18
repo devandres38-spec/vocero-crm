@@ -1,12 +1,7 @@
-import { z } from "zod";
-import { apiError, parseBody } from "@/lib/api";
+import { apiError } from "@/lib/api";
 import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
-import {
-  createSessionBooking,
-  rescheduleForConversation,
-} from "@/server/agenda/service";
-import { bookingErrorResponse, bookingPayload } from "@/server/agenda/http";
+import { moverCitaPorElCerebro, reservarPorElCerebro } from "@/server/bot/nucleo/agenda";
 
 export const dynamic = "force-dynamic";
 
@@ -21,60 +16,20 @@ export const dynamic = "force-dynamic";
  * Y el sobre del error va ANIDADO (`{"error":{"code":…}}`) con `slots` como
  * hermano: un mock con la forma plana escondió el camino de re-oferta durante
  * semanas en ese mismo sistema.
+ *
+ * 070 — Lógica compartida con `/api/brains/agenda/book`
+ * (`src/server/bot/nucleo/agenda.ts`); aquí la cita va PLANA, como siempre.
  */
-
-const createSchema = z.object({
-  conversationId: z.string().min(1),
-  startUtc: z.string().min(1),
-  notes: z.string().nullish(),
-});
-
-const rescheduleSchema = z.object({
-  conversationId: z.string().min(1),
-  startUtc: z.string().min(1),
-});
-
 export async function POST(req: Request) {
   const gate = await guard(req);
   if ("response" in gate) return gate.response;
-
-  const body = await parseBody(req, createSchema);
-  if (!body.ok) return body.response;
-
-  try {
-    const result = await createSessionBooking({
-      organizationId: gate.organizationId,
-      conversationId: body.data.conversationId,
-      startUtc: body.data.startUtc,
-      notes: body.data.notes ?? null,
-      source: "ai",
-      // La regla innegociable: el agente solo reserva lo que ya ofreció.
-      requireOffer: true,
-    });
-    return Response.json(bookingPayload(result), { status: 201 });
-  } catch (err) {
-    return bookingErrorResponse(err);
-  }
+  return reservarPorElCerebro(req, gate.organizationId, "plana");
 }
 
 export async function PATCH(req: Request) {
   const gate = await guard(req);
   if ("response" in gate) return gate.response;
-
-  const body = await parseBody(req, rescheduleSchema);
-  if (!body.ok) return body.response;
-
-  try {
-    const result = await rescheduleForConversation({
-      organizationId: gate.organizationId,
-      conversationId: body.data.conversationId,
-      startUtc: body.data.startUtc,
-    });
-    // 200 y no 201: mover una cita no crea un recurso nuevo.
-    return Response.json(bookingPayload(result));
-  } catch (err) {
-    return bookingErrorResponse(err);
-  }
+  return moverCitaPorElCerebro(req, gate.organizationId, "plana");
 }
 
 /* Cancelar NO existe por esta superficie a propósito: esa decisión es del
@@ -94,4 +49,3 @@ async function guard(req: Request): Promise<Gate> {
   }
   return { organizationId };
 }
-
