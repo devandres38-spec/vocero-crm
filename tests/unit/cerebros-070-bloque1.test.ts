@@ -432,7 +432,8 @@ describe("guardia estática de /api/brains/*", () => {
   it("toda ruta pasa por requireBrain y nunca por la organización de la instancia", () => {
     for (const ruta of rutasBajo(join(process.cwd(), "src/app/api/brains"))) {
       const src = readFileSync(ruta, "utf8");
-      expect(src, ruta).toMatch(/requireBrain\(/);
+      // `requireBrainAgenda` = `requireBrain` + el módulo agenda del negocio.
+      expect(src, ruta).toMatch(/requireBrain(Agenda)?\(/);
       expect(src, ruta).not.toMatch(/resolveInstanceOrg|requireBotKey/);
     }
   });
