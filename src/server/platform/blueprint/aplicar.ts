@@ -19,6 +19,7 @@ import { aplicarRespuestas } from "@/server/platform/blueprint/secciones/respues
 import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { modulosEfectivos, techoDeInstancia } from "@/server/modulos/efectivos";
 import { aplicarOwner } from "@/server/platform/blueprint/secciones/owner";
+import { aplicarCerebro } from "@/server/platform/blueprint/secciones/cerebro";
 
 /**
  * 069 (D12) — EL servicio de aprovisionamiento. Panel, REST y MCP llaman
@@ -131,6 +132,9 @@ export async function aplicarBlueprint(
         const q = await aplicarRespuestas(tx, org.id, bp.quickReplies);
         r.sections.quickReplies = estado(q.cambio);
         conteos.quickReplies = q.conteos;
+      }
+      if (bp.brain !== undefined) {
+        r.sections.brain = estado(await aplicarCerebro(tx, actor, org.id, bp.brain));
       }
       if (bp.owner) {
         const o = await aplicarOwner(tx, actor, org, bp.owner, dryRun);

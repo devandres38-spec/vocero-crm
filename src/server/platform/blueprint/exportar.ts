@@ -114,6 +114,8 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
       meetingLink: s.meetingLink,
     };
   }
+  // 070 — Solo el id del despliegue asignado (nunca su URL ni su secreto).
+  if (org.brainDeploymentId) bp.brain = { deployment: org.brainDeploymentId };
   return bp;
 }
 

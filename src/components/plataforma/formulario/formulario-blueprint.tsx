@@ -42,7 +42,7 @@ import type { Actualizar } from "./controles";
 import { PestanaNegocio } from "./pestana-negocio";
 import { PestanaMarca } from "./pestana-marca";
 import { PestanaModulos, PestanaPipeline } from "./pestana-modulos";
-import { PestanaAgente, PestanaConocimiento } from "./pestana-agente";
+import { PestanaAgente, PestanaConocimiento, type OpcionCerebro } from "./pestana-agente";
 import { PestanaAgenda } from "./pestana-agenda";
 import { PestanaJson, PestanaRespuestas } from "./pestana-respuestas";
 
@@ -77,6 +77,7 @@ const NOMBRE_SECCION: Record<SeccionBlueprint, string> = {
   knowledge: "Conocimiento",
   agenda: "Agenda",
   quickReplies: "Respuestas rápidas",
+  brain: "Cerebro",
   owner: "Dueño",
 };
 
@@ -112,6 +113,8 @@ export type PropsFormulario = {
   organizationId?: string;
   inicial?: OrganizationBlueprint;
   modulosEfectivos?: ModulosForm;
+  /** 070 — Los despliegues de cerebro que se pueden asignar (sin secretos). */
+  cerebros?: OpcionCerebro[];
 };
 
 export function FormularioBlueprint(p: PropsFormulario) {
@@ -246,7 +249,7 @@ export function FormularioBlueprint(p: PropsFormulario) {
         {pestana === "marca" && <PestanaMarca f={f} upd={upd} organizationId={p.organizationId} />}
         {pestana === "modulos" && <PestanaModulos f={f} upd={upd} techo={p.techo} />}
         {pestana === "pipeline" && <PestanaPipeline f={f} upd={upd} />}
-        {pestana === "agente" && <PestanaAgente f={f} upd={upd} agendaActiva={p.techo.agenda && f.modules.agenda} />}
+        {pestana === "agente" && <PestanaAgente f={f} upd={upd} agendaActiva={p.techo.agenda && f.modules.agenda} cerebros={p.cerebros ?? []} />}
         {pestana === "conocimiento" && <PestanaConocimiento f={f} upd={upd} />}
         {pestana === "agenda" && <PestanaAgenda f={f} upd={upd} moduloActivo={f.modules.agenda} techoAgenda={p.techo.agenda} />}
         {pestana === "respuestas" && <PestanaRespuestas f={f} upd={upd} />}

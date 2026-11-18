@@ -66,6 +66,7 @@ Los conectores que exigen OAuth (p. ej. ChatGPT) aún no están soportados.
 | `create_owner_invitation` | provision | Enlace de invitación de un uso (7 días). |
 | `revoke_invitation` | provision | Revoca una invitación pendiente. |
 | `list_audit_log` | read | Rastro de la plataforma con filtros y página siguiente. |
+| `list_brain_deployments` | read | 070 — Los cerebros (Nea `multiorg`): id, nombre, host, estado, salud y cuántos negocios atienden. Sin secretos ni URLs completas. Para asignar uno: `apply_blueprint` con `brain: { deployment: "brn_…" }` (o `null`). Crear o rotar un cerebro solo en el panel. |
 | `suspend_organization` / `reactivate_organization` | provision | Suspender / reactivar. |
 
 No existen, a propósito: abrir accesos de soporte, leer conversaciones o

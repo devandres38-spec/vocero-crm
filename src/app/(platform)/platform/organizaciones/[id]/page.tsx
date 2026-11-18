@@ -218,6 +218,7 @@ export default async function DetalleOrganizacionPage({
         json={<EditorBlueprint id={org.id} />}
         formulario={{
           organizationId: org.id,
+          cerebros: cerebros.map((c) => ({ id: c.id, name: c.name, status: c.status })),
           dominio: dominioBase(),
           defaults: {
             country: instancia.country,
