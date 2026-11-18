@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { leerConfigDespacho } from "@/server/brains/config";
+import { destinoDe } from "@/server/brains/destino";
+import { esPlataforma } from "@/lib/tenancy";
 import {
   construirEvento,
   entregar,
@@ -150,9 +151,18 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
   }
 }
 
+/**
+ * 070 — Cuánto vive un despacho en `multi` (`expiresAt`): pasado ese tiempo el
+ * cerebro ya no contesta y pasa la conversación a una persona. Cubre la
+ * ventana de agrupado, los reintentos y la cola del cerebro.
+ */
+export const VIDA_DESPACHO_MS = 10 * 60 * 1000;
+
 async function procesar(fila: FilaDespacho): Promise<void> {
-  const config = leerConfigDespacho();
-  if (!config.active) {
+  // 070 — El destino se resuelve AHORA: en `multi`, el cerebro asignado a
+  // esta organización (si se reasignó o se pausó en la espera, manda eso).
+  const config = await destinoDe(fila.organizationId);
+  if (!config) {
     // Quedó de antes de que se quitara o se rompiera la configuración: ya no
     // hay a quién entregarlo, y el agente incluido vuelve a ser quien manda.
     await descartarDespacho(fila, "el despacho ya no está configurado");
@@ -192,7 +202,10 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     return;
   }
 
-  const evento = await construirEvento(fila);
+  const evento = await construirEvento(
+    fila,
+    esPlataforma() ? { expiresAt: new Date(fila.createdAt.getTime() + VIDA_DESPACHO_MS) } : {}
+  );
   if (!evento) {
     await descartarDespacho(fila, "la conversación ya no existe");
     return;
@@ -210,6 +223,14 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     return;
   }
 
+  // 070 — Qué cerebro recibió este despacho: `/api/brains/messages` rechaza
+  // (409 `cerebro_reasignado`) la respuesta de cualquier otro.
+  if (config.deploymentId && fila.brainDeploymentId !== config.deploymentId) {
+    await getDb()
+      .update(schema.dispatch)
+      .set({ brainDeploymentId: config.deploymentId })
+      .where(and(eq(schema.dispatch.id, fila.id), eq(schema.dispatch.organizationId, fila.organizationId)));
+  }
   const resultado = await entregar(evento, config);
   // El lease pudo vencer mientras se esperaba al cerebro y otro pudo retomar
   // la fila: si ya no es nuestra, lo que hagamos aquí pisaría su trabajo.

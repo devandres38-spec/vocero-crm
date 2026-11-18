@@ -87,6 +87,11 @@ export const SIN_DESPACHO: BrainDispatchDto = {
 };
 
 export type BrainStatusDto = {
+  /**
+   * 070 — Modo plataforma: el cerebro lo asigna la plataforma (no hay
+   * variables que poner) y `host` es el NOMBRE del despliegue, no su URL.
+   */
+  plataforma?: true;
   /** 036 — El interruptor del Agente: el CRM le despacha al cerebro. */
   enabled: boolean;
   /** Hay con qué pensar: la llave de Ajustes → IA (o `OPENROUTER_API_TOKEN`

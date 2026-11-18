@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { mediaDirStatus } from "@/server/media-dir";
 import { leerConfigDespacho } from "@/server/brains/config";
+import { esPlataforma } from "@/lib/tenancy";
 import { iniciarWorker, tanda } from "@/server/dispatch/worker";
 import { cifrarSecretosEnClaro } from "@/server/zernio/secreto-guardado";
 import { barrido, iniciarBarrido } from "@/server/webhooks/worker";
@@ -96,6 +97,14 @@ export async function encryptLegacySecrets(): Promise<void> {
  * responde»: es el log que alguien mira cuando el agente no contesta.
  */
 export function resumeDispatch(): void {
+  // 070 — En `multi` cada negocio tiene (o no) su cerebro: el worker barre
+  // siempre y resuelve el destino de cada despacho al entregarlo.
+  if (esPlataforma()) {
+    iniciarWorker();
+    void tanda();
+    console.log("[boot] despacho por organización (modo plataforma)");
+    return;
+  }
   const config = leerConfigDespacho();
   if (config.active) {
     iniciarWorker();

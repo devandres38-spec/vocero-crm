@@ -1,3 +1,5 @@
+import { esPlataforma } from "@/lib/tenancy";
+import { destinoDe, mensajeProblemaPlataforma, problemaDeCerebroEnPlataforma } from "@/server/brains/destino";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
@@ -111,7 +113,7 @@ export async function onboardingStatus(
           ? "Meta dejó de aceptar el token de WhatsApp: vuelve a conectar el número."
           : null,
     },
-    await pasoCerebro(),
+    await pasoCerebro(organizationId),
   ];
 
   if ((await modulosDeOrganizacion(organizationId)).agenda) {
@@ -143,8 +145,22 @@ type Perfil = { name: string; instructions: string | null; enabled: boolean };
  * que llevar: dice qué falta y lleva a la guía. Listo cuando el despacho está
  * configurado y el `/health` del cerebro contesta.
  */
-async function pasoCerebro(): Promise<ReadinessStep> {
+async function pasoCerebro(organizationId: string): Promise<ReadinessStep> {
   const base = { key: "brain" as const, label: "Tu agente", href: null };
+  // 070 — En modo plataforma el agente lo asigna la plataforma.
+  if (esPlataforma()) {
+    const p = await problemaDeCerebroEnPlataforma(organizationId, (url) => getBrainHealth(url));
+    if (!p) {
+      const destino = await destinoDe(organizationId);
+      return { ...base, status: "ready", nextAction: `Conectado: ${destino?.host ?? "tu agente"}`, problem: null };
+    }
+    return {
+      ...base,
+      status: "pending",
+      nextAction: p.problema === "sin_asignar" ? "Pídele a la plataforma que te asigne un agente" : "Tu agente asignado no está disponible",
+      problem: p.problema === "sin_asignar" ? null : mensajeProblemaPlataforma(p),
+    };
+  }
   const despacho = leerConfigDespacho();
   if (!despacho.active) {
     return {

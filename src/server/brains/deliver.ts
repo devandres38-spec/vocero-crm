@@ -15,6 +15,8 @@ import {
   type ResultadoEntrega,
 } from "@/server/brains/contract";
 import { leerConfigDespacho } from "@/server/brains/config";
+import { destinoDe } from "@/server/brains/destino";
+import { esPlataforma } from "@/lib/tenancy";
 import type { FilaDespacho } from "@/server/dispatch/outbox";
 import { isWindowOpen, windowExpiresAt } from "@/server/inbox/window";
 import { windowMsFor } from "@/server/channels/capabilities";
@@ -201,7 +203,8 @@ export function sinDespachar(
  * descarta.
  */
 export async function construirEvento(
-  fila: FilaDespacho
+  fila: FilaDespacho,
+  opts: { expiresAt?: Date | null } = {}
 ): Promise<EventoDespacho | null> {
   const db = getDb();
   const [conv] = await db
@@ -270,6 +273,7 @@ export async function construirEvento(
     messages,
     firstMessageAt: fila.firstMessageAt,
     lastMessageAt: fila.lastMessageAt,
+    expiresAt: opts.expiresAt ?? null,
   });
 }
 
@@ -351,13 +355,17 @@ export async function avisarOlvido(
     fetchImpl?: typeof fetch;
   } = {}
 ): Promise<ResultadoOlvido> {
-  const config = leerConfigDespacho();
+  // 070 — En `multi`, el cerebro asignado a la organización de la
+  // conversación borrada; en `single`, el del entorno (como siempre).
+  const config = esPlataforma() ? null : leerConfigDespacho();
   const destino =
     opts.destino !== undefined
       ? opts.destino
-      : config.active
-        ? { url: config.url, secret: config.secret }
-        : null;
+      : config
+        ? config.active
+          ? { url: config.url, secret: config.secret }
+          : null
+        : await destinoDe(evento.organization.id);
   if (!destino) return "no_aplica";
 
   // Se serializa UNA vez y se firma ese string, igual que un despacho.

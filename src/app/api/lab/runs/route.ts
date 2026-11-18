@@ -4,6 +4,13 @@ import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { isAiConfiguredFor } from "@/lib/ai/provider";
 import { leerConfigDespacho } from "@/server/brains/config";
+import { despachoActivoPara } from "@/server/brains/destino";
+import { esPlataforma } from "@/lib/tenancy";
+
+/** 070 — En `multi`, el cerebro asignado a ESTE negocio. */
+async function hayCerebro(organizationId: string): Promise<boolean> {
+  return esPlataforma() ? despachoActivoPara(organizationId) : leerConfigDespacho().active;
+}
 import { RunConflictError, startRun } from "@/server/lab/runner";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +46,13 @@ export const GET = withAuth(async (session) => {
     runs: withDelta,
     aiConfigured: await isAiConfiguredFor(session.organizationId),
     // 036 — Sin cerebro conectado, la pantalla lo dice en vez de ofrecer correr.
-    brainConnected: leerConfigDespacho().active,
+    brainConnected: await hayCerebro(session.organizationId),
   });
 });
 
 export const POST = withAuth(async (session) => {
   // 036 — El Laboratorio prueba al cerebro conectado: sin él no hay a quién.
-  if (!leerConfigDespacho().active) {
+  if (!(await hayCerebro(session.organizationId))) {
     return apiError(
       409,
       "sin_cerebro",

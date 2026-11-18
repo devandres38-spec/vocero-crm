@@ -54,7 +54,15 @@ export function BrainStatusCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {status.warning === "sin_cerebro" && (
+        {/* 070 — En modo plataforma el agente lo asigna la plataforma: no hay variables que poner. */}
+        {status.warning === "sin_cerebro" && status.plataforma && (
+          <Callout tone="info" icon={Info} title="Sin agente asignado">
+            El CRM funciona como bandeja manual: tus clientes reciben lo que
+            contestes tú. Para que un agente conteste, pídele a la plataforma
+            que le asigne uno a tu negocio.
+          </Callout>
+        )}
+        {status.warning === "sin_cerebro" && !status.plataforma && (
           <Callout tone="info" icon={Info} title="Sin agente conectado">
             El CRM funciona como bandeja manual: tus clientes reciben lo que
             contestes tú. Para que un agente conteste, levántalo al lado del CRM

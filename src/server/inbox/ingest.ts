@@ -25,6 +25,8 @@ import {
 import { registrarAnuncioDeOrigen } from "@/server/attribution/store";
 import { onLeadActivity } from "@/server/inbox/lead-activity";
 import { despachoActivo } from "@/server/brains/config";
+import { despachoActivoPara } from "@/server/brains/destino";
+import { esPlataforma } from "@/lib/tenancy";
 import { despacharAlCerebro } from "@/server/dispatch/encolar";
 import {
   aCitaDto,
@@ -566,7 +568,9 @@ export async function ingestInboundMessage(input: {
 
   // 036 — Quien contesta es el cerebro conectado; sin él, una persona. El
   // 025: `message.id` es lo que el despacho le debe al cerebro.
-  if (despachoActivo()) await despacharAlCerebro(conversation.id, organizationId, message.id);
+  // 070 — En `multi`, el cerebro asignado a ESTE negocio (si lo hay).
+  const activo = esPlataforma() ? await despachoActivoPara(organizationId) : despachoActivo();
+  if (activo) await despacharAlCerebro(conversation.id, organizationId, message.id);
 }
 
 function toDate(timestamp: string): Date {
