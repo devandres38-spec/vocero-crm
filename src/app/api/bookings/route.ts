@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { parseRangeQuery } from "@/lib/time/calendar";
-import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
+import { agendaDisabledResponse } from "@/server/agenda/flag";
 import { listBookings, listBookingsInRange } from "@/server/agenda/queries";
 import { getSettings } from "@/server/agenda/settings";
 import { createBlock, createSessionBooking } from "@/server/agenda/service";
 import { bookingErrorResponse, bookingPayload } from "@/server/agenda/http";
+import { agendaActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
  * `invalid_range`.
  */
 export const GET = withAuth(async (session, req: Request) => {
-  if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!agendaActiva(session)) return agendaDisabledResponse();
   const url = new URL(req.url);
   const query = parseRangeQuery(url.searchParams.get("from"), url.searchParams.get("to"));
   if (!query.ok) return apiError(422, "invalid_range", query.message);
@@ -72,7 +73,7 @@ const postSchema = z.discriminatedUnion("kind", [
  * anti doble-booking sí aplican igual.
  */
 export const POST = withAuth(async (session, req: Request) => {
-  if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!agendaActiva(session)) return agendaDisabledResponse();
   const body = await parseBody(req, postSchema);
   if (!body.ok) return body.response;
 

@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { esPlataforma } from "@/lib/tenancy";
+import { organizacionParaMarca } from "@/server/tenant/marca";
 import {
   DEFAULT_BRANDING,
   normalizeBranding,
@@ -30,6 +32,13 @@ function parseMetadata(metadata: string | null): Record<string, unknown> {
 export async function getBrandingContext(
   organizationId?: string | null
 ): Promise<{ organizationId: string | null; branding: Branding }> {
+  // 069 (US4) — En modo plataforma, sin organización no hay «la única de la
+  // instancia»: la del subdominio (o la de la sesión en la raíz) y, si no
+  // hay, la marca de plataforma.
+  if (!organizationId && esPlataforma()) {
+    organizationId = await organizacionParaMarca();
+    if (!organizationId) return { organizationId: null, branding: DEFAULT_BRANDING };
+  }
   const db = getDb();
   const rows = organizationId
     ? await db
@@ -37,7 +46,7 @@ export async function getBrandingContext(
         .from(schema.organization)
         .where(eq(schema.organization.id, organizationId))
         .limit(1)
-    : // Sin sesión (login, layout raíz): la única organización de la instancia.
+    : // Solo `single` (sin sesión: login, layout raíz): la única organización.
       await db
         .select({ id: schema.organization.id, metadata: schema.organization.metadata })
         .from(schema.organization)

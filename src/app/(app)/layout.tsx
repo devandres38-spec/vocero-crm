@@ -1,22 +1,25 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { getSessionOrNull } from "@/lib/auth/session";
+import { contextoActual, destinoSinOrganizacion, getSessionOrNull } from "@/lib/auth/session";
 import { aparienciaActual } from "@/server/apariencia";
 import { getBranding } from "@/server/branding";
 import { AppShell } from "@/components/app-shell";
 import { resolveCommit } from "@/lib/version";
-import { agendaEnabled } from "@/server/agenda/flag";
-import { enabledChannels } from "@/server/channels/enabled";
 import { navKicker } from "@/lib/channels";
 import { avisoIaDe } from "@/server/ai/aviso";
 import { AvisoIaBanner } from "@/components/avisos/aviso-ia";
+import { BandaSoporte } from "@/components/plataforma/banda-soporte";
+import { agendaActiva, modulosDe } from "@/server/modulos/consulta";
+import { esPlataforma, raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
+import { getRegionDeOrganizacion } from "@/server/region";
+import { esSuperAdmin } from "@/server/tenant/consultas";
 
 export default async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSessionOrNull();
-  if (!session) redirect("/login");
+  if (!session) redirect(destinoSinOrganizacion(await contextoActual()));
   const branding = await getBranding(session.organizationId);
   const authSession = await getAuth().api.getSession({
     headers: await headers(),
@@ -41,11 +44,34 @@ export default async function AppLayout({
       // Qué módulos opcionales existen se decide en el servidor y baja por
       // prop, igual que los canales de la Bandeja. El nav es un componente de
       // cliente: no puede —ni debe— leer variables de entorno.
-      agenda={agendaEnabled()}
-      kicker={navKicker([...enabledChannels()])}
-      aviso={<AvisoIaBanner aviso={aviso} />}
+      agenda={agendaActiva(session)}
+      kicker={navKicker(modulosDe(session).channels)}
+      empresasUrl={empresasUrl()}
+      plataformaUrl={await plataformaUrl(session.userId)}
+      aviso={
+        <>
+          {session.via === "soporte" && session.grant && (
+            <BandaSoporte level={session.grant.level} expiresAt={session.grant.expiresAt} zona={(await getRegionDeOrganizacion(session.organizationId)).timezone} />
+          )}
+          <AvisoIaBanner aviso={aviso} />
+        </>
+      }
     >
       {children}
     </AppShell>
   );
+}
+
+/** 069 (H-02) — El Super-Admin dentro de un negocio vuelve a su panel en un clic. */
+async function plataformaUrl(userId: string): Promise<string | undefined> {
+  if (!esPlataforma() || !(await esSuperAdmin(userId))) return undefined;
+  const raiz = raizPlataforma();
+  return raiz ? urlDeRaiz(raiz, "/platform") : "/platform";
+}
+
+/** 069 — En modo plataforma, el selector de empresas vive en el dominio raíz. */
+function empresasUrl(): string | undefined {
+  if (!esPlataforma()) return undefined;
+  const raiz = raizPlataforma();
+  return raiz ? urlDeRaiz(raiz, "/empresas") : "/empresas";
 }

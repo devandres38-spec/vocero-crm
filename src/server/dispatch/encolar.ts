@@ -1,5 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
+import { esPlataforma } from "@/lib/tenancy";
+import { organizacionSuspendida } from "@/server/platform/estado";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 
@@ -51,6 +53,8 @@ export async function despacharAlCerebro(
       .where(eq(schema.agentProfile.organizationId, organizationId))
       .limit(1);
     if (!perfil?.enabled) return;
+    // 069 — Una organización suspendida guarda lo que entra pero no despacha.
+    if (esPlataforma() && (await organizacionSuspendida(organizationId))) return;
 
     // 025 — El despacho anota qué entrante lo provoca: es lo que le debe al
     // cerebro, aunque después la conversación tenga una respuesta.

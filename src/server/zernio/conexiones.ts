@@ -29,6 +29,7 @@ import {
   ensureZernioWebhook,
   pointsHere,
 } from "@/server/zernio/webhooks";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * 023 — Las conexiones por Zernio de una organización, en una sola forma.
@@ -123,8 +124,9 @@ function comun(c: {
 export async function zernioConnectionsOfOrg(
   organizationId: string
 ): Promise<ZernioConnection[]> {
+  const { channels } = await modulosDeOrganizacion(organizationId);
   const found = await Promise.all(
-    ZERNIO_CHANNELS.filter((c) => isChannelEnabled(c)).map((c) => byOrg(c, organizationId))
+    ZERNIO_CHANNELS.filter((c) => channels.includes(c)).map((c) => byOrg(c, organizationId))
   );
   return found.filter((c): c is ZernioConnection => c !== null);
 }

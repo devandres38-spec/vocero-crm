@@ -9,9 +9,12 @@ import {
   rolDe,
   type ClaveHerramienta,
 } from "@/lib/agent-roles";
-import { agendaEnabled } from "@/server/agenda/flag";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
+import { agendaActiva } from "@/server/modulos/consulta";
+
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +41,7 @@ export const GET = withAuth(async (session) => {
       tools: herramientasEfectivas(p.tools),
     },
     // 034 — Sin la bandera, la pantalla no ofrece agendar ni reprogramar.
-    agendaEnabled: agendaEnabled(),
+    agendaEnabled: agendaActiva(session),
     aiConfigured: estado.activa,
     // Por qué no (sin configurar, llave rechazada, sin saldo): la pantalla
     // Agente lo dice con el enlace a Ajustes → IA.
@@ -85,7 +88,7 @@ export const PUT = withAuth(async (session, req: Request) => {
     .returning();
   if (!updated[0]) return apiError(404, "not_found", "Perfil no encontrado");
   return Response.json({ ok: true });
-});
+}, SOPORTE_CONFIGURACION);
 
 /** Por qué no se puede encender el agente, o `null` si hay cerebro sano. */
 async function problemaDelCerebro(): Promise<string | null> {

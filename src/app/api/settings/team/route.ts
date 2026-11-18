@@ -5,6 +5,9 @@ import { getAuth, runInternalSignup } from "@/lib/auth";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
+import { clientIp } from "@/lib/rate-limit";
+import { esPlataforma } from "@/lib/tenancy";
+import { crearInvitacion, esMiembroPorCorreo } from "@/server/platform/invitaciones";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +66,10 @@ export const POST = withAuth(async (session, req: Request) => {
     const message =
       err instanceof Error ? err.message : "No se pudo crear la cuenta";
     if (/exist/i.test(message)) {
+      // 069 (US3-6) — En modo plataforma la cuenta puede ser de OTRO negocio:
+      // no se le da la membresía sin que la acepte. Se genera una invitación
+      // de equipo y el owner le pasa el enlace.
+      if (esPlataforma()) return invitarCuentaExistente(session, body.data.email, req);
       return apiError(409, "duplicate", "Ya existe una cuenta con ese correo");
     }
     return apiError(422, "invalid", message);
@@ -81,3 +88,29 @@ export const POST = withAuth(async (session, req: Request) => {
 
   return Response.json({ ok: true }, { status: 201 });
 });
+
+async function invitarCuentaExistente(
+  session: { userId: string; organizationId: string },
+  email: string,
+  req: Request
+): Promise<Response> {
+  const db = getDb();
+  const [org] = await db
+    .select({ slug: schema.organization.slug })
+    .from(schema.organization)
+    .where(eq(schema.organization.id, session.organizationId))
+    .limit(1);
+  const r = await db.transaction(async (tx) => {
+    if (await esMiembroPorCorreo(tx, session.organizationId, email)) return null;
+    return crearInvitacion(
+      tx,
+      { userId: session.userId, via: "sesion", ip: clientIp(req.headers) },
+      { organizationId: session.organizationId, slug: org?.slug ?? null, email, role: "member" }
+    );
+  });
+  if (!r) return apiError(409, "duplicate", "Esa persona ya está en tu equipo");
+  return Response.json(
+    { ok: true, invitation: { url: r.url, expiresAt: r.expiresAt.toISOString() } },
+    { status: 202 }
+  );
+}

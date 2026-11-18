@@ -310,7 +310,7 @@ Meta y tu proveedor LLM opcional.
 ## Instalación (~15 minutos)
 
 Cada versión se publica como imagen de Docker:
-`ghcr.io/kevinrivm/vocero-crm:<versión>` (p. ej. `2.8.0`). Instalar desde
+`ghcr.io/kevinrivm/vocero-crm:<versión>` (p. ej. `2.9.0`). Instalar desde
 la imagen es el camino recomendado: tu servidor la descarga en vez de
 construirla. Construir desde el código sigue funcionando, y es lo que
 necesitas en un VPS ARM o si tu fork cambia el código.
@@ -362,7 +362,16 @@ código si no la encuentra ni en el registro ni en tu máquina. Así que:
   `--build` Compose puede correr la oficial en vez de tus cambios.
 
 Caddy emite el certificado HTTPS solo. Verifica con
-`https://crm.tudominio.com/api/health` → `{"ok":true,"version":"2.8.0",…}`.
+`https://crm.tudominio.com/api/health` → `{"ok":true,"version":"2.9.0",…}`.
+
+### Modo plataforma: varios negocios en una instancia (2.9)
+
+Con `TENANCY=multi` la misma imagen sirve a N negocios, cada uno en su
+subdominio (`{slug}.tudominio.com`), dados de alta desde `/platform` (o por
+API / MCP con un `OrganizationBlueprint`). Requiere DNS y certificado
+comodín: ver [docs/plataforma-despliegue.md](docs/plataforma-despliegue.md) y,
+para aprovisionar con IA, [docs/plataforma-mcp.md](docs/plataforma-mcp.md).
+Sin la variable, todo sigue siendo un negocio por instancia.
 
 ### Otras plataformas: Render, Fly y Railway
 
@@ -371,7 +380,7 @@ imagen publicada, montan `/data` y vigilan `/api/health`; cada uno declara lo
 que su plataforma le deja declarar y documenta, en comentarios, lo que queda a
 mano. La imagen va fijada a la versión (una prueba lo exige). Verifica igual
 que arriba: `curl -s https://<tu-url>/api/health` →
-`{"ok":true,"version":"2.8.0",…,"mediaWritable":true}`.
+`{"ok":true,"version":"2.9.0",…,"mediaWritable":true}`.
 
 **Render** — [`render.yaml`](render.yaml) es un Blueprint completo: servicio
 web desde la imagen, base Postgres gestionada, disco de 1 GB en `/data`,
@@ -404,7 +413,7 @@ el dominio y las variables se crean con la CLI, con los comandos exactos
 escritos en el propio archivo (`railway add --database postgres`,
 `railway volume add --mount-path /data`, `railway domain --port 3000`,
 `railway variable set …`, `railway up`). Para la imagen publicada sin build:
-`railway add --image ghcr.io/kevinrivm/vocero-crm:2.8.0`, y entonces el
+`railway add --image ghcr.io/kevinrivm/vocero-crm:2.9.0`, y entonces el
 healthcheck se fija en el panel. Railway declaró obsoleto este formato a
 favor de su Infrastructure as Code (`.railway/railway.ts`); lo sigue leyendo
 hasta el 2026-12-01.

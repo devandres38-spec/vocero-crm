@@ -59,6 +59,7 @@ es in-process.
 | De qué anuncio llegó cada conversación (siempre visible) | `src/server/attribution/referral.ts` (normalización) · `creativo.ts` (copia de la imagen, solo hosts de Meta) · `store.ts` · tarjeta en `src/components/anuncio-origen.tsx` |
 | Los números de Resultados (ventas, agente, origen y anuncios, higiene) | `src/server/analytics/` (un módulo por sección; periodo en la zona del negocio en `period.ts`; exclusión del Laboratorio en `shared.ts`) · contratos y tasas en `src/lib/analytics.ts` · UI en `src/components/results/` · spec [019](specs/019-resultados/spec.md) |
 | La atribución de anuncios y el reporte a Meta | `src/server/attribution/` — el `ctwa_clid`, la CAPI y Ajustes → Anuncios detrás de la bandera `ATRIBUCION` (`flag.ts`) + `src/lib/meta/capi.ts` · guía: [docs/atribucion-capi.md](docs/atribucion-capi.md) |
+| El modo plataforma (069): de qué negocio es una petición, módulos, región, Blueprint, soporte, MCP | `src/lib/tenancy.ts` · `src/server/tenant/` (resolvedor único) · `src/server/modulos/consulta.ts` · `src/server/region.ts` · `src/server/platform/` (Blueprint, invitaciones, soporte, tokens, auditoría, MCP) · panel en `src/app/(platform)/` · guías: [docs/plataforma-despliegue.md](docs/plataforma-despliegue.md), [docs/plataforma-mcp.md](docs/plataforma-mcp.md) |
 | UI | `src/components/` + `src/app/(app)/` |
 
 Los mocks del entorno de pruebas viven en `src/app/api/dev/` (wa-mock +

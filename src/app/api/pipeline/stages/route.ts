@@ -5,6 +5,9 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
+
 export const dynamic = "force-dynamic";
 
 export const GET = withAuth(async (session) => {
@@ -44,4 +47,4 @@ export const POST = withAuth(async (session, req: Request) => {
     })
     .returning();
   return Response.json({ stage: inserted[0] }, { status: 201 });
-});
+}, SOPORTE_CONFIGURACION);

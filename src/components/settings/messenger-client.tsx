@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { ZernioConnect } from "@/components/settings/zernio-connect";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { copiarAlPortapapeles } from "@/lib/clipboard";
 
 /**
  * 017 — Conexión del canal de Messenger.
@@ -124,13 +125,10 @@ export function MessengerClient() {
   }
 
   async function copy(text: string, what: "url" | "token") {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(what);
-      setTimeout(() => setCopied(null), 1500);
-    } catch {
-      // sin portapapeles (contexto no seguro): el texto sigue visible
-    }
+    // Sin portapapeles ni respaldo: el texto sigue visible para copiarlo a mano.
+    if (!(await copiarAlPortapapeles(text))) return;
+    setCopied(what);
+    setTimeout(() => setCopied(null), 1500);
   }
 
   if (!loaded) return <p className="text-sm text-muted-foreground">Cargando…</p>;

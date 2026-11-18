@@ -46,7 +46,6 @@ import {
   windowMsFor,
   aiWindowClosedMessage,
 } from "@/server/channels/capabilities";
-import { isChannelEnabled } from "@/server/channels/enabled";
 import { serializeMessage } from "@/server/inbox/ingest";
 import { conCita, type CitaEncontrada } from "@/server/inbox/quotes";
 import {
@@ -54,6 +53,10 @@ import {
   uploadGraphMedia,
   validateOutgoing,
 } from "@/server/whatsapp/media";
+import { esPlataforma } from "@/lib/tenancy";
+import { organizacionSuspendida } from "@/server/platform/estado";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
+import { localeDeOrganizacion } from "@/server/region";
 
 /** Error tipado del envío; `code` mapea a HTTP en la capa de API. */
 export class SendError extends Error {
@@ -70,7 +73,9 @@ export class SendError extends Error {
     | "meta_unavailable"
     | "upload_failed"
     /** 039: el mensaje a citar no es de aquí, no salió a la plataforma, o el canal no cita. */
-    | "reply_unavailable";
+    | "reply_unavailable"
+    /** 069: la plataforma suspendió la organización: no sale nada. */
+    | "organizacion_suspendida";
   /** 008: presente cuando el fallo ocurrió TRAS persistir el mensaje (failed). */
   messageId?: string;
 
@@ -157,6 +162,11 @@ async function prepareSend(
   if (!row || row.conversation.organizationId !== organizationId) {
     throw new SendError("meta_error", "Conversación no encontrada");
   }
+  // 069 — Una organización suspendida no envía, venga de donde venga el
+  // envío (bandeja, cerebro, recordatorios). Solo existe en modo plataforma.
+  if (esPlataforma() && (await organizacionSuspendida(organizationId))) {
+    throw new SendError("organizacion_suspendida", "Esta organización está suspendida");
+  }
 
   if (row.conversation.isTest) {
     throw new SendError(
@@ -171,7 +181,7 @@ async function prepareSend(
   if (row.conversation.channel === "instagram") {
     // Una conversacion de un canal apagado puede existir (se apago despues de
     // recibirla): falla claro en vez de intentar un transporte que no aplica.
-    if (!isChannelEnabled("instagram")) {
+    if (!(await modulosDeOrganizacion(organizationId)).channels.includes("instagram")) {
       throw new SendError(
         "not_connected",
         "El canal de Instagram está desactivado en esta instancia"
@@ -209,7 +219,7 @@ async function prepareSend(
   // 017: Messenger, mismo trato que Instagram: transporte propio, ventana
   // propia (con etiqueta fuera de ella) y sin plantillas.
   if (row.conversation.channel === "messenger") {
-    if (!isChannelEnabled("messenger")) {
+    if (!(await modulosDeOrganizacion(organizationId)).channels.includes("messenger")) {
       throw new SendError(
         "not_connected",
         "El canal de Messenger está desactivado en esta instancia"
@@ -249,7 +259,7 @@ async function prepareSend(
   // y se comprueban AQUÍ, antes de llamar a nadie: el envío que la plataforma
   // rechazaría no sale, y falla con un motivo que el operador entiende.
   if (row.conversation.channel === "tiktok") {
-    if (!isChannelEnabled("tiktok")) {
+    if (!(await modulosDeOrganizacion(organizationId)).channels.includes("tiktok")) {
       throw new SendError(
         "not_connected",
         "El canal de TikTok está desactivado en esta instancia"
@@ -485,7 +495,10 @@ export async function sendText(input: {
   // caracteres y se comprueba aquí, antes de llamar a nadie; Instagram y
   // Messenger (en bytes) lo siguen comprobando en su propio camino.
   if (capabilitiesFor(canal).maxTextChars !== null && !textFits(canal, text)) {
-    throw new SendError("text_too_long", textLimitMessage(canal));
+    throw new SendError(
+      "text_too_long",
+      textLimitMessage(canal, await localeDeOrganizacion(input.organizationId))
+    );
   }
 
   const cita = await resolverMensajeCitado(target, input.replyToMessageId);

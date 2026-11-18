@@ -4,6 +4,9 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
+
 export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
@@ -33,7 +36,7 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
     .returning();
   if (!updated[0]) return apiError(404, "not_found", "Entrada no encontrada");
   return Response.json({ entry: updated[0] });
-});
+}, SOPORTE_CONFIGURACION);
 
 export const DELETE = withAuth(async (session, _req: Request, ctx: Params) => {
   const { id } = await ctx.params;
@@ -50,4 +53,4 @@ export const DELETE = withAuth(async (session, _req: Request, ctx: Params) => {
     .returning();
   if (!deleted[0]) return apiError(404, "not_found", "Entrada no encontrada");
   return Response.json({ deleted: true });
-});
+}, SOPORTE_CONFIGURACION);

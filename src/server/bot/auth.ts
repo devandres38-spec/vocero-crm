@@ -3,6 +3,7 @@ import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { markBotSeen } from "@/server/bot/status";
+import { esPlataforma } from "@/lib/tenancy";
 
 /**
  * Autenticación de la API de servicio `/api/bot/*`.
@@ -60,6 +61,12 @@ function llaveDe(req: Request): string | null {
 }
 
 export function requireBotKey(req: Request): Response | null {
+  // 069 — En modo plataforma esta superficie de organización única NO existe
+  // (no sabría de qué negocio es la petición): 404 vacío ANTES de mirar la
+  // llave, igual que una bandera apagada. El cerebro por organización llega
+  // con `/api/brains/*` (070). Solo queda el contrato estático
+  // (`/api/bot/openapi.json`), que es documentación.
+  if (esPlataforma()) return new Response(null, { status: 404 });
   if (!validBotKey(llaveDe(req))) {
     const ip = clientIp(req.headers);
     const fails = checkRateLimit(`bot-api-fail:${ip}`, BOT_AUTH_FAILURES);
@@ -91,6 +98,9 @@ function validBotKey(provided: string | null): boolean {
 let cachedOrgId: string | null = null;
 
 export async function resolveInstanceOrg(): Promise<string | null> {
+  // 069 — Solo `single`. En `multi` «la organización de la instancia» no
+  // existe; si algo llegara aquí, no resuelve ninguna (constitución I).
+  if (esPlataforma()) return null;
   if (cachedOrgId) return cachedOrgId;
   const db = getDb();
   const rows = await db

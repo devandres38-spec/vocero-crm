@@ -1,12 +1,16 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { CONNECTOR_ORDER } from "@/lib/agenda-connectors";
-import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
+import { agendaDisabledResponse } from "@/server/agenda/flag";
 import {
   CalendarSettingsError,
   getSettings,
   upsertSettings,
 } from "@/server/agenda/settings";
+import { agendaActiva } from "@/server/modulos/consulta";
+
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +24,7 @@ export const dynamic = "force-dynamic";
  * endpoint y solo salen como últimos 4 dígitos.
  */
 export const GET = withAuth(async (session) => {
-  if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!agendaActiva(session)) return agendaDisabledResponse();
   const settings = await getSettings(session.organizationId);
   return Response.json({ settings });
 });
@@ -55,7 +59,7 @@ const putSchema = z.object({
  * zona horaria que el runtime no conoce, o un conector inexistente.
  */
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!agendaActiva(session)) return agendaDisabledResponse();
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
 
@@ -73,4 +77,4 @@ export const PUT = withAuth(async (session, req: Request) => {
     }
     throw err;
   }
-});
+}, SOPORTE_CONFIGURACION);

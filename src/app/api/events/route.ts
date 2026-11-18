@@ -1,4 +1,8 @@
-import { requireSession, UnauthorizedError } from "@/lib/auth/session";
+import {
+  OrganizacionSuspendidaError,
+  requireSession,
+  UnauthorizedError,
+} from "@/lib/auth/session";
 import { subscribe } from "@/server/events/bus";
 
 /**
@@ -18,6 +22,9 @@ export async function GET(req: Request) {
   } catch (err) {
     if (err instanceof UnauthorizedError) {
       return new Response("No autenticado", { status: 401 });
+    }
+    if (err instanceof OrganizacionSuspendidaError) {
+      return new Response("Organización suspendida", { status: 403 });
     }
     throw err;
   }

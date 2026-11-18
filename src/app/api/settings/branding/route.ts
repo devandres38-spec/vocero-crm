@@ -1,9 +1,13 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getSessionOrNull } from "@/lib/auth/session";
+import { esDuenoOSoporteConfig } from "@/lib/auth/roles";
 import { isValidHex, resolveAccentSet } from "@/lib/branding";
 import { CURRENCIES } from "@/lib/money";
 import { getBranding, saveBranding } from "@/server/branding";
+
+/** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
+const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +26,7 @@ const putSchema = z.object({
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
-  if (session.role !== "owner") {
+  if (!esDuenoOSoporteConfig(session)) {
     return apiError(403, "forbidden", "Solo el propietario puede cambiar la marca");
   }
   const body = await parseBody(req, putSchema);
@@ -36,4 +40,4 @@ export const PUT = withAuth(async (session, req: Request) => {
     favicon: actual.favicon,
   });
   return Response.json({ ok: true });
-});
+}, SOPORTE_CONFIGURACION);

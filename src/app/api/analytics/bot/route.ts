@@ -1,6 +1,7 @@
 import { apiError, withAuth } from "@/lib/api";
 import { PeriodError, periodFromRequest } from "@/server/analytics/period";
 import { botBlock } from "@/server/analytics/bot";
+import { agendaActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const GET = withAuth(async (session, req: Request) => {
   try {
     const period = await periodFromRequest(session.organizationId, new URL(req.url));
-    return Response.json(await botBlock(session.organizationId, period));
+    return Response.json(await botBlock(session.organizationId, period, agendaActiva(session)));
   } catch (err) {
     if (err instanceof PeriodError) {
       return apiError(422, "invalid_period", err.message);

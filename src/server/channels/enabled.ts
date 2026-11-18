@@ -1,4 +1,3 @@
-import { getEnv } from "@/lib/env";
 import { isChannel, type Channel } from "@/lib/channels";
 
 /**
@@ -33,8 +32,15 @@ export function parseChannels(raw: string | undefined): Set<Channel> {
   return enabled;
 }
 
+/**
+ * Se lee de `process.env` directo, igual que `agendaEnabled()` (069): desde
+ * que hay módulos por organización, el resolvedor pregunta por el techo en
+ * CADA petición, y preguntar qué canales existen no puede depender de que
+ * todo el entorno valide. Un valor vacío cuenta como ausente (WhatsApp solo),
+ * la misma regla que aplica `getEnv()`.
+ */
 export function enabledChannels(): Set<Channel> {
-  return parseChannels(getEnv().CHANNELS);
+  return parseChannels(process.env.CHANNELS);
 }
 
 export function isChannelEnabled(channel: Channel): boolean {

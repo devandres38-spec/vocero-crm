@@ -5,6 +5,7 @@ import { getDb, PG_CONNECTION_OPTIONS, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { envSchema, safeParseEnv, type Env } from "@/lib/env";
 import { REGION_DEFAULTS, REGION_ENV_KEYS, resolveRegion } from "@/lib/region";
+import { correosSuperAdmin, dominioBase, mcpActivo, parseTenancy } from "@/lib/tenancy";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { GENERATED_SECRETS, PLACEHOLDER_PREFIX } from "@/server/doctor/init-env";
 import { probeBucket, probeMediaDir } from "@/server/media-dir";
@@ -200,6 +201,65 @@ export function checkRegion(source: Record<string, string | undefined>): CheckRe
     }
     return { status: "ok", label: clave, detail: region[campo] };
   });
+}
+
+/**
+ * 069 — El modo de despliegue. `multi` sin dominio base no funciona como
+ * plataforma (✗); lo demás son avisos: nada de esto tumba el arranque.
+ */
+export function checkTenancy(source: Record<string, string | undefined>): CheckResult[] {
+  const { modo, invalida } = parseTenancy(source.TENANCY);
+  const res: CheckResult[] = [];
+  if (invalida) {
+    res.push({
+      status: "warn",
+      label: "TENANCY",
+      detail: `«${source.TENANCY}» no es válido: se usa single`,
+      fix: "Usa TENANCY=single o TENANCY=multi (o bórrala)",
+    });
+  } else {
+    res.push({
+      status: "ok",
+      label: "TENANCY",
+      detail: modo === "multi" ? "multi (plataforma)" : "single (un negocio)",
+    });
+  }
+  if (modo === "multi") {
+    const base = dominioBase(source);
+    res.push(
+      base
+        ? { status: "ok", label: "PLATFORM_BASE_DOMAIN", detail: `${base} (requiere DNS y certificado comodín *.${base})` }
+        : {
+            status: "fail",
+            label: "PLATFORM_BASE_DOMAIN",
+            detail: source.PLATFORM_BASE_DOMAIN ? "no parece un dominio" : "falta",
+            fix: "PLATFORM_BASE_DOMAIN=aliantis.co (sin https://), con DNS comodín apuntando a este servidor",
+          }
+    );
+    const admins = correosSuperAdmin(source).size;
+    res.push(
+      admins > 0
+        ? { status: "ok", label: "PLATFORM_ADMIN_EMAILS", detail: `${admins} correo(s)` }
+        : {
+            status: "warn",
+            label: "PLATFORM_ADMIN_EMAILS",
+            detail: "vacía: nadie puede registrarse como Super-Admin",
+            fix: "PLATFORM_ADMIN_EMAILS=ops@tuagencia.co",
+          }
+    );
+    res.push({
+      status: mcpActivo(source) ? "ok" : "skip",
+      label: "PLATFORM_MCP",
+      detail: mcpActivo(source) ? "encendido en /api/platform/mcp" : "apagado",
+    });
+  } else if (source.PLATFORM_MCP) {
+    res.push({
+      status: "warn",
+      label: "PLATFORM_MCP",
+      detail: "solo existe con TENANCY=multi: se ignora",
+    });
+  }
+  return res;
 }
 
 /** Variables que no lee la app pero sí docker-compose.yml (Ruta B). */

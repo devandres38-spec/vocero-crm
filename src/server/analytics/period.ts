@@ -8,6 +8,8 @@ import {
 } from "@/lib/time/slots";
 import type { PeriodDto } from "@/lib/analytics";
 import { DEFAULT_TIMEZONE } from "@/server/agenda/settings";
+import { getRegionDeOrganizacion } from "@/server/region";
+import { esPlataforma } from "@/lib/tenancy";
 
 /**
  * 019 — El periodo consultado, resuelto en la zona del NEGOCIO.
@@ -57,7 +59,10 @@ export async function businessTimezone(organizationId: string): Promise<string> 
   const tz = rows[0]?.timezone;
   // Una zona inválida guardada en la base no puede tumbar la pantalla entera:
   // se cae a la de por defecto, que es lo mismo que hace la agenda.
-  return tz && isValidTimeZone(tz) ? tz : DEFAULT_TIMEZONE;
+  if (tz && isValidTimeZone(tz)) return tz;
+  // 069 (US6) — Sin agenda configurada, la zona del negocio (en `single`, la
+  // de la instancia, como siempre).
+  return esPlataforma() ? (await getRegionDeOrganizacion(organizationId)).timezone : DEFAULT_TIMEZONE;
 }
 
 /** Días de diferencia entre dos fechas de calendario. */

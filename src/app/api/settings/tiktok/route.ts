@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
-import {
-  channelDisabledResponse,
-  isChannelEnabled,
-} from "@/server/channels/enabled";
+import { channelDisabledResponse } from "@/server/channels/enabled";
 import {
   getTiktokCredentialsByOrg,
   saveTiktokCredentials,
@@ -12,12 +9,13 @@ import {
 import { ensureWebhookForOrg } from "@/server/zernio/conexiones";
 import { accountHealth, zernioAccountName } from "@/server/zernio/cuentas";
 import { resolveZernioAccount } from "@/server/zernio/guardar";
+import { canalActivo } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
 /** 022 — Estado de la conexión de TikTok (la llave nunca sale entera). */
 export const GET = withAuth(async (session) => {
-  if (!isChannelEnabled("tiktok")) return channelDisabledResponse();
+  if (!canalActivo(session, "tiktok")) return channelDisabledResponse();
   const creds = await getTiktokCredentialsByOrg(session.organizationId);
   if (!creds) return Response.json({ connection: null });
   return Response.json({
@@ -50,7 +48,7 @@ const putSchema = z.object({
  * propietario de la organización puede hacerlo.
  */
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!isChannelEnabled("tiktok")) return channelDisabledResponse();
+  if (!canalActivo(session, "tiktok")) return channelDisabledResponse();
   if (session.role !== "owner") {
     return apiError(403, "forbidden", "Solo el propietario puede conectar TikTok");
   }

@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import { InstagramClient } from "@/components/settings/instagram-client";
-import { isChannelEnabled } from "@/server/channels/enabled";
+import { canalActivo } from "@/server/modulos/consulta";
+import { getSessionOrNull } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
-export default function InstagramSettingsPage() {
+export default async function InstagramSettingsPage() {
   // Sin el canal encendido esta pantalla no existe en esta instancia (ADR-001).
-  if (!isChannelEnabled("instagram")) notFound();
+  if (!canalActivo(await getSessionOrNull(), "instagram")) notFound();
   return <InstagramClient />;
 }

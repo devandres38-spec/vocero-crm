@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmbeddedSignup } from "./embedded-signup";
 import { EntregasCard } from "./entregas-card";
+import { copiarAlPortapapeles } from "@/lib/clipboard";
 
 type Connection = {
   wabaId: string;
@@ -601,7 +602,8 @@ function WebhookCard({
   }
 
   function copy(text: string, which: string) {
-    void navigator.clipboard.writeText(text).then(() => {
+    void copiarAlPortapapeles(text).then((ok) => {
+      if (!ok) return;
       setCopied(which);
       setTimeout(() => setCopied(null), 1500);
     });

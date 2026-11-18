@@ -25,8 +25,15 @@ import {
  */
 
 /** Solo `[\w.-]+` por segmento: la llave del objeto es la misma ruta relativa. */
-function comprobarSegmento(s: string): void {
-  if (!/^[\w.-]+$/.test(s)) throw new Error(`segmento de ruta inválido: ${s}`);
+/**
+ * Un segmento de ruta seguro: letras, dígitos, `_`, `-` y `.`, pero nunca
+ * `.` ni `..` solos (069: `path.join(MEDIA_DIR, org, "..")` salía de la
+ * carpeta del negocio). Las barras de cualquier tipo ya quedan fuera.
+ */
+export function comprobarSegmento(s: string): void {
+  if (!/^[\w.-]+$/.test(s) || /^\.+$/.test(s)) {
+    throw new Error(`segmento de ruta inválido: ${s}`);
+  }
 }
 
 /** La llave del objeto y, a la vez, la ruta relativa que se guarda en la BD. */

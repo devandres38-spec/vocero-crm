@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
 import { cn } from "@/lib/utils";
+import { copiarAlPortapapeles } from "@/lib/clipboard";
 
 /**
  * 023 — Ajustes → Canales → Estado.
@@ -111,13 +112,10 @@ export function ChannelsClient() {
   }, [refetch]);
 
   async function copy(text: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // sin portapapeles (contexto no seguro): el texto sigue visible
-    }
+    // Sin portapapeles ni respaldo: el texto sigue visible para copiarlo a mano.
+    if (!(await copiarAlPortapapeles(text))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   async function repair() {

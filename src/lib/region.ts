@@ -42,11 +42,11 @@ export const REGION_ENV_KEYS = {
   timezone: "REGION_TIMEZONE",
 } as const satisfies Record<keyof Region, string>;
 
-function esPais(v: string): boolean {
+export function esPais(v: string): boolean {
   return /^[A-Z]{2}$/.test(v);
 }
 
-function esLocale(v: string): boolean {
+export function esLocale(v: string): boolean {
   try {
     return Intl.DateTimeFormat.supportedLocalesOf([v]).length > 0;
   } catch {
@@ -54,7 +54,7 @@ function esLocale(v: string): boolean {
   }
 }
 
-function esMoneda(v: string): boolean {
+export function esMoneda(v: string): boolean {
   if (!/^[A-Z]{3}$/.test(v)) return false;
   try {
     new Intl.NumberFormat("en", { style: "currency", currency: v });
@@ -150,3 +150,20 @@ export function formatNumber(n: number, locale: string): string {
 export function dateTimeFormat(locale: string, opts: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
   return new Intl.DateTimeFormat(locale, opts);
 }
+
+/**
+ * 069 (auditoría, Fix-B) — Regiones frecuentes para elegir sin escribir
+ * (catálogo de la plataforma y selectores de `/platform`), Colombia primero.
+ * Cualquier otra combinación válida también sirve.
+ */
+export const REGIONES_SUGERIDAS = [
+  { country: "CO", locale: "es-CO", timezone: "America/Bogota", currency: "COP", label: "Colombia" },
+  { country: "MX", locale: "es-MX", timezone: "America/Mexico_City", currency: "MXN", label: "México" },
+  { country: "PE", locale: "es-PE", timezone: "America/Lima", currency: "PEN", label: "Perú" },
+  { country: "EC", locale: "es-EC", timezone: "America/Guayaquil", currency: "USD", label: "Ecuador" },
+  { country: "CL", locale: "es-CL", timezone: "America/Santiago", currency: "CLP", label: "Chile" },
+  { country: "AR", locale: "es-AR", timezone: "America/Argentina/Buenos_Aires", currency: "ARS", label: "Argentina" },
+  { country: "PA", locale: "es-PA", timezone: "America/Panama", currency: "USD", label: "Panamá" },
+  { country: "ES", locale: "es-ES", timezone: "Europe/Madrid", currency: "EUR", label: "España" },
+  { country: "US", locale: "es-US", timezone: "America/New_York", currency: "USD", label: "Estados Unidos" },
+] as const;

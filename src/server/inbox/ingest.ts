@@ -32,6 +32,7 @@ import {
   resolverCita,
   type CitaEncontrada,
 } from "@/server/inbox/quotes";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /** Tipos de contenido soportados; el resto se ignora sin error. */
 const SUPPORTED_TYPES = new Set([
@@ -464,6 +465,16 @@ export async function ingestInboundMessage(input: {
 }): Promise<void> {
   const db = getDb();
   const { organizationId } = input;
+
+  // 069 (D11) — Un canal opcional apagado en ESTA organización (aunque la
+  // instancia lo tenga) no existe para ella: el webhook ya respondió 200 y
+  // aquí se descarta con aviso, sin crear contacto ni conversación.
+  // WhatsApp es el canal núcleo y nunca se apaga.
+  const canal = input.identity.channel ?? "whatsapp";
+  if (canal !== "whatsapp" && !(await modulosDeOrganizacion(organizationId)).channels.includes(canal)) {
+    console.warn(`[ingest] canal_apagado_org: ${canal} en ${organizationId}, mensaje descartado`);
+    return;
+  }
 
   const { contact } = await getOrCreateContactByIdentity(
     organizationId,

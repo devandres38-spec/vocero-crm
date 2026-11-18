@@ -9,8 +9,11 @@ import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
 import {
   onUserCreated,
   resolveActiveOrganizationId,
+  sincronizarSuperAdmin,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
+import { esPlataforma, origenesDePlataforma, raizPlataforma } from "@/lib/tenancy";
+import { pasePlataforma } from "@/lib/auth/pase-plugin";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -40,11 +43,42 @@ function isInternalSignup(): boolean {
 
 const RATE_LIMITED_PATHS = new Set(["/sign-in/email", "/sign-up/email"]);
 
+/**
+ * 069 — El plugin `organization` publica su propia API (`/organization/create`,
+ * `/invite-member`, `/accept-invitation`, `/update`…). La app no usa ninguna:
+ * las organizaciones las crea el alta (`single`) o la plataforma (`multi`),
+ * y las invitaciones tienen su flujo con token hasheado. Abiertas, cualquier
+ * usuario podía crearse un negocio —o una segunda membresía que le cambiaba
+ * la organización en `single`— saltándose todo eso. Solo queda `set-active`
+ * (el selector de empresas), que Better Auth valida contra la membresía.
+ */
+const ORGANIZATION_PATHS_PERMITIDOS = new Set(["/organization/set-active"]);
+
+export function organizationPathBloqueado(path: string): boolean {
+  return path.startsWith("/organization/") && !ORGANIZATION_PATHS_PERMITIDOS.has(path);
+}
+
+/**
+ * 069 (D3, revisado en staging) — Cookies de UN host. La sesión del
+ * Super-Admin en la raíz y la de un dueño en `{slug}.<base>` conviven en el
+ * mismo navegador sin pisarse, y funciona en dominios de la Public Suffix
+ * List (`*.sslip.io`), donde el navegador rechaza `Domain=` compartido. Para
+ * entrar a un negocio desde la raíz se usa un pase de un solo uso
+ * (`server/platform/pase.ts`). Los orígenes `{protocolo}//*.dominio` siguen
+ * siendo de confianza: cada subdominio habla con su propio Better Auth.
+ */
+function opcionesDePlataforma() {
+  const raiz = raizPlataforma();
+  if (!esPlataforma() || !raiz) return {};
+  return { trustedOrigins: origenesDePlataforma(raiz) };
+}
+
 function createAuth() {
   const env = getEnv();
   return betterAuth({
     baseURL: env.APP_BASE_URL,
     secret: env.BETTER_AUTH_SECRET,
+    ...opcionesDePlataforma(),
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {
@@ -62,7 +96,7 @@ function createAuth() {
       requireEmailVerification: false,
       minPasswordLength: 8,
     },
-    plugins: [organization({ creatorRole: "owner" })],
+    plugins: [organization({ creatorRole: "owner" }), pasePlataforma()],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // Rate limit por IP en login/registro (FR-062): 10 / 10 min → 429.
@@ -75,12 +109,19 @@ function createAuth() {
             });
           }
         }
-        // Registro público cerrado tras la primera organización (FR-060).
+        if (organizationPathBloqueado(ctx.path)) {
+          throw new APIError("NOT_FOUND");
+        }
+        // Registro público cerrado tras la primera organización (FR-060);
+        // en modo plataforma, cerrado salvo Super-Admins (069).
         if (ctx.path === "/sign-up/email") {
-          if (!isInternalSignup() && !(await isPublicSignupAllowed())) {
+          const email =
+            typeof ctx.body?.email === "string" ? ctx.body.email : undefined;
+          if (!isInternalSignup() && !(await isPublicSignupAllowed(email))) {
             throw new APIError("FORBIDDEN", {
-              message:
-                "El registro está cerrado: esta instancia ya tiene su organización",
+              message: esPlataforma()
+                ? "El registro está cerrado: entra con la invitación de tu negocio"
+                : "El registro está cerrado: esta instancia ya tiene su organización",
             });
           }
         }
@@ -90,13 +131,19 @@ function createAuth() {
       user: {
         create: {
           after: async (user) => {
-            await onUserCreated(user.id, user.name);
+            await onUserCreated(user.id, user.name, user.email);
           },
         },
       },
       session: {
         create: {
           before: async (session) => {
+            // 069 (H-03) — Al pasar de `single` a `multi`, el dueño que ya
+            // tenía cuenta entra a /platform con solo iniciar sesión. Un
+            // fallo aquí no impide entrar.
+            await sincronizarSuperAdmin(session.userId).catch((err) =>
+              console.error("[plataforma] no se pudo sincronizar el Super-Admin:", err)
+            );
             const organizationId = await resolveActiveOrganizationId(
               session.userId
             );

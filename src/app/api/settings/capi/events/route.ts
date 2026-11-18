@@ -1,9 +1,7 @@
 import { withAuth } from "@/lib/api";
-import {
-  atribucionDisabledResponse,
-  atribucionEnabled,
-} from "@/server/attribution/flag";
+import { atribucionDisabledResponse } from "@/server/attribution/flag";
 import { listConversionActivity } from "@/server/attribution/conversions";
+import { atribucionActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +13,7 @@ export const dynamic = "force-dynamic";
  * escribe.
  */
 export const GET = withAuth(async (session, req: Request) => {
-  if (!atribucionEnabled()) return atribucionDisabledResponse();
+  if (!atribucionActiva(session)) return atribucionDisabledResponse();
   const raw = new URL(req.url).searchParams.get("limit");
   const parsed = raw ? Number.parseInt(raw, 10) : NaN;
   // Un límite fuera de rango se recorta, no falla: es un panel, no un contrato

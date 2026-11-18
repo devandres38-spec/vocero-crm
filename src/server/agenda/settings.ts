@@ -14,6 +14,8 @@ import {
   type Interval,
   type WeekdayKey,
 } from "@/lib/time/slots";
+import { getRegionDeOrganizacion } from "@/server/region";
+import { esPlataforma } from "@/lib/tenancy";
 
 /**
  * 015 — La configuración de la agenda del negocio (una por organización):
@@ -66,10 +68,13 @@ export const LIMITS = {
   maxDaysAhead: { min: 1, max: 60 },
 } as const;
 
+/** 069 — Lectura y escritura aceptan una transacción (la del Blueprint). */
+type Conexion = Pick<ReturnType<typeof getDb>, "select" | "insert">;
+
 export async function getSettings(
-  organizationId: string
+  organizationId: string,
+  db: Conexion = getDb()
 ): Promise<CalendarSettings> {
-  const db = getDb();
   const rows = await db
     .select()
     .from(schema.calendarSettings)
@@ -77,8 +82,13 @@ export async function getSettings(
     .limit(1);
 
   const row = rows[0];
-  // Sin fila: la instancia recién encendida ya es usable.
-  if (!row) return DEFAULT_CALENDAR_SETTINGS;
+  // Sin fila: la instancia recién encendida ya es usable. 069 (US6): en modo
+  // plataforma, con la zona del negocio (en `single`, la de la instancia).
+  if (!row) {
+    return esPlataforma()
+      ? { ...DEFAULT_CALENDAR_SETTINGS, timezone: (await getRegionDeOrganizacion(organizationId)).timezone }
+      : DEFAULT_CALENDAR_SETTINGS;
+  }
 
   return {
     weeklyHours: normalizeWeeklyHours(row.weeklyHours as WeeklyHours),
@@ -116,10 +126,45 @@ export type CalendarSettingsInput = Partial<
 
 export async function upsertSettings(
   organizationId: string,
-  input: CalendarSettingsInput
+  input: CalendarSettingsInput,
+  db: Conexion = getDb()
 ): Promise<CalendarSettings> {
-  const current = await getSettings(organizationId);
+  const current = await getSettings(organizationId, db);
+  const next = siguienteConfiguracion(current, input);
+  const values = {
+    weeklyHours: next.weeklyHours,
+    slotMinutes: next.slotMinutes,
+    bufferMinutes: next.bufferMinutes,
+    minNoticeHours: next.minNoticeHours,
+    maxDaysAhead: next.maxDaysAhead,
+    timezone: next.timezone,
+    connector: next.connector,
+    meetingLink: next.meetingLink,
+  };
+  await db
+    .insert(schema.calendarSettings)
+    .values({
+      id: newId("calendarSettings"),
+      organizationId,
+      ...values,
+    })
+    .onConflictDoUpdate({
+      target: schema.calendarSettings.organizationId,
+      set: { ...values, updatedAt: new Date() },
+    });
 
+  return next;
+}
+
+/**
+ * 069 — Pura: la configuración que resulta de aplicar `input` sobre `current`
+ * (con las mismas normalizaciones y rechazos que el guardado). El Blueprint
+ * la usa para saber si algo cambia antes de escribir.
+ */
+export function siguienteConfiguracion(
+  current: CalendarSettings,
+  input: CalendarSettingsInput
+): CalendarSettings {
   const timezone = input.timezone ?? current.timezone;
   // Una zona desconocida rompería el motor entero: se rechaza al guardar.
   if (!isValidTimeZone(timezone)) {
@@ -161,29 +206,6 @@ export async function upsertSettings(
       input.meetingLink !== undefined ? input.meetingLink : current.meetingLink
     ),
   };
-
-  const db = getDb();
-  const values = {
-    weeklyHours: next.weeklyHours,
-    slotMinutes: next.slotMinutes,
-    bufferMinutes: next.bufferMinutes,
-    minNoticeHours: next.minNoticeHours,
-    maxDaysAhead: next.maxDaysAhead,
-    timezone: next.timezone,
-    connector: next.connector,
-    meetingLink: next.meetingLink,
-  };
-  await db
-    .insert(schema.calendarSettings)
-    .values({
-      id: newId("calendarSettings"),
-      organizationId,
-      ...values,
-    })
-    .onConflictDoUpdate({
-      target: schema.calendarSettings.organizationId,
-      set: { ...values, updatedAt: new Date() },
-    });
 
   return next;
 }

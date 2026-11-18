@@ -8,7 +8,8 @@
  * Sin dependencias: todo se resuelve con `Intl` de la plataforma, que ya trae
  * la base de datos de zonas (verificado también en el contenedor Alpine de
  * producción: 418 zonas y formato regional correcto). El formato sale de la
- * región de la instancia (068, `lib/region.ts`). Ver
+ * región de la instancia (068, `lib/region.ts`); en modo plataforma, quien
+ * llama pasa el locale del negocio (069, H-07). Ver
  * specs/015-motor-agenda-universal/research.md D1.
  */
 
@@ -291,8 +292,7 @@ const PARTS_FORMATS = new Map<
   { date: Intl.DateTimeFormat; time: Intl.DateTimeFormat; weekday: Intl.DateTimeFormat }
 >();
 
-function partsFormats(tz: string) {
-  const locale = getRegion().locale;
+function partsFormats(tz: string, locale: string) {
   const clave = `${locale}|${tz}`;
   let f = PARTS_FORMATS.get(clave);
   if (!f) {
@@ -311,11 +311,12 @@ function partsFormats(tz: string) {
 /** Partes por separado para la tabla de Citas. */
 export function partsInTz(
   startUtc: string,
-  tz: string
+  tz: string,
+  locale = getRegion().locale
 ): { date: string; time: string; weekday: string } {
   const d = new Date(startUtc);
   if (Number.isNaN(d.getTime())) return { date: "", time: "", weekday: "" };
-  const f = partsFormats(tz);
+  const f = partsFormats(tz, locale);
   return {
     date: f.date.format(d),
     time: f.time.format(d),

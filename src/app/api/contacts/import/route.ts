@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { IMPORT_MAX_ROWS, prepareImport } from "@/lib/contact-import";
-import { getRegion } from "@/lib/region";
 import { importContacts } from "@/server/contacts-import";
+import { getRegionDeOrganizacion } from "@/server/region";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,11 @@ export const POST = withAuth(async (session, req: Request) => {
   const body = await parseBody(req, importSchema);
   if (!body.ok) return body.response;
 
-  const { valid, problems } = prepareImport(body.data.contacts, getRegion().country);
+  const { valid, problems } = prepareImport(
+    body.data.contacts,
+    // 069 (US6) — El país del negocio lee los teléfonos sin código de país.
+    (await getRegionDeOrganizacion(session.organizationId)).country
+  );
   if (valid.length === 0) {
     return apiError(
       422,

@@ -3,8 +3,8 @@ import { BookingsClient } from "@/components/bookings/bookings-client";
 import { getSessionOrNull } from "@/lib/auth/session";
 import { clampListTo, isCalendarView, isIsoDate } from "@/lib/time/calendar";
 import { todayInTz } from "@/lib/time/slots";
-import { agendaEnabled } from "@/server/agenda/flag";
 import { getSettings } from "@/server/agenda/settings";
+import { agendaActiva } from "@/server/modulos/consulta";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +24,9 @@ export default async function BookingsPage({
   searchParams: Promise<Params>;
 }) {
   // Sin la bandera esta pantalla no existe en esta instancia.
-  if (!agendaEnabled()) notFound();
   const session = await getSessionOrNull();
   if (!session) redirect("/login");
+  if (!agendaActiva(session)) notFound();
 
   const settings = await getSettings(session.organizationId);
   const params = await searchParams;

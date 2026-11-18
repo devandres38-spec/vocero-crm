@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ZernioConnect } from "@/components/settings/zernio-connect";
 import { cn } from "@/lib/utils";
+import { copiarAlPortapapeles } from "@/lib/clipboard";
 
 /**
  * 023 — Conexión del canal de Instagram: la pantalla que faltaba.
@@ -122,13 +123,10 @@ export function InstagramClient() {
   }
 
   async function copy(text: string, what: "url" | "token") {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(what);
-      setTimeout(() => setCopied(null), 1500);
-    } catch {
-      // sin portapapeles (contexto no seguro): el texto sigue visible
-    }
+    // Sin portapapeles ni respaldo: el texto sigue visible para copiarlo a mano.
+    if (!(await copiarAlPortapapeles(text))) return;
+    setCopied(what);
+    setTimeout(() => setCopied(null), 1500);
   }
 
   if (!loaded) return <p className="text-sm text-muted-foreground">Cargando…</p>;

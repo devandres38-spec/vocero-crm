@@ -1,10 +1,10 @@
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
-import { agendaEnabled } from "@/server/agenda/flag";
 import { verifyCalendar } from "./calendar-verifiers";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * Qué le falta a esta instancia para que el agente conteste (issue #86).
@@ -114,7 +114,7 @@ export async function onboardingStatus(
     await pasoCerebro(),
   ];
 
-  if (agendaEnabled()) {
+  if ((await modulosDeOrganizacion(organizationId)).agenda) {
     steps.push(await pasoAgenda(organizationId, db));
   } else {
     // Sin la bandera, la agenda no existe en esta instancia (015): el paso se

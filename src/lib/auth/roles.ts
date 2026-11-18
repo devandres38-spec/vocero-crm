@@ -12,3 +12,25 @@
 export function canConfigure(role: string | null | undefined): boolean {
   return role === "owner" || role === "admin";
 }
+
+/**
+ * 069 (D5) — Un acceso de soporte de nivel `configuracion` cuenta como quien
+ * configura, SOLO en las rutas que lo declaran (`withAuth` ya cortó el resto).
+ * En `lectura`, no configura nada.
+ */
+export function puedeConfigurar(s: {
+  role: string;
+  grant?: { level: "lectura" | "configuracion" } | null;
+}): boolean {
+  if (s.role === "soporte") return s.grant?.level === "configuracion";
+  return canConfigure(s.role);
+}
+
+/** Igual, pero donde hoy solo vale el dueño (la marca). */
+export function esDuenoOSoporteConfig(s: {
+  role: string;
+  grant?: { level: "lectura" | "configuracion" } | null;
+}): boolean {
+  if (s.role === "soporte") return s.grant?.level === "configuracion";
+  return s.role === "owner";
+}

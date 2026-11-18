@@ -2,7 +2,6 @@ import { eq, max } from "drizzle-orm";
 import { CHANNEL_ORDER, type Channel } from "@/lib/channels";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { enabledChannels } from "@/server/channels/enabled";
 import { getInstagramCredentialsByOrg } from "@/server/instagram/credentials";
 import { getMessengerCredentialsByOrg } from "@/server/messenger/credentials";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
@@ -24,6 +23,7 @@ import {
   type WebhookHealth,
   type ZernioWebhook,
 } from "@/server/zernio/webhooks";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * 023 — El estado de los canales de una organización, para Ajustes → Canales.
@@ -108,7 +108,7 @@ function saludDe(conn: ZernioConnection, lectura: Lectura): ChannelStatus["healt
 }
 
 export async function channelsStatus(organizationId: string): Promise<ChannelStatus[]> {
-  const encendidos = enabledChannels();
+  const encendidos = new Set((await modulosDeOrganizacion(organizationId)).channels);
   const [ultimos, wa, ig, fb, zernio] = await Promise.all([
     lastInboundByChannel(organizationId),
     getCredentialsByOrg(organizationId),

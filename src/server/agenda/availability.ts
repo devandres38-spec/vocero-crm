@@ -13,6 +13,7 @@ import {
   type SlotUtc,
 } from "@/lib/time/slots";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import { localeDeOrganizacion } from "@/server/region";
 
 /**
  * 015 — Motor de disponibilidad:
@@ -62,7 +63,7 @@ export function buildCandidateSlots(
 export function filterFreeSlots(
   candidates: SlotUtc[],
   busy: SlotUtc[],
-  opts: { now: Date; minNoticeHours: number; timezone: string }
+  opts: { now: Date; minNoticeHours: number; timezone: string; locale?: string }
 ): AvailableSlot[] {
   const minStartMs = opts.now.getTime() + opts.minNoticeHours * 3_600_000;
   return candidates
@@ -72,7 +73,7 @@ export function filterFreeSlots(
         !busy.some((b) => overlaps(c.startUtc, c.endUtc, b.startUtc, b.endUtc))
     )
     .sort((a, b) => Date.parse(a.startUtc) - Date.parse(b.startUtc))
-    .map((c) => ({ ...c, label: labelInTz(c.startUtc, opts.timezone) }));
+    .map((c) => ({ ...c, label: labelInTz(c.startUtc, opts.timezone, opts.locale) }));
 }
 
 export async function computeAvailability(
@@ -107,6 +108,7 @@ export async function computeAvailability(
     now,
     minNoticeHours: settings.minNoticeHours,
     timezone: tz,
+    locale: await localeDeOrganizacion(organizationId),
   });
 }
 

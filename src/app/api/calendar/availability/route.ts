@@ -1,8 +1,10 @@
 import { withAuth } from "@/lib/api";
 import { dayIsoInTz, timeInTz, dayLabelInTz } from "@/lib/time/slots";
-import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
+import { agendaDisabledResponse } from "@/server/agenda/flag";
 import { computeAvailability } from "@/server/agenda/availability";
 import { getSettings } from "@/server/agenda/settings";
+import { agendaActiva } from "@/server/modulos/consulta";
+import { localeDeOrganizacion } from "@/server/region";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +20,16 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * no un error.
  */
 export const GET = withAuth(async (session, req: Request) => {
-  if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!agendaActiva(session)) return agendaDisabledResponse();
 
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
 
-  const settings = await getSettings(session.organizationId);
+  const [settings, locale] = await Promise.all([
+    getSettings(session.organizationId),
+    localeDeOrganizacion(session.organizationId),
+  ]);
   const now = new Date();
   const slots = await computeAvailability(session.organizationId, {
     fromISO: from && ISO_DATE.test(from) ? from : undefined,
@@ -37,8 +42,8 @@ export const GET = withAuth(async (session, req: Request) => {
     slots: slots.map((s) => ({
       ...s,
       dayIso: dayIsoInTz(new Date(s.startUtc), settings.timezone),
-      dayLabel: dayLabelInTz(s.startUtc, settings.timezone, now),
-      time: timeInTz(s.startUtc, settings.timezone),
+      dayLabel: dayLabelInTz(s.startUtc, settings.timezone, now, locale),
+      time: timeInTz(s.startUtc, settings.timezone, locale),
     })),
   });
 });

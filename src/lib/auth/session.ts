@@ -1,11 +1,25 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
-import { resolveMembership } from "@/server/auth/on-signup";
+import { esPlataforma as tenancyEsMulti } from "@/lib/tenancy";
+import type { ModulosEfectivos } from "@/server/modulos/efectivos";
+import { resolverContexto, type Contexto, type GrantSoporte } from "@/server/tenant/contexto";
+import { depsReales } from "@/server/tenant/consultas";
+import { clientIp } from "@/lib/rate-limit";
+import { auditar } from "@/server/platform/auditoria";
 
 export type SessionContext = {
   userId: string;
   organizationId: string;
   role: string;
+  /** 069 — Cómo entró: como miembro o por un acceso de soporte. */
+  via?: "miembro" | "soporte";
+  grant?: GrantSoporte;
+  /**
+   * 069 — Módulos efectivos de la organización (techo ∧ organización). Si
+   * falta (contextos armados a mano en pruebas), se usa el techo.
+   */
+  modulos?: ModulosEfectivos;
 };
 
 export class UnauthorizedError extends Error {
@@ -16,24 +30,79 @@ export class UnauthorizedError extends Error {
 }
 
 /**
- * Sesión + organización activa para route handlers y server components.
- * Lanza UnauthorizedError si no hay sesión u organización.
+ * 069 (US5) — Un Super-Admin pide datos de un negocio sin acceso de soporte
+ * vigente. La API responde 404: la agencia no sabe ni si hay algo que ver.
+ */
+export class SinAccesoError extends Error {
+  constructor() {
+    super("Sin acceso");
+    this.name = "SinAccesoError";
+  }
+}
+
+/** 069 — La organización existe y el usuario es miembro, pero está suspendida. */
+export class OrganizacionSuspendidaError extends Error {
+  constructor() {
+    super("Organización suspendida");
+    this.name = "OrganizacionSuspendidaError";
+  }
+}
+
+/**
+ * 069 — El contexto completo de la petición (D4): de qué organización es, o
+ * por qué no es de ninguna. Una vez por petición en server components.
+ */
+export const contextoActual = cache(async (): Promise<Contexto> => {
+  const h = await headers();
+  const ctx = await resolverContexto(
+    depsReales(h, async () => {
+      const s = await getAuth().api.getSession({ headers: h });
+      return s
+        ? { userId: s.user.id, activeOrganizationId: s.session.activeOrganizationId ?? null }
+        : null;
+    })
+  );
+  // 069 (US5) — Un Super-Admin en el host de un negocio sin acceso vigente
+  // (nunca lo pidió, venció o se revocó): queda auditado. Lo que ve es un 404.
+  if (ctx.kind === "ninguno" && ctx.organizationId) {
+    await auditar({
+      actorUserId: ctx.userId,
+      action: "acceso_denegado",
+      organizationId: ctx.organizationId,
+      ip: clientIp(h),
+      detail: { motivo: "sin_acceso_de_soporte" },
+    }).catch((err) => console.error("[soporte] no se pudo auditar:", err));
+  }
+  return ctx;
+});
+
+/**
+ * Sesión + organización de la petición para route handlers y server
+ * components. Lanza UnauthorizedError si no hay sesión u organización, y
+ * OrganizacionSuspendidaError si su organización está suspendida.
  */
 export async function requireSession(): Promise<SessionContext> {
-  const auth = getAuth();
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) throw new UnauthorizedError();
-  // La sesión puede crearse antes de que la membresía exista (registro
-  // inicial) — la membresía en BD es la fuente de verdad de org + rol.
-  const membership = await resolveMembership(session.user.id);
-  if (!membership) {
-    throw new UnauthorizedError("Sesión sin organización activa");
+  const ctx = await contextoActual();
+  switch (ctx.kind) {
+    case "organizacion":
+      return {
+        userId: ctx.userId,
+        organizationId: ctx.organizationId,
+        role: ctx.role,
+        via: ctx.via,
+        grant: ctx.grant,
+        modulos: ctx.modulos,
+      };
+    case "suspendida":
+      throw new OrganizacionSuspendidaError();
+    case "anonimo":
+      throw new UnauthorizedError();
+    case "ninguno":
+      if (ctx.organizationId) throw new SinAccesoError();
+      throw new UnauthorizedError("Sesión sin organización activa");
+    default:
+      throw new UnauthorizedError("Sesión sin organización activa");
   }
-  return {
-    userId: session.user.id,
-    organizationId: membership.organizationId,
-    role: membership.role,
-  };
 }
 
 /** Igual que requireSession pero devuelve null en vez de lanzar. */
@@ -42,5 +111,26 @@ export async function getSessionOrNull(): Promise<SessionContext | null> {
     return await requireSession();
   } catch {
     return null;
+  }
+}
+
+/**
+ * 069 — A dónde mandar a quien no tiene organización en esta petición. En
+ * `single` todo va al login, como siempre; en `multi` cada caso tiene su
+ * pantalla.
+ */
+export function destinoSinOrganizacion(ctx: Contexto): string {
+  switch (ctx.kind) {
+    case "plataforma":
+      return "/platform";
+    case "suspendida":
+      return "/suspendida";
+    case "ninguno":
+      if (!tenancyEsMulti()) return "/login";
+      // Sin organización en la raíz: a elegir empresa. En el host de un
+      // negocio ajeno (o inexistente): «no perteneces», sin decir más.
+      return ctx.motivo === "sin_organizacion" ? "/empresas" : "/sin-acceso";
+    default:
+      return "/login";
   }
 }
