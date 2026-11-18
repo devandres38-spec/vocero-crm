@@ -1,7 +1,7 @@
 # Tasks: Cerebro multi-organización (`/api/brains/*`)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains.md](contracts/brains.md)
-**Estado**: diseño aprobado (2026-11-17). Bloques 1 (T001–T014) y 2 (T015–T027) implementados en `feat/070-cerebro-multiorg`; Bloque 3 pendiente.
+**Estado**: diseño aprobado (2026-11-17). Implementada (T001–T043, T040 parcial) en `feat/070-cerebro-multiorg` de vocero-crm y nea-agent; verde local. Pendiente T044 (CI/staging con Nea `multiorg` real) y T045 (cierre).
 
 Convenciones: `[P]` paralelizable · `[local]` gate de este equipo (typecheck,
 lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
@@ -53,27 +53,56 @@ lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
 ## Bloque 3 — Agenda, Blueprint/MCP, aislamiento, cierre (F6–F9)
 
 ### F6 Agenda (US6)
-- [ ] T028 Módulo agenda efectivo por organización → 404 **vacío**; conversación inexistente → 404 con sobre (prueba de la sonda `cv_sonda`)
-- [ ] T029 `GET /agenda/slots` (oferta registrada, `date`, `agendaId`, `{slots, query}`)
-- [ ] T030 `POST|PATCH /agenda/book` (201 `{ok, booking}`, 409 con `slots`, 404 `no_booking`)
-- [ ] T031 `src/server/brains/seleccion.ts` + `GET /agenda/bookings` + `POST /agenda/cancel` (`confirmation`, `idempotencyKey` en `brain_operation`, `stale_selection`)
-- [ ] T032 `POST /agenda/followup` → 409 `followup_not_allowed`
-- [ ] T033 Pruebas de agenda (incluida la no emisión de `capabilities`)
+- [x] T028 Módulo agenda efectivo por organización → 404 **vacío**; conversación inexistente → 404 con sobre (prueba de la sonda `cv_sonda`)
+- [x] T029 `GET /agenda/slots` (oferta registrada, `date`, `agendaId`, `{slots, query}`)
+- [x] T030 `POST|PATCH /agenda/book` (201 `{ok, booking}`, 409 con `slots`, 404 `no_booking`)
+- [x] T031 `src/server/brains/seleccion.ts` + `GET /agenda/bookings` + `POST /agenda/cancel` (`confirmation`, `idempotencyKey` en `brain_operation`, `stale_selection`)
+- [x] T032 `POST /agenda/followup` → 409 `followup_not_allowed`
+- [x] T033 Pruebas de agenda (incluida la no emisión de `capabilities`)
 
 ### F7 Blueprint / MCP / REST (US2, D12)
-- [ ] T034 Blueprint v1: `brain?: {deployment} | null` en Zod, plan y aplicar (idempotente), exportar sin secretos; catálogo y ejemplos
-- [ ] T035 MCP `list_brain_deployments`; `get_organization` con `brain`; `GET /api/platform/brains` (token `alp_`); `docs/openapi-platform.json`
-- [ ] T036 `docs/openapi-brains.json` generado desde los Zod de `/api/brains/*`
+- [x] T034 Blueprint v1: `brain?: {deployment} | null` en Zod, plan y aplicar (idempotente), exportar sin secretos; catálogo y ejemplos
+- [x] T035 MCP `list_brain_deployments`; `get_organization` con `brain`; `GET /api/platform/brains` (token `alp_`); `docs/openapi-platform.json`
+- [x] T036 `docs/openapi-brains.json` generado desde los Zod de `/api/brains/*`
 
 ### F8 Aislamiento y contrato gemelo (US7)
-- [ ] T037 Matriz `A ↛ B` (`tests/unit/brains-aislamiento.test.ts`): por cada endpoint, recursos de B con credencial de A → 404 y sin escritura (conversación, `dispatchId`, adjunto, cita, `selectionToken`, `idempotencyKey`), y la llave de IA usada es la de A
-- [ ] T038 Vectores gemelos CRM: credencial, cuerpo `multi` + firma, `conversation.deleted` + firma, rutas existentes = `RUTAS` de Nea + `/api/brains/stage`
-- [ ] T039 `[nea]` Rama `feat/070-cerebro-multiorg`: `RUTAS["/api/bot/stage"] = "/api/brains/stage"` (D3) + `tests/test_brains_gemelo.py` (mismos vectores; el cuerpo `multi` entra por `/vocero/dispatch` en `multi_org`); `pytest` verde
-- [ ] T040 `scripts/e2e-cerebro.mjs` + guion `tests/e2e/us-cerebro.md`: dos negocios en un despliegue Nea `multiorg`, contestar, etapa, agenda, adjunto, borrado, suspensión, reasignación, camino infeliz
+- [x] T037 Matriz `A ↛ B` (`tests/unit/brains-aislamiento.test.ts`): por cada endpoint, recursos de B con credencial de A → 404 y sin escritura (conversación, `dispatchId`, adjunto, cita, `selectionToken`, `idempotencyKey`), y la llave de IA usada es la de A
+- [x] T038 Vectores gemelos CRM: credencial, cuerpo `multi` + firma, `conversation.deleted` + firma, rutas existentes = `RUTAS` de Nea + `/api/brains/stage`
+- [x] T039 `[nea]` Rama `feat/070-cerebro-multiorg`: `RUTAS["/api/bot/stage"] = "/api/brains/stage"` (D3) + `tests/test_brains_gemelo.py` (mismos vectores; el cuerpo `multi` entra por `/vocero/dispatch` en `multi_org`); `pytest` verde
+- [~] T040 `scripts/e2e-cerebro.mjs` + guion `tests/e2e/us-cerebro.md` — **guion escrito** (camino feliz e infeliz para staging); el arnés automático `.mjs` queda pendiente: necesita una Nea `multiorg` real y no se puede correr en este equipo: dos negocios en un despliegue Nea `multiorg`, contestar, etapa, agenda, adjunto, borrado, suspensión, reasignación, camino infeliz
 
 ### F9 Cierre
-- [ ] T041 [P] `AGENTS.md`, `CLAUDE.md`, `docs/plataforma-cerebro.md` (alta de Nea `multiorg` en Coolify: `VOCERO_MODE=cloud`, `CRM_ORGANIZATION` vacía, `CRM_BRAIN_SECRET`, `CRM_BASE_URL`), `specs/README.md`
-- [ ] T042 Versión 2.10.0 + CHANGELOG («Actualizar desde 2.9»: nada cambia en `single`)
-- [ ] T043 `[local]` Gate completo (typecheck, lint, Vitest 1 worker, pytest en Nea)
+- [x] T041 [P] `AGENTS.md`, `CLAUDE.md`, `docs/plataforma-cerebro.md` (alta de Nea `multiorg` en Coolify: `VOCERO_MODE=cloud`, `CRM_ORGANIZATION` vacía, `CRM_BRAIN_SECRET`, `CRM_BASE_URL`), `specs/README.md`
+- [x] T042 Versión 2.10.0 + CHANGELOG («Actualizar desde 2.9»: nada cambia en `single`)
+- [x] T043 `[local]` Gate completo (typecheck, lint, Vitest 1 worker, pytest en Nea)
 - [ ] T044 `[CI/staging]` Build + `e2e-cerebro` con Nea `multiorg` real (dos negocios con llaves BYOK distintas)
 - [ ] T045 Marcar 070 hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T044; merge de ambos repos cuando el dueño lo pida
+
+## Notas del Bloque 3
+
+- **Agenda (F6)**: `requireBrainAgenda` = `requireBrain` + módulo agenda del
+  negocio (apagado → 404 vacío). `bookings`/`cancel` con selección firmada
+  (`aliantis-seleccion:v1`, atada a organización, conversación y revisión),
+  `confirmation` e `idempotencyKey` (`brain_operation`); sin anunciar
+  `agenda_v2` (D7). `followup` → 409 (D8).
+- **Juez del Laboratorio solo BYOK en `multi`** (pedido en la aprobación del
+  Bloque 2): `chatJson({ soloOrganizacion })` y la pantalla del Laboratorio
+  usan `resolveAiProviderDeOrganizacion`.
+- **Notas de voz**: sin migración ni UI. Con una llave de OpenRouter,
+  `context.llm.transcribeModel` = `google/gemini-3.5-flash-lite` (el
+  `MODELO_QUE_OYE` de Nea, que oye ogg/opus por chat), pagado por el negocio.
+  Con OpenAI directo no se envía: su chat solo acepta wav/mp3 y las notas de
+  WhatsApp son ogg/opus. **Después de la 070**: elegir el modelo que oye por
+  negocio (Ajustes → IA), que sí requiere UI.
+- **Blueprint `brain`**: `{deployment}` o `null`; auditado como
+  `cerebro_asignado` con `desde: "blueprint"`. Selector en la pestaña Agente.
+- **MCP**: `list_brain_deployments` (solo lectura; sin secretos ni URLs
+  completas) y `get_organization` con `brain`. Única expectativa existente
+  ajustada: la lista de herramientas en `plataforma-mcp.test.ts` (aditiva).
+- **Aislamiento (F8)**: matriz con la puerta real y una base que registra los
+  parámetros de cada WHERE: con la credencial de A, toda consulta a tablas del
+  negocio lleva `org_A` y nunca `org_B`; ninguna escritura ni efecto. Una
+  prueba de cobertura obliga a agregar cada ruta nueva a la matriz.
+- **Nea**: rama `feat/070-cerebro-multiorg` con `RUTAS["/api/bot/stage"]` y
+  `tests/test_brains_gemelo.py` (mismos vectores que
+  `cerebros-070-gemelo.test.ts`).

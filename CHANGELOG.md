@@ -5,6 +5,59 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.10.0 — 2026-11-18
+
+Cerebro multi-organización (spec 070): en modo plataforma, **una Nea
+`multiorg` contesta por todos los negocios** a los que se la asignes. **En
+`single` (sin `TENANCY`) nada cambia**: actualizar es redesplegar; la migración
+`0029_cerebros` se aplica sola al arrancar y solo agrega tablas y columnas que
+`single` no usa, y `/api/brains/*` responde 404.
+
+### Actualizar desde 2.9
+
+- **Instancias de un negocio (`single`)**: nada que hacer. `/api/bot/*`, el
+  despacho por `BRAIN_DISPATCH_URL` y su cuerpo gemelo son idénticos.
+- **Plataforma (`multi`)**: sigue
+  [docs/plataforma-cerebro.md](docs/plataforma-cerebro.md).
+  1. Despliega Nea (rama/versión de la 070) con `VOCERO_MODE=cloud`,
+     `CRM_ORGANIZATION` **vacía**, `CRM_BASE_URL` y `CRM_BRAIN_SECRET`.
+  2. En `/platform/cerebros`, registra su URL de despacho
+     (`…/vocero/dispatch`); copia el secreto que se muestra UNA vez a
+     `CRM_BRAIN_SECRET` (o pega el que ya tenga Nea). «Probar» debe decir
+     «Sano · multiorg».
+  3. Asigna el cerebro a cada negocio (ficha → «Cerebro», el formulario,
+     el Blueprint `brain` o `PUT /api/platform/organizations/{id}/brain`).
+  4. El dueño enciende su agente (exige cerebro asignado, activo y sano) y
+     pone **su** llave en Ajustes → IA: en `multi` nada piensa con
+     `OPENROUTER_*` del entorno.
+- **Nea**: necesita la rama 070 (`move_stage` sale por `/api/brains/stage`);
+  con una anterior, el agente contesta pero no mueve etapas.
+
+### Qué trae
+
+- **Cerebros** (`/platform/cerebros`): registrar, probar `/health`, rotar el
+  secreto (el anterior deja de valer en el acto), pausar y borrar sin
+  negocios. El secreto se guarda cifrado y solo se ve al crearlo o rotarlo.
+- **`/api/brains/*`**: `context` (con perfil, conocimiento e IA del negocio),
+  `messages` (exige un `dispatchId` del negocio y la conversación,
+  idempotente, 409 `cerebro_reasignado`), `ficha`, `stage`, `handoff`,
+  `typing`, `media` (solo adjuntos del negocio), `llm` (solo la llave propia
+  del negocio) y la agenda (`slots`, `book`; `bookings`/`cancel` con la forma
+  v2 sin anunciar; `followup` dormido). Autenticación con la credencial
+  derivada `vocero:cerebro:v1`: un 401 igual para todo fallo, 429 por IP.
+- **Despacho por organización**: cada negocio a su cerebro, resuelto al
+  entregar, con `expiresAt` (+10 min) y el aviso `conversation.deleted` al
+  cerebro correcto. La tarjeta «Quién responde», el onboarding y el
+  Laboratorio usan el cerebro del negocio, sin mostrarle URLs ni secretos al
+  dueño.
+- **IA solo BYOK en `multi`**: el contexto del cerebro, `/api/brains/llm` y el
+  juez del Laboratorio pagan con la llave del negocio. Con una llave de
+  OpenRouter, las notas de voz se transcriben con el modelo que oye de Nea.
+- **Blueprint `brain`** y la herramienta MCP `list_brain_deployments` (solo
+  lectura); `GET /api/platform/brains`.
+- **Pruebas**: matriz de aislamiento A↛B de toda la superficie con la puerta
+  real, y vectores gemelos con Nea (credencial, despacho, borrado, rutas).
+
 ## 2.9.0 — 2026-11-17
 
 Modo plataforma multi-tenant (spec 069, constitución 2.0.0). **En `single`
