@@ -136,6 +136,16 @@ export async function resolveAiProvider(
   return resolver(cred, envAiProvider());
 }
 
+/**
+ * 070 (D6) — Solo la credencial PROPIA de la organización (BYOK), nunca el
+ * respaldo `OPENROUTER_*` del entorno. Lo usa todo lo que piensa por un
+ * negocio en modo plataforma (`/api/brains/llm`, `context.llm`): con el
+ * respaldo, el dueño de la plataforma pagaría el consumo de todos.
+ */
+export async function resolveAiProviderDeOrganizacion(organizationId: string): Promise<AiResolution> {
+  return resolver(await getAiCredentialSecret(organizationId), null);
+}
+
 export async function estadoIaDe(organizationId: string): Promise<EstadoIa> {
   const cred = await getAiCredentialPublic(organizationId);
   const env = envAiProvider();
