@@ -1,5 +1,5 @@
 import { parseBody } from "@/lib/api";
-import { requireBrain } from "@/server/brains/auth";
+import { withBrain } from "@/server/brains/http";
 import { cuerpoMensajeCerebro, responderPorElCerebro } from "@/server/brains/respuestas";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +10,8 @@ export const dynamic = "force-dynamic";
  * texto en el mismo despacho, 200 con el mismo `messageId`. Ver
  * `src/server/brains/respuestas.ts`.
  */
-export async function POST(req: Request) {
-  const g = await requireBrain(req);
-  if (!g.ok) return g.response;
+export const POST = withBrain(async (req, ambito) => {
   const body = await parseBody(req, cuerpoMensajeCerebro);
   if (!body.ok) return body.response;
-  return responderPorElCerebro(g.ambito, body.data);
-}
+  return responderPorElCerebro(ambito, body.data);
+});

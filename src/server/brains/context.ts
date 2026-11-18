@@ -28,10 +28,19 @@ import { serializeBotProfile } from "@/server/bot/profile";
 /** El modelo que oye por OpenRouter (igual que `MODELO_QUE_OYE` de Nea). */
 export const MODELO_QUE_OYE_OPENROUTER = "google/gemini-3.5-flash-lite";
 
+/**
+ * Auditoría 070 (B-6) — `OPENROUTER_AUDIO_MODEL` lo reemplaza sin desplegar
+ * (si OpenRouter cambia el slug) mientras llega la elección por negocio.
+ */
+export function modeloQueOyeOpenRouter(env: Record<string, string | undefined> = process.env): string {
+  const v = env.OPENROUTER_AUDIO_MODEL?.trim();
+  return v && /^[\w.:/-]{3,120}$/.test(v) ? v : MODELO_QUE_OYE_OPENROUTER;
+}
+
 /** Pura: el modelo de transcripción según el proveedor de la llave. */
-export function modeloQueOye(baseUrl: string): string {
+export function modeloQueOye(baseUrl: string, env: Record<string, string | undefined> = process.env): string {
   try {
-    return new URL(baseUrl).host === new URL(OPENROUTER_BASE_URL).host ? MODELO_QUE_OYE_OPENROUTER : "";
+    return new URL(baseUrl).host === new URL(OPENROUTER_BASE_URL).host ? modeloQueOyeOpenRouter(env) : "";
   } catch {
     return "";
   }

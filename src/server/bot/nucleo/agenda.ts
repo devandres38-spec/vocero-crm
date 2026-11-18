@@ -145,25 +145,44 @@ function cuerpoCita(p: BookingPayload, forma: FormaCita): Record<string, unknown
   return { ok: true, booking: { id: p.bookingId, ...p } };
 }
 
+// Auditoría 070 (M-11): con topes.
 const reservarSchema = z.object({
-  conversationId: z.string().min(1),
-  startUtc: z.string().min(1),
-  notes: z.string().nullish(),
+  conversationId: z.string().min(1).max(128),
+  startUtc: z.string().min(1).max(64),
+  notes: z.string().max(1000).nullish(),
 });
 
 const moverSchema = z.object({
-  conversationId: z.string().min(1),
-  startUtc: z.string().min(1),
+  conversationId: z.string().min(1).max(128),
+  startUtc: z.string().min(1).max(64),
 });
+
+/**
+ * Auditoría 070 (M-5): con `exigirIa`, una cita no se crea ni se mueve si un
+ * humano ya tomó la conversación (una llamada tardía del cerebro llegaría al
+ * calendario real). Si la conversación no existe, decide el servicio (404).
+ */
+async function iaPausada(organizationId: string, conversationId: string): Promise<boolean> {
+  const [c] = await getDb()
+    .select({ aiEnabled: schema.conversation.aiEnabled, handoffAt: schema.conversation.handoffAt })
+    .from(schema.conversation)
+    .where(scoped(schema.conversation.organizationId, organizationId, eq(schema.conversation.id, conversationId)))
+    .limit(1);
+  return Boolean(c && (!c.aiEnabled || c.handoffAt));
+}
 
 /** Crear responde **201** (acepta 2xx en el cliente). Solo lo ofrecido. */
 export async function reservarPorElCerebro(
   req: Request,
   organizationId: string,
-  forma: FormaCita = "plana"
+  forma: FormaCita = "plana",
+  opts: { exigirIa?: boolean } = {}
 ): Promise<Response> {
   const body = await parseBody(req, reservarSchema);
   if (!body.ok) return body.response;
+  if (opts.exigirIa && (await iaPausada(organizationId, body.data.conversationId))) {
+    return apiError(409, "ai_paused", "La IA está en pausa en esta conversación");
+  }
 
   try {
     const result = await createSessionBooking({
@@ -185,10 +204,14 @@ export async function reservarPorElCerebro(
 export async function moverCitaPorElCerebro(
   req: Request,
   organizationId: string,
-  forma: FormaCita = "plana"
+  forma: FormaCita = "plana",
+  opts: { exigirIa?: boolean } = {}
 ): Promise<Response> {
   const body = await parseBody(req, moverSchema);
   if (!body.ok) return body.response;
+  if (opts.exigirIa && (await iaPausada(organizationId, body.data.conversationId))) {
+    return apiError(409, "ai_paused", "La IA está en pausa en esta conversación");
+  }
 
   try {
     const result = await rescheduleForConversation({

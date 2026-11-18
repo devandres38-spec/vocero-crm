@@ -20,7 +20,8 @@ import { guardarRespuestaDePrueba } from "@/server/lab/sandbox";
  */
 
 export const cuerpoRespuestaCerebro = z.object({
-  conversationId: z.string().min(1),
+  // Auditoría 070 (M-11): con tope.
+  conversationId: z.string().min(1).max(128),
   // 022: el tope de aquí es el del canal que más admite; el de cada canal
   // lo comprueba el envío y sale como el mismo 422 `invalid_body` de siempre.
   text: z.string().min(1).max(MAX_TEXT_CHARS_ANY_CHANNEL, TEXT_TOO_LONG_ANY_CHANNEL),
@@ -33,6 +34,7 @@ export type FalloRespuesta =
   | "sandbox_violation"
   | "message_limit"
   | "text_too_long"
+  | "organizacion_suspendida"
   | "send_failed";
 
 export type ResultadoRespuesta =
@@ -90,6 +92,7 @@ export async function responderComoCerebro(input: {
         case "sandbox_violation":
         case "message_limit":
         case "text_too_long":
+        case "organizacion_suspendida":
           return { ok: false, code: err.code, message: err.message };
         default:
           return { ok: false, code: "send_failed", message: err.message, detalle: err.code };

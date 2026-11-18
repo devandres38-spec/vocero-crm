@@ -1,4 +1,4 @@
-import { requireBrainAgenda } from "@/server/brains/agenda";
+import { withBrainAgenda } from "@/server/brains/http";
 import { moverCitaPorElCerebro, reservarPorElCerebro } from "@/server/bot/nucleo/agenda";
 
 export const dynamic = "force-dynamic";
@@ -9,15 +9,12 @@ export const dynamic = "force-dynamic";
  * `slot_taken`/`slot_not_offered` con `slots`). La cita va ANIDADA:
  * `{ok:true, booking:{…}}`, que es lo que aplana Nea. Los campos de la agenda
  * v2 (`idempotencyKey`, `selectionToken`…) se ignoran: 070 no la anuncia (D7).
+ * Con la IA en pausa → 409 `ai_paused` (auditoría 070, M-5).
  */
-export async function POST(req: Request) {
-  const g = await requireBrainAgenda(req);
-  if (!g.ok) return g.response;
-  return reservarPorElCerebro(req, g.ambito.organizationId, "anidada");
-}
+export const POST = withBrainAgenda((req, ambito) =>
+  reservarPorElCerebro(req, ambito.organizationId, "anidada", { exigirIa: true })
+);
 
-export async function PATCH(req: Request) {
-  const g = await requireBrainAgenda(req);
-  if (!g.ok) return g.response;
-  return moverCitaPorElCerebro(req, g.ambito.organizationId, "anidada");
-}
+export const PATCH = withBrainAgenda((req, ambito) =>
+  moverCitaPorElCerebro(req, ambito.organizationId, "anidada", { exigirIa: true })
+);

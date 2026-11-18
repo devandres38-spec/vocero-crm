@@ -315,7 +315,8 @@ export async function rescheduleBooking(input: {
     const updated = await db
       .update(schema.booking)
       .set({ scheduledAt: new Date(slot.startUtc), updatedAt: new Date() })
-      .where(eq(schema.booking.id, booking.id))
+      // Auditoría 070 (B-4): defensa en profundidad, también la organización.
+      .where(and(eq(schema.booking.id, booking.id), eq(schema.booking.organizationId, booking.organizationId)))
       .returning();
     next = updated[0]!;
   } catch (err) {
@@ -409,12 +410,24 @@ export async function rescheduleForConversation(input: {
     throw new BookingError("not_found", "No hay una cita activa que mover");
   }
 
-  const result = await rescheduleBooking({
-    organizationId: input.organizationId,
-    bookingId: target.id,
-    startUtc: input.startUtc,
-    now: input.now,
-  });
+  let result: BookingResult;
+  try {
+    result = await rescheduleBooking({
+      organizationId: input.organizationId,
+      bookingId: target.id,
+      startUtc: input.startUtc,
+      now: input.now,
+    });
+  } catch (err) {
+    // Auditoría 070 (M-6): igual que al reservar, `slot_taken` viaja con
+    // alternativas frescas YA registradas como la nueva oferta (antes iba con
+    // `slots: []` y el agente no tenía qué volver a ofrecer).
+    if (err instanceof BookingError && err.code === "slot_taken") {
+      const fresh = await refreshOffer(input.organizationId, input.conversationId, { now: input.now });
+      throw new BookingError("slot_taken", err.message, fresh);
+    }
+    throw err;
+  }
   await clearOffers(input.organizationId, input.conversationId).catch(() => {});
   return result;
 }
@@ -431,7 +444,7 @@ export async function cancelBooking(input: {
   await db
     .update(schema.booking)
     .set({ status: "cancelada", updatedAt: new Date() })
-    .where(eq(schema.booking.id, booking.id));
+    .where(and(eq(schema.booking.id, booking.id), eq(schema.booking.organizationId, booking.organizationId)));
 
   const settings = await getSettings(input.organizationId);
   await withConnector(booking, settings, async (conn, externalRef) => {
@@ -455,7 +468,7 @@ export async function markBookingStatus(input: {
     await db
       .update(schema.booking)
       .set({ status: input.status, updatedAt: new Date() })
-      .where(eq(schema.booking.id, booking.id));
+      .where(and(eq(schema.booking.id, booking.id), eq(schema.booking.organizationId, booking.organizationId)));
   } catch (err) {
     // Reactivar a `realizada` un instante que otra cita ya ocupa.
     if (isUniqueViolation(err)) {
@@ -542,7 +555,7 @@ async function deliverMeeting(
             notes: booking.notes ?? undefined,
           });
 
-    return await persistDelivery(booking.id, {
+    return await persistDelivery(booking.id, booking.organizationId, {
       externalRef: meeting.externalId ?? booking.externalRef,
       meetingLink: meeting.joinUrl,
       // Un conector que promete enlace por cita y no lo trajo todavía deja la
@@ -562,7 +575,7 @@ async function deliverMeeting(
     // La cita ya existe y se queda: el enlace es lo único que falta. Se
     // conserva la referencia externa si ya la había, para que el reintento
     // sepa que no debe crear otra reunión.
-    return await persistDelivery(booking.id, {
+    return await persistDelivery(booking.id, booking.organizationId, {
       externalRef: booking.externalRef,
       meetingLink: null,
       linkPending: true,
@@ -572,6 +585,7 @@ async function deliverMeeting(
 
 async function persistDelivery(
   bookingId: string,
+  organizationId: string,
   values: {
     externalRef: string | null;
     meetingLink: string | null;
@@ -582,7 +596,7 @@ async function persistDelivery(
   const rows = await db
     .update(schema.booking)
     .set({ ...values, updatedAt: new Date() })
-    .where(eq(schema.booking.id, bookingId))
+    .where(and(eq(schema.booking.id, bookingId), eq(schema.booking.organizationId, organizationId)))
     .returning();
   return rows[0]!;
 }

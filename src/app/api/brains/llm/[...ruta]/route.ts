@@ -1,5 +1,5 @@
 import { apiError } from "@/lib/api";
-import { requireBrain } from "@/server/brains/auth";
+import { leerCuerpoAcotado, withBrain } from "@/server/brains/http";
 import { pensarPorElCerebro } from "@/server/bot/llm-proxy";
 
 export const dynamic = "force-dynamic";
@@ -15,24 +15,42 @@ export const maxDuration = 300;
  * Autentica con la credencial derivada (la misma con la que Nea escribe), así
  * que el negocio cuya llave se usa es el del ámbito de la credencial, no el
  * que diga una cabecera. La respuesta del proveedor pasa tal cual.
+ *
+ * Auditoría 070 (A-8): el cuerpo se lee con tope (25 MB: una nota de voz de
+ * 16 MB en base64 cabe), solo JSON, y sin `stream: true` (el proxy no
+ * transmite por partes: lo retendría entero en memoria).
  */
 const RUTAS_LLM_PERMITIDAS = new Set(["chat/completions"]);
+const MAX_CUERPO_LLM = 25 * 1024 * 1024;
 
-export async function POST(req: Request, { params }: { params: Promise<{ ruta: string[] }> }) {
-  const g = await requireBrain(req);
-  if (!g.ok) return g.response;
-
-  const ruta = (await params).ruta.join("/");
+export const POST = withBrain<{ params: Promise<{ ruta: string[] }> }>(async (req, ambito, ctx) => {
+  const ruta = (await ctx.params).ruta.join("/");
   if (!RUTAS_LLM_PERMITIDAS.has(ruta)) {
     return apiError(404, "not_found", "Ruta no disponible");
   }
+  if (!(req.headers.get("content-type") ?? "").toLowerCase().includes("application/json")) {
+    return apiError(415, "content_type", "El cuerpo debe ser application/json");
+  }
+  const cuerpo = await leerCuerpoAcotado(req, MAX_CUERPO_LLM);
+  if (cuerpo === null) {
+    return apiError(413, "payload_too_large", "El cuerpo excede 25 MB");
+  }
+  let datos: unknown;
+  try {
+    datos = JSON.parse(cuerpo);
+  } catch {
+    return apiError(422, "invalid_body", "El cuerpo debe ser JSON válido");
+  }
+  if (datos && typeof datos === "object" && (datos as { stream?: unknown }).stream === true) {
+    return apiError(400, "stream_no_soportado", "Este proxy no transmite por partes: usa stream=false");
+  }
   const r = await pensarPorElCerebro({
-    organizationId: g.ambito.organizationId,
+    organizationId: ambito.organizationId,
     ruta,
-    cuerpoCrudo: await req.text(),
-    contentType: req.headers.get("content-type"),
+    cuerpoCrudo: cuerpo,
+    contentType: "application/json",
     soloOrganizacion: true,
   });
   if (!r.ok) return apiError(r.status, r.code, r.message);
   return new Response(r.cuerpo, { status: r.status, headers: { "Content-Type": r.contentType } });
-}
+});

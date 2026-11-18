@@ -55,6 +55,9 @@ export async function POST(req: Request) {
     // `invalid_body` (lo cortaba el esquema): se conserva el código.
     case "text_too_long":
       return apiError(422, "invalid_body", r.message);
+    // 070 (M-11): solo en modo plataforma; aquí conserva su código.
+    case "organizacion_suspendida":
+      return apiError(502, "organizacion_suspendida", r.message);
     case "send_failed":
       return apiError(502, r.detalle ?? "send_failed", r.message);
   }

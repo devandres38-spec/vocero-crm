@@ -20,20 +20,39 @@ import { graphRequest } from "@/lib/meta/client";
  * organización es 404, igual que una que no existe.
  */
 
+/**
+ * Auditoría 070 (M-5) — Opciones del núcleo. `exigirIa`: rechazar con 409
+ * `ai_paused` si un humano ya tomó la conversación (`/api/brains/*`; una
+ * llamada tardía del cerebro no puede pisar lo que hace la persona).
+ * `/api/bot/*` no lo pide: su contrato en `single` no cambia.
+ */
+export type OpcionesNucleo = { exigirIa?: boolean };
+
+export const IA_PAUSADA = "La IA está en pausa en esta conversación";
+
 const fichaSchema = z.object({
-  conversationId: z.string().min(1),
+  // Auditoría 070 (M-11): con tope.
+  conversationId: z.string().min(1).max(128),
   // Objeto libre a propósito: las claves las define el negocio, y el servidor
   // tolera el drift del LLM en vez de castigarlo con un 422 (ver server/bot/ficha).
   ficha: z.record(z.string(), z.unknown()),
 });
 
 /** Ficha: merge campo a campo; `null` borra. Devuelve la ficha COMPLETA. */
-export async function escribirFicha(req: Request, organizationId: string): Promise<Response> {
+export async function escribirFicha(
+  req: Request,
+  organizationId: string,
+  opts: OpcionesNucleo = {}
+): Promise<Response> {
   const body = await parseBody(req, fichaSchema);
   if (!body.ok) return body.response;
 
   const rows = await getDb()
-    .select({ contactId: schema.conversation.contactId })
+    .select({
+      contactId: schema.conversation.contactId,
+      aiEnabled: schema.conversation.aiEnabled,
+      handoffAt: schema.conversation.handoffAt,
+    })
     .from(schema.conversation)
     .where(
       and(
@@ -43,6 +62,9 @@ export async function escribirFicha(req: Request, organizationId: string): Promi
     )
     .limit(1);
   if (!rows[0]) return apiError(404, "not_found", "Conversación no encontrada");
+  if (opts.exigirIa && (!rows[0].aiEnabled || rows[0].handoffAt)) {
+    return apiError(409, "ai_paused", IA_PAUSADA);
+  }
 
   const result = await upsertFicha({
     organizationId,
@@ -54,7 +76,7 @@ export async function escribirFicha(req: Request, organizationId: string): Promi
 }
 
 const etapaSchema = z.object({
-  conversationId: z.string().min(1),
+  conversationId: z.string().min(1).max(128),
   /** Nombre de la etapa (como viene en `lead.nextStages` del contexto) o su id. */
   stage: z.string().min(1).max(200),
 });
@@ -79,12 +101,18 @@ export async function moverEtapa(req: Request, organizationId: string): Promise<
 }
 
 const handoffSchema = z.object({
-  conversationId: z.string().min(1),
+  conversationId: z.string().min(1).max(128),
   /**
    * Texto libre a propósito: el catálogo se aplica después, con fallback
-   * (ver `server/bot/handoff`). Un motivo raro no puede costar el handoff.
+   * (ver `server/bot/handoff`). Un motivo raro no puede costar el handoff:
+   * por eso uno largo se RECORTA a 200 (auditoría 070, M-11) en vez de
+   * rechazarse.
    */
-  reason: z.string().optional(),
+  reason: z
+    .string()
+    .max(4000)
+    .optional()
+    .transform((r) => (r === undefined ? r : r.slice(0, 200))),
 });
 
 /** Handoff: pausa la IA. Idempotente (solo escribe en la transición). */
@@ -135,7 +163,7 @@ export async function pasarAHumanoPorElCerebro(
   return Response.json({ ok: true });
 }
 
-const typingSchema = z.object({ conversationId: z.string().min(1) });
+const typingSchema = z.object({ conversationId: z.string().min(1).max(128) });
 
 /**
  * «Escribiendo…» + marcar leído el último inbound. Best-effort: si Meta

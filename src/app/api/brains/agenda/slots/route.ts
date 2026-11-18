@@ -1,4 +1,4 @@
-import { requireBrainAgenda } from "@/server/brains/agenda";
+import { withBrainAgenda } from "@/server/brains/http";
 import { huecosParaElCerebro } from "@/server/bot/nucleo/agenda";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +9,4 @@ export const dynamic = "force-dynamic";
  * cerebro. Agenda apagada en el negocio → 404 vacío (la sonda de Nea);
  * conversación inexistente → 404 con sobre.
  */
-export async function GET(req: Request) {
-  const g = await requireBrainAgenda(req);
-  if (!g.ok) return g.response;
-  return huecosParaElCerebro(req, g.ambito.organizationId);
-}
+export const GET = withBrainAgenda((req, ambito) => huecosParaElCerebro(req, ambito.organizationId));

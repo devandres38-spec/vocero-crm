@@ -1,4 +1,4 @@
-import { and, asc, eq, gte } from "drizzle-orm";
+import { and, asc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { apiError, parseBody } from "@/lib/api";
@@ -7,6 +7,7 @@ import { labelInTz } from "@/lib/time/slots";
 import { requireBrain, type ResultadoCerebro } from "@/server/brains/auth";
 import { firmarSeleccion, leerSeleccion } from "@/server/brains/seleccion";
 import { cancelBooking } from "@/server/agenda/service";
+import { bookingErrorResponse } from "@/server/agenda/http";
 import { getSettings } from "@/server/agenda/settings";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 import { localeDeOrganizacion } from "@/server/region";
@@ -110,38 +111,66 @@ export async function cancelarPorElCerebro(req: Request, organizationId: string)
     return apiError(409, "confirmation_required", "Cancela solo con la confirmación explícita del cliente");
   }
 
-  const db = getDb();
-  const [previa] = await db
-    .select({ response: schema.brainOperation.response })
-    .from(schema.brainOperation)
-    .where(
-      and(
-        eq(schema.brainOperation.organizationId, organizationId),
-        eq(schema.brainOperation.idempotencyKey, idempotencyKey)
-      )
-    )
-    .limit(1);
-  if (previa) return Response.json(previa.response);
-
   const seleccion = leerSeleccion(organizationId, selectionToken);
   if (!seleccion || seleccion.conversationId !== conversationId) {
     return apiError(404, "not_found", "Cita no encontrada");
   }
-  const [cita] = await db
-    .select({ id: schema.booking.id, status: schema.booking.status, updatedAt: schema.booking.updatedAt })
-    .from(schema.booking)
-    .where(scoped(schema.booking.organizationId, organizationId, eq(schema.booking.id, seleccion.bookingId)))
+
+  // Auditoría 070 (M-5): con un humano a cargo, el cerebro no cancela.
+  const [conv] = await getDb()
+    .select({ aiEnabled: schema.conversation.aiEnabled, handoffAt: schema.conversation.handoffAt })
+    .from(schema.conversation)
+    .where(scoped(schema.conversation.organizationId, organizationId, eq(schema.conversation.id, conversationId)))
     .limit(1);
-  if (!cita) return apiError(404, "not_found", "Cita no encontrada");
-  if (cita.status !== "agendada" || cita.updatedAt.getTime() !== seleccion.revision) {
-    return apiError(409, "stale_selection", "La cita cambió: vuelve a consultarlas antes de cancelar");
+  if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
+  if (!conv.aiEnabled || conv.handoffAt) {
+    return apiError(409, "ai_paused", "La IA está en pausa en esta conversación");
   }
 
-  await cancelBooking({ organizationId, bookingId: cita.id });
-  const respuesta = { ok: true, bookingId: cita.id };
-  await db
-    .insert(schema.brainOperation)
-    .values({ organizationId, idempotencyKey, action: "cancel", response: respuesta })
-    .onConflictDoNothing();
-  return Response.json(respuesta);
+  // Auditoría 070 (M-4): dos cancelaciones con la misma llave a la vez se
+  // ponen en fila (candado por organización y llave); la segunda re-entrega
+  // la respuesta de la primera en vez de chocar con `stale_selection`.
+  return getDb().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`brain-op:${organizationId}:${idempotencyKey}`}))`);
+    const [previa] = await tx
+      .select({ response: schema.brainOperation.response, action: schema.brainOperation.action })
+      .from(schema.brainOperation)
+      .where(
+        and(
+          eq(schema.brainOperation.organizationId, organizationId),
+          eq(schema.brainOperation.idempotencyKey, idempotencyKey)
+        )
+      )
+      .limit(1);
+    if (previa) {
+      // M-4: la misma llave usada para OTRA acción no se re-entrega.
+      if (previa.action !== "cancel") {
+        return apiError(409, "idempotency_key_reused", "Esa idempotencyKey ya se usó para otra operación");
+      }
+      return Response.json(previa.response);
+    }
+
+    const [cita] = await tx
+      .select({ id: schema.booking.id, status: schema.booking.status, updatedAt: schema.booking.updatedAt })
+      .from(schema.booking)
+      .where(scoped(schema.booking.organizationId, organizationId, eq(schema.booking.id, seleccion.bookingId)))
+      .limit(1);
+    if (!cita) return apiError(404, "not_found", "Cita no encontrada");
+    if (cita.status !== "agendada" || cita.updatedAt.getTime() !== seleccion.revision) {
+      return apiError(409, "stale_selection", "La cita cambió: vuelve a consultarlas antes de cancelar");
+    }
+
+    try {
+      await cancelBooking({ organizationId, bookingId: cita.id });
+    } catch (err) {
+      // A-7: un `BookingError` (p. ej. la cita desapareció) con su sobre.
+      return bookingErrorResponse(err);
+    }
+    const respuesta = { ok: true, bookingId: cita.id };
+    await tx
+      .insert(schema.brainOperation)
+      .values({ organizationId, idempotencyKey, action: "cancel", response: respuesta })
+      .onConflictDoNothing();
+    return Response.json(respuesta);
+  });
 }

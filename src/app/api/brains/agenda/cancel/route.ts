@@ -1,10 +1,7 @@
-import { cancelarPorElCerebro, requireBrainAgenda } from "@/server/brains/agenda";
+import { cancelarPorElCerebro } from "@/server/brains/agenda";
+import { withBrainAgenda } from "@/server/brains/http";
 
 export const dynamic = "force-dynamic";
 
 /** 070 — `POST /api/brains/agenda/cancel` (forma v2, sin anunciar). Ver `src/server/brains/agenda.ts`. */
-export async function POST(req: Request) {
-  const g = await requireBrainAgenda(req);
-  if (!g.ok) return g.response;
-  return cancelarPorElCerebro(req, g.ambito.organizationId);
-}
+export const POST = withBrainAgenda((req, ambito) => cancelarPorElCerebro(req, ambito.organizationId));

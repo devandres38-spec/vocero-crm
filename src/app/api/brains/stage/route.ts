@@ -1,4 +1,4 @@
-import { requireBrain } from "@/server/brains/auth";
+import { withBrain } from "@/server/brains/http";
 import { moverEtapa } from "@/server/bot/nucleo/acciones";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +9,4 @@ export const dynamic = "force-dynamic";
  * (`RUTAS["/api/bot/stage"]`); antes salía a `/api/bot/stage`, que en `multi`
  * es 404, y el agente nunca movía etapas.
  */
-export async function POST(req: Request) {
-  const g = await requireBrain(req);
-  if (!g.ok) return g.response;
-  return moverEtapa(req, g.ambito.organizationId);
-}
+export const POST = withBrain((req, ambito) => moverEtapa(req, ambito.organizationId));
