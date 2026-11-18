@@ -114,7 +114,12 @@ export const organization = pgTable("organization", {
     (): AnyPgColumn => brainDeployment.id,
     { onDelete: "restrict" }
   ),
-});
+}, (t) => [
+  // Auditoría 070 (M-3): la FK RESTRICT y los conteos de /platform/cerebros.
+  index("organization_brain_deployment_idx")
+    .on(t.brainDeploymentId)
+    .where(sql`${t.brainDeploymentId} is not null`),
+]);
 
 export const member = pgTable("member", {
   id: text("id").primaryKey(),
@@ -222,7 +227,10 @@ export const brainDeployment = pgTable("brain_deployment", {
   createdBy: text("created_by").references((): AnyPgColumn => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => [
+  // Auditoría 070 (B-3): el estado lo garantiza también la base.
+  check("brain_deployment_status_ck", sql`${t.status} in ('activo', 'pausado')`),
+]);
 
 /** Rastro de toda acción de plataforma (Ley 1581). */
 export const platformAuditLog = pgTable(
@@ -1423,6 +1431,11 @@ export const dispatch = pgTable(
     ),
     // La consulta del worker: pendientes cuya ventana ya venció.
     index("dispatch_status_notbefore_idx").on(t.status, t.notBefore),
+    // Auditoría 070 (M-3): ON DELETE SET NULL al borrar un cerebro, sin
+    // recorrer toda la tabla.
+    index("dispatch_brain_deployment_idx")
+      .on(t.brainDeploymentId)
+      .where(sql`${t.brainDeploymentId} is not null`),
   ]
 );
 
@@ -1444,7 +1457,12 @@ export const brainReply = pgTable(
       .references(() => message.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.organizationId, t.dispatchId, t.textHash] })]
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.dispatchId, t.textHash] }),
+    // Auditoría 070 (M-3): ON DELETE CASCADE desde `message`, y la purga.
+    index("brain_reply_message_idx").on(t.messageId),
+    index("brain_reply_created_idx").on(t.createdAt),
+  ]
 );
 
 /** 070 — Resultado de una operación de agenda v2 por `idempotencyKey`. */
@@ -1459,7 +1477,10 @@ export const brainOperation = pgTable(
     response: jsonb("response").$type<Record<string, unknown>>().notNull(),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.organizationId, t.idempotencyKey] })]
+  (t) => [
+    primaryKey({ columns: [t.organizationId, t.idempotencyKey] }),
+    index("brain_operation_created_idx").on(t.createdAt),
+  ]
 );
 
 /* ============================================================
