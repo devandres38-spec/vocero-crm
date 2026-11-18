@@ -1,7 +1,7 @@
 # Tasks: Cerebro multi-organización (`/api/brains/*`)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains.md](contracts/brains.md)
-**Estado**: diseño — pendiente de aprobación. Sin código.
+**Estado**: diseño aprobado (2026-11-17). Bloque 1 (T001–T014) implementado en `feat/070-cerebro-multiorg`; Bloques 2 y 3 pendientes.
 
 Convenciones: `[P]` paralelizable · `[local]` gate de este equipo (typecheck,
 lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
@@ -10,25 +10,25 @@ lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
 ## Bloque 1 — Base, despliegues, autenticación, núcleo (F0–F3)
 
 ### F0 Base
-- [ ] T001 Migración `drizzle/0029_cerebros.sql` (plan §Migración) + `schema.ts` (`brainDeployment`, `brainReply`, `brainOperation`, columnas en `organization` y `dispatch`) + journal
-- [ ] T002 `src/server/brains/deployment.ts`: `credencialDerivada(secreto, orgId)` (base64url sin relleno) y prueba con el vector gemelo `_BqRKryMUdexcuLj_3RG1ARbgqr_LhXRSLJYmrw5VJ0`
-- [ ] T003 Crear/pegar/rotar secreto (≥ 32 bytes, `encryptSecret`, `secretLast4`), pausar/reactivar, borrar solo sin negocios; caché de descifrado ≤ 60 s con invalidación
-- [ ] T004 [P] `ACCIONES_AUDITORIA`: `cerebro_creado`, `cerebro_actualizado`, `cerebro_secreto_rotado`, `cerebro_pausado`, `cerebro_reactivado`, `cerebro_asignado`, `cerebro_probado`; prueba de que `detail` nunca lleva secreto
+- [x] T001 Migración `drizzle/0029_cerebros.sql` (plan §Migración) + `schema.ts` (`brainDeployment`, `brainReply`, `brainOperation`, columnas en `organization` y `dispatch`) + journal
+- [x] T002 `src/server/brains/deployment.ts`: `credencialDerivada(secreto, orgId)` (base64url sin relleno) y prueba con el vector gemelo `_BqRKryMUdexcuLj_3RG1ARbgqr_LhXRSLJYmrw5VJ0`
+- [x] T003 Crear/pegar/rotar secreto (≥ 32 bytes, `encryptSecret`, `secretLast4`), pausar/reactivar, borrar solo sin negocios; caché de descifrado ≤ 60 s con invalidación
+- [x] T004 [P] `ACCIONES_AUDITORIA`: `cerebro_creado`, `cerebro_actualizado`, `cerebro_secreto_rotado`, `cerebro_pausado`, `cerebro_reactivado`, `cerebro_asignado`, `cerebro_probado`; prueba de que `detail` nunca lleva secreto
 
 ### F1 Despliegues (US1, US2)
-- [ ] T005 `src/server/brains/salud.ts`: `probarSalud` (D13: http(s), sin credenciales, sin redirecciones, 5 s, 4 KB, solo `version`/`mode`/`llm`); guarda `last_health_*`
-- [ ] T006 API del panel con sesión de Super-Admin: `GET/POST /api/platform/brains`, `PATCH/DELETE …/[id]`, `POST …/[id]/{probar,rotar}`
-- [ ] T007 `/platform/cerebros` (lista con salud y nº de negocios, alta con secreto de una vez + copiar con `copiarAlPortapapeles`, probar, rotar con advertencia, pausar) y entrada en la barra lateral
-- [ ] T008 Asignación: `asignarCerebro(orgId, deploymentId|null)` + selector en la ficha (pestaña Agente) y en `pestana-agente` del `FormularioBlueprint`; auditado
-- [ ] T009 Pruebas US1/US2: secreto nunca en respuestas/listados/auditoría; rotar invalida; borrar con negocios → 409; pausado no asignable
+- [x] T005 `src/server/brains/salud.ts`: `probarSalud` (D13: http(s), sin credenciales, sin redirecciones, 5 s, 4 KB, solo `version`/`mode`/`llm`); guarda `last_health_*`
+- [x] T006 API del panel con sesión de Super-Admin: `GET/POST /api/platform/brains`, `PATCH/DELETE …/[id]`, `POST …/[id]/{probar,rotar}`
+- [x] T007 `/platform/cerebros` (lista con salud y nº de negocios, alta con secreto de una vez + copiar con `copiarAlPortapapeles`, probar, rotar con advertencia, pausar) y entrada en la barra lateral
+- [x] T008 Asignación: `asignarCerebro(orgId, deploymentId|null)` + `PUT /api/platform/organizations/{idOrSlug}/brain` + selector en la ficha (sección «Cerebro» del resumen); auditado. El selector del `FormularioBlueprint` va con el campo `brain` del Blueprint (T034), porque el formulario envía un Blueprint
+- [x] T009 Pruebas US1/US2: secreto nunca en respuestas/listados/auditoría; rotar invalida; borrar con negocios → 409; pausado no asignable
 
 ### F2 Autenticación (US3)
-- [ ] T010 `src/server/brains/auth.ts` `requireBrain` (contrato §1): 404 en `single`, 429 por IP, 401 uniforme, slug o id, 403 suspendida, ámbito `{organizationId, deploymentId, slug}`
-- [ ] T011 Pruebas: credencial de A con cabecera B; de B con A; derivada con otro despliegue; secreto maestro crudo; despliegue pausado; negocio sin cerebro; reasignado (D1 → D2); slug viejo vs id; cuerpo 401 idéntico en todos
-- [ ] T012 Guardia estática: toda ruta en `src/app/api/brains/**` llama `requireBrain` y no usa `resolveInstanceOrg`; prueba de `/api/brains/*` = 404 vacío en `single`
+- [x] T010 `src/server/brains/auth.ts` `requireBrain` (contrato §1): 404 en `single`, 429 por IP, 401 uniforme, slug o id, 403 suspendida, ámbito `{organizationId, deploymentId, slug}`
+- [x] T011 Pruebas: credencial de A con cabecera B; de B con A; derivada con otro despliegue; secreto maestro crudo; despliegue pausado; negocio sin cerebro; reasignado (D1 → D2); slug viejo vs id; cuerpo 401 idéntico en todos
+- [x] T012 Guardia estática: toda ruta en `src/app/api/brains/**` llama `requireBrain` y no usa `resolveInstanceOrg`; prueba de `/api/brains/*` = 404 vacío en `single`
 
 ### F3 Núcleo compartido (D5)
-- [ ] T013 Extraer a `src/server/bot/nucleo/` la lógica de `context`, `messages`, `ficha`, `stage`, `handoff`, `typing`, `media`, `availability`, `bookings` con `organizationId` explícito; `/api/bot/*` delega
+- [x] T013 Extraer a `src/server/bot/nucleo/` la lógica de `context`, `messages`, `ficha`, `stage`, `handoff`, `typing`, `media`, `availability`, `bookings` con `organizationId` explícito; `/api/bot/*` delega
 - [ ] T014 `[local]` Suite completa sin cambiar ninguna expectativa de `/api/bot/*` ni el cuerpo gemelo de la 021 (SC-001) — commit del Bloque 1
 
 ## Bloque 2 — Superficie y despacho (F4–F5)
