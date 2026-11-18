@@ -106,3 +106,19 @@ lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
 - **Nea**: rama `feat/070-cerebro-multiorg` con `RUTAS["/api/bot/stage"]` y
   `tests/test_brains_gemelo.py` (mismos vectores que
   `cerebros-070-gemelo.test.ts`).
+
+## Auditoría 070 (`../../../AUDITORIA-070.md`)
+
+Remediada en `feat/070-cerebro-multiorg` de ambos repos (antes del merge):
+
+- [x] T046 C-1 — Nea: `CrmRechazo` (401/403 terminales en `multiorg`, fuera de
+  la cola sin handoff) · CRM: fallos de cerebro por (IP, organización)
+- [x] T047 A-1..A-12 (IP real y tope de llaves, SSRF, URL con ruta + Editar,
+  candado de respuestas, BYOK en la UI, `withBrain`, tope de `llm`, Blueprint
+  con cerebro pausado, tarjeta «Pausado», caché de salud por URL, lease al
+  anotar el despliegue)
+- [x] T048 M-1..M-11 + migración `0030_cerebros_indices` (3 índices + `CHECK`)
+- [x] T049 B-1..B-7
+- [x] T050 Pruebas de regresión: `tests/unit/auditoria-070-puerta.test.ts`,
+  `auditoria-070-rutas.test.ts`, casos nuevos del worker; Nea
+  `tests/test_brains_rechazo.py`

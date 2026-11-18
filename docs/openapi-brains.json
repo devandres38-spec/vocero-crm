@@ -3,7 +3,7 @@
   "info": {
     "title": "Aliantis — API de cerebros (/api/brains/*)",
     "version": "2.10.0",
-    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md."
+    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre."
   },
   "components": {
     "securitySchemes": {
@@ -127,10 +127,13 @@
             "description": "not_found"
           },
           "409": {
-            "description": "ai_paused | sandbox_violation | message_limit | cerebro_reasignado"
+            "description": "ai_paused | sandbox_violation | message_limit | cerebro_reasignado (también si el despacho no anotó despliegue)"
           },
           "422": {
-            "description": "invalid_body | despacho_desconocido | fuera_de_ventana"
+            "description": "invalid_body | despacho_desconocido (no existe, otra conversación, no en_vuelo/entregado, > 24 h) | fuera_de_ventana"
+          },
+          "403": {
+            "description": "organizacion_suspendida"
           }
         }
       }
@@ -141,6 +144,9 @@
         "responses": {
           "200": {
             "description": "Ficha completa"
+          },
+          "409": {
+            "description": "ai_paused"
           }
         }
       }
@@ -216,6 +222,15 @@
           },
           "504": {
             "description": "proveedor_sin_respuesta"
+          },
+          "400": {
+            "description": "stream_no_soportado"
+          },
+          "413": {
+            "description": "payload_too_large (> 25 MB)"
+          },
+          "415": {
+            "description": "content_type (debe ser application/json)"
           }
         }
       }
@@ -257,7 +272,7 @@
             "description": "{ ok: true, booking: { id, bookingId, label, meetingLink, linkPending } }"
           },
           "409": {
-            "description": "slot_taken | slot_not_offered (con slots)"
+            "description": "slot_taken | slot_not_offered (con slots) | ai_paused"
           }
         }
       },
@@ -305,7 +320,7 @@
             "description": "not_found"
           },
           "409": {
-            "description": "confirmation_required | stale_selection"
+            "description": "confirmation_required | stale_selection | ai_paused | idempotency_key_reused"
           }
         }
       }

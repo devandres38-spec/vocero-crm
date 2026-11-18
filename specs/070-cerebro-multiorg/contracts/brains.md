@@ -117,3 +117,26 @@ atiende como una normal (Nea nunca la envía si el CRM no llamó
 | Cuerpo `multi` + firma | `tests/unit/brains-despacho-gemelo.test.ts` | `tests/test_brains_gemelo.py` (nuevo) |
 | `conversation.deleted` + firma | ídem | ídem |
 | Tabla de rutas del cliente | `tests/unit/brains-rutas.test.ts` (rutas que existen) | `tests/test_brains_gemelo.py` (`RUTAS` ⊆ rutas del CRM) |
+
+## 7. Auditoría 070 (AUDITORIA-070.md) — lo que cambió del contrato
+
+Aditivo para un cerebro que ya cumplía; más estricto para uno que no:
+
+- **401/403 son terminales** para el cerebro (C-1): no reintentar ni pedir
+  handoff con esa credencial. Los fallos se cuentan por (IP, organización):
+  20 en 10 min → 429 para ESA organización; tope por IP 300.
+- **`messages`** (A-6): el `dispatchId` debe estar `en_vuelo` o `entregado`
+  y haberse entregado a ESTE despliegue (`null` también → 409
+  `cerebro_reasignado`). Reintentos simultáneos del mismo texto se
+  serializan (A-4). Negocio suspendido al enviar → **403**
+  `organizacion_suspendida` (M-11).
+- **`ficha`, `book` (POST/PATCH) y `cancel`** con la IA en pausa → **409
+  `ai_paused`** (M-5).
+- **`cancel`**: misma `idempotencyKey` usada para otra acción → 409
+  `idempotency_key_reused` (M-4). La selección vence a los 30 min (B-5).
+- **`PATCH /agenda/book`** con `slot_taken` trae `slots` frescos (M-6).
+- **`llm`** (A-8): `Content-Type: application/json` (si no, 415), cuerpo ≤ 25 MB
+  (si no, 413), `stream: true` → 400 `stream_no_soportado`.
+- **Cualquier error no controlado** → `500 {"error":{"code":"internal"}}` (A-7).
+- **Topes** (M-11): `conversationId` ≤ 128, `startUtc` ≤ 64, `notes` ≤ 1000;
+  `reason` del handoff se recorta a 200 (no se rechaza).

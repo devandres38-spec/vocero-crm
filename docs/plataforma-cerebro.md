@@ -25,8 +25,12 @@ En Coolify (o donde corra), una Nea de la rama/versión de la 070 con:
 
 ## 2. Registrar el cerebro en `/platform/cerebros`
 
-1. **Registrar**: nombre y URL de despacho (`http://nea:8000/vocero/dispatch`).
-   La URL de salud es opcional (por defecto, `/health` del mismo origen).
+1. **Registrar**: nombre y URL de despacho **con su ruta**
+   (`http://nea:8000/vocero/dispatch`; sin ruta se rechaza). La URL de salud
+   es opcional (por defecto, `/health` del mismo origen) y debe estar en el
+   mismo origen. No se aceptan `localhost`, `127.0.0.0/8`, link-local ni
+   metadatos de nube; sí las redes privadas de Docker/Coolify. Un cerebro mal
+   escrito se corrige con **Editar**.
 2. El CRM genera el secreto y lo muestra **una sola vez**: cópialo a
    `CRM_BRAIN_SECRET` de Nea y redespliégala. Si Nea ya tiene uno, activa
    «Pegar un secreto existente» (mínimo 32 caracteres).

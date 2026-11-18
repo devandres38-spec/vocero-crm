@@ -33,6 +33,42 @@ Cerebro multi-organización (spec 070): en modo plataforma, **una Nea
 - **Nea**: necesita la rama 070 (`move_stage` sale por `/api/brains/stage`);
   con una anterior, el agente contesta pero no mueve etapas.
 
+### Auditoría de la 070 (antes de publicar)
+
+Remediación de `AUDITORIA-070.md` (1 crítico, 12 altos, 11 medios, 7 bajos):
+
+- **Un negocio reasignado ya no tumba a los demás** (C-1): Nea `multiorg`
+  trata un 401/403 como terminal (sin bucle ni handoff) y el CRM cuenta los
+  fallos de cerebro por (IP, organización), en llaves propias.
+- **Límites de tasa con la IP real** (A-1): `X-Forwarded-For` se lee desde la
+  derecha (`TRUSTED_PROXY_HOPS`, por defecto 1) y el limitador tiene un tope
+  duro de llaves. **Cambio visible**: detrás de más de un proxy de confianza,
+  pon `TRUSTED_PROXY_HOPS`.
+- **SSRF** (A-2): la URL de un cerebro no puede apuntar a loopback,
+  link-local/metadatos de nube ni `0.0.0.0/8` (también como IPv6 mapeada), se
+  verifica la IP resuelta antes de conectar, y la de salud va en el mismo
+  origen. Las redes privadas (Docker, RFC 1918) siguen permitidas.
+- **La URL de despacho exige ruta** (`…/vocero/dispatch`) y el panel tiene
+  **Editar** (A-3).
+- **Sin envíos dobles** (A-4): los reintentos simultáneos de una respuesta se
+  serializan con un candado de Postgres. Solo se responde a despachos
+  `en_vuelo`/`entregado` de ESE cerebro (A-6).
+- **BYOK también en la UI** (A-5): en modo plataforma, `OPENROUTER_*` no cuenta
+  ni se muestra en Ajustes → IA, Agente ni onboarding.
+- **Errores con sobre JSON** (A-7, `withBrain`), `/api/brains/llm` con tope de
+  25 MB, solo JSON y sin `stream` (A-8), Blueprint idempotente con el cerebro
+  pausado (A-9), tarjeta «Pausado» (A-10), caché de `/health` por URL (A-11),
+  despliegue anotado solo con el lease (A-12).
+- Medios: caché del secreto con versión y época (M-1), bloqueos al asignar y
+  borrar (M-2), migración `0030_cerebros_indices` con 3 índices y un `CHECK`
+  (M-3, B-3), `cancel` serializado (M-4), sin tocar ficha ni citas con la IA en
+  pausa (M-5), alternativas al reprogramar (M-6), `chatJson` sin organización
+  (M-7), `Origin` del panel en los endpoints de cerebros (M-8), UX del panel
+  (M-9), despachos vencidos y avisos de borrado (M-10), topes y 403 (M-11).
+- Bajos: GCM con tamaños fijos (B-1), `no-store` en el secreto (B-2), tope en
+  «Probar» (B-3), organización en los `UPDATE` (B-4), selección que vence
+  (B-5), `OPENROUTER_AUDIO_MODEL` (B-6).
+
 ### Qué trae
 
 - **Cerebros** (`/platform/cerebros`): registrar, probar `/health`, rotar el
