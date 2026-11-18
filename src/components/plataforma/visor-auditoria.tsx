@@ -38,6 +38,8 @@ export const NOMBRE_ACCION: Record<string, string> = {
   blueprint_aplicado: "Blueprint aplicado",
   blueprint_exportado: "Blueprint leído",
   icono_cambiado: "Logo cambiado",
+  pase_emitido: "Pase de entrada emitido",
+  pase_canjeado: "Entró a un negocio",
   token_creado: "Token creado",
   token_revocado: "Token revocado",
   token_rechazado: "Token rechazado",

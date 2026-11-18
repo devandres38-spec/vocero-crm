@@ -5,6 +5,8 @@ import { DirectorioNegocios } from "@/components/plataforma/directorio-negocios"
 import { EncabezadoPagina } from "@/components/plataforma/shell-plataforma";
 import { listarOrganizaciones } from "@/server/platform/organizaciones";
 import { listarAccesos } from "@/server/platform/soporte";
+import { requirePlataformaPagina } from "@/server/platform/guardia";
+import { negociosConAcceso } from "@/server/platform/pase";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +16,8 @@ export const dynamic = "force-dynamic";
  * búsqueda, filtro y avatares con el color de cada marca.
  */
 export default async function PlatformHome() {
-  const [orgs, accesos] = await Promise.all([listarOrganizaciones(), listarAccesos(200)]);
+  const actor = await requirePlataformaPagina();
+  const [orgs, accesos, puede] = await Promise.all([listarOrganizaciones(), listarAccesos(200), negociosConAcceso(actor.userId)]);
   const conSoporte = new Set(accesos.filter((a) => a.vigente).map((a) => a.organizationId));
   const activos = orgs.filter((o) => o.status === "activa").length;
 
@@ -50,6 +53,7 @@ export default async function PlatformHome() {
           atribucion: o.modulos.atribucion,
           canales: o.modulos.channels,
           soporteVigente: conSoporte.has(o.id),
+          acceso: puede.has(o.id),
         }))}
       />
     </>

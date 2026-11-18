@@ -26,7 +26,9 @@ Corre en **staging** con DNS y certificado comodín; no en el equipo local.
    el manifest del subdominio lleva la marca del negocio y el de la raíz no.
 6. **Módulos**: agenda apagada en A → `/api/calendar/settings` 404.
 7. **Suspensión**: 403 `organizacion_suspendida`; al reactivar vuelve.
-8. **Soporte**: sin acceso 404; un token no abre accesos; motivo corto 422;
+8. **Soporte**: cookies de un host (la sesión de la raíz no llega al
+   subdominio: 401); sin acceso no hay pase (403); con acceso, `POST /api/pase`
+   → canje en el subdominio (302 a `/`), de un solo uso; sin acceso 404; un token no abre accesos; motivo corto 422;
    `lectura` lee y no escribe (`solo_lectura`); credenciales vetadas;
    `configuracion` cambia el agente y no crea contactos (`fuera_de_alcance`);
    al cerrar, 404 otra vez; la auditoría lo registra.

@@ -94,6 +94,8 @@ export type AccesoSoporte = {
   organizationId: string;
   organizacion: string;
   actor: string;
+  /** Quién lo abrió (id): solo esa persona puede entrar con él. */
+  actorId: string;
   level: "lectura" | "configuracion";
   reason: string;
   createdAt: string;
@@ -108,6 +110,7 @@ function publico(
     organizationId: string;
     organizacion: string;
     actor: string;
+    actorId: string;
     level: "lectura" | "configuracion";
     reason: string;
     createdAt: Date;
@@ -130,6 +133,7 @@ const columnas = {
   organizationId: schema.supportGrant.organizationId,
   organizacion: schema.organization.name,
   actor: schema.user.email,
+  actorId: schema.supportGrant.platformUserId,
   level: schema.supportGrant.level,
   reason: schema.supportGrant.reason,
   createdAt: schema.supportGrant.createdAt,
@@ -180,4 +184,22 @@ export async function hayAccesoVigente(organizationId: string, ahora: Date = new
     )
     .limit(1);
   return filas.length > 0;
+}
+
+/**
+ * 069 (staging) — Los negocios a los que ESTA persona tiene hoy un acceso de
+ * soporte vigente (para decidir si «Abrir negocio» entra o pide soporte).
+ */
+export async function organizacionesConSoporteVigente(userId: string, ahora: Date = new Date()): Promise<Set<string>> {
+  const filas = await getDb()
+    .select({ organizationId: schema.supportGrant.organizationId })
+    .from(schema.supportGrant)
+    .where(
+      and(
+        eq(schema.supportGrant.platformUserId, userId),
+        isNull(schema.supportGrant.revokedAt),
+        gt(schema.supportGrant.expiresAt, ahora)
+      )
+    );
+  return new Set(filas.map((f) => f.organizationId));
 }

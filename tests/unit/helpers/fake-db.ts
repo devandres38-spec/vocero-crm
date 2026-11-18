@@ -64,7 +64,11 @@ export function crearFakeDb() {
     delete: (tabla: unknown) => ({
       where: () => {
         escrituras.push({ op: "delete", tabla, valores: {} });
-        return Object.assign(Promise.resolve(), { returning: () => Promise.resolve([{}]) });
+        // Por defecto «borró una fila»; una prueba puede encolar otra respuesta
+        // con `responder("delete:returning", filas)`.
+        const cola = respuestas.get("delete:returning");
+        const filas = cola && cola.length > 0 ? cola.shift()! : [{}];
+        return Object.assign(Promise.resolve(), { returning: () => Promise.resolve(filas) });
       },
     }),
     execute: () => Promise.resolve(),

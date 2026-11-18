@@ -69,11 +69,19 @@ SOLO correos de `PLATFORM_ADMIN_EMAILS` (y aceptaciones de invitación); al
 crearse uno, se inserta en `platform_admin`. Quitar un correo de la variable no
 revoca (la tabla manda).
 
-**D3 — Una sesión para todos los subdominios; el host manda.** *(aprobada)* En `multi`,
-`advanced.crossSubDomainCookies = { enabled: true, domain: dominioBase() }` y
-`trustedOrigins` con `https://*.${dominioBase()}` (R1). La organización de CADA
-petición se resuelve por su host (FR-010) y se valida contra la membresía;
-`session.activeOrganizationId` solo decide en el dominio raíz.
+**D3 — Cookies de un host; el host manda.** *(revisada tras staging)* La versión
+inicial compartía la cookie (`crossSubDomainCookies` en el dominio base). En
+staging: la sesión de un dueño en `{slug}.<base>` pisaba la del Super-Admin en la
+raíz, y en dominios de la Public Suffix List (`*.sslip.io`) el navegador rechaza
+`Domain=` compartido. Ahora cada host tiene su cookie; `trustedOrigins` sigue con
+`{protocolo}//*.dominio` (R1). Para entrar a un negocio desde la raíz (`/empresas`,
+«Abrir negocio», «Entrar» de soporte) la raíz emite un **pase** de un solo uso
+(`server/platform/pase.ts`: HMAC con `BETTER_AUTH_SECRET`, ≤ 60 s, atado al host,
+nonce en `verification` borrado al canjear, acceso re-verificado) que el
+subdominio canjea en `/api/auth/pase/canjear` (plugin de Better Auth) creando la
+sesión de ese host. La organización de CADA petición se resuelve por su host
+(FR-010) y se valida contra la membresía; `session.activeOrganizationId` solo
+decide en el dominio raíz.
 
 **D4 — Un solo resolvedor de contexto.** *(aprobada)* `src/server/tenant/contexto.ts`:
 `resolverContexto(headers)` → `{ kind: "organizacion", organizationId, role,

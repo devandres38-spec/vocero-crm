@@ -20,6 +20,8 @@ export const ACCIONES_AUDITORIA = [
   "blueprint_aplicado",
   "blueprint_exportado",
   "icono_cambiado",
+  "pase_emitido",
+  "pase_canjeado",
   "token_creado",
   "token_revocado",
   "token_rechazado",

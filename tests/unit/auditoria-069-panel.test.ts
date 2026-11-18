@@ -90,6 +90,7 @@ describe("Fix-D — directorio", () => {
     atribucion: false,
     canales: ["whatsapp"],
     soporteVigente: false,
+    acceso: false,
     ...o,
   });
   const xs = [

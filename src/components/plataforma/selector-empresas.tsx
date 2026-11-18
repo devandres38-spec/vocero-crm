@@ -1,6 +1,7 @@
 "use client";
 
-import { urlDeNegocio, type RaizPlataforma } from "@/lib/tenancy";
+import type { RaizPlataforma } from "@/lib/tenancy";
+import { BotonEntrarNegocio } from "@/components/plataforma/boton-entrar-negocio";
 import { useState } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/auth/client";
@@ -8,9 +9,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BotonSalir } from "@/components/plataforma/boton-salir";
 
-type Empresa = { organizationId: string; name: string; slug: string | null; role: string; suspendida: boolean };
+type Empresa = {
+  organizationId: string;
+  name: string;
+  slug: string | null;
+  role: string;
+  suspendida: boolean;
+};
 
-const ROL: Record<string, string> = { owner: "Dueño", admin: "Administrador", member: "Equipo" };
+const ROL: Record<string, string> = {
+  owner: "Dueño",
+  admin: "Administrador",
+  member: "Equipo",
+};
 
 /** 069 (US3) — Elegir empresa sin cerrar sesión. */
 export function SelectorEmpresas({
@@ -26,7 +37,9 @@ export function SelectorEmpresas({
 
   async function activar(organizationId: string) {
     setError(null);
-    const { error: err } = await authClient.organization.setActive({ organizationId });
+    const { error: err } = await authClient.organization.setActive({
+      organizationId,
+    });
     if (err) {
       setError("No se pudo cambiar de empresa.");
       return;
@@ -42,12 +55,16 @@ export function SelectorEmpresas({
       <CardContent className="space-y-4 text-sm">
         {empresas.length === 0 ? (
           <p className="text-text-2">
-            Aún no perteneces a ningún negocio. Abre el enlace de invitación que te enviaron.
+            Aún no perteneces a ningún negocio. Abre el enlace de invitación que
+            te enviaron.
           </p>
         ) : (
           <ul className="divide-y">
             {empresas.map((e) => (
-              <li key={e.organizationId} className="flex items-center justify-between gap-3 py-2.5">
+              <li
+                key={e.organizationId}
+                className="flex items-center justify-between gap-3 py-2.5"
+              >
                 <div className="min-w-0">
                   <p className="truncate font-medium">{e.name}</p>
                   <p className="text-xs text-text-3">
@@ -56,12 +73,12 @@ export function SelectorEmpresas({
                   </p>
                 </div>
                 {e.suspendida ? null : raiz && e.slug ? (
-                  <a
-                    href={urlDeNegocio(raiz, e.slug)}
-                    className="rounded-md bg-brand px-3 py-1.5 text-xs font-medium text-brand-fg"
-                  >
-                    Entrar
-                  </a>
+                  <BotonEntrarNegocio
+                    organizationId={e.organizationId}
+                    acceso
+                    etiqueta="Entrar"
+                    className="border-transparent bg-brand text-brand-fg hover:border-transparent hover:bg-brand-hover"
+                  />
                 ) : (
                   <Button size="sm" onClick={() => activar(e.organizationId)}>
                     Entrar
@@ -72,7 +89,10 @@ export function SelectorEmpresas({
           </ul>
         )}
         {superAdmin && (
-          <Link href="/platform" className="block text-accent underline underline-offset-4">
+          <Link
+            href="/platform"
+            className="block text-accent underline underline-offset-4"
+          >
             Ir al panel de la plataforma
           </Link>
         )}

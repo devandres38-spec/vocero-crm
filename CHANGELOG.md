@@ -56,9 +56,10 @@ que `single` no usa.
 ### Nuevo
 
 - **Modo plataforma** (`TENANCY=multi`): cada negocio en
-  `{slug}.PLATFORM_BASE_DOMAIN`, una sesión para todos los subdominios y la
-  organización decidida por el host en cada petición, validada contra la
-  membresía. Nunca «la primera organización» (guardarraíl).
+  `{slug}.PLATFORM_BASE_DOMAIN`, con la sesión de cada host por separado
+  (la raíz y los negocios no se pisan; funciona en `*.sslip.io`) y un pase de
+  un solo uso para entrar a un negocio desde la raíz; la organización la
+  decide el host en cada petición, validada contra la membresía. Nunca «la primera organización» (guardarraíl).
 - **Panel de agencia `/platform`**: alta de negocios con asistente (negocio,
   región, marca, módulos, pipeline, agente y conocimiento, agenda, dueño),
   detalle con módulos y editor del Blueprint, suspender/reactivar, soporte,

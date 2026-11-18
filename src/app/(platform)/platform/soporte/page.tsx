@@ -1,4 +1,4 @@
-import { raizPlataforma } from "@/lib/tenancy";
+import { requirePlataformaPagina } from "@/server/platform/guardia";
 import { GestorSoporte } from "@/components/plataforma/gestor-soporte";
 import { EncabezadoPagina } from "@/components/plataforma/shell-plataforma";
 import { listarOrganizaciones } from "@/server/platform/organizaciones";
@@ -8,14 +8,16 @@ export const dynamic = "force-dynamic";
 
 /**
  * 069 (US5) — Accesos de soporte: pedir uno (nivel, motivo, caducidad) y
- * cerrarlo. Para entrar, se abre el subdominio del negocio mientras dure.
+ * cerrarlo. Para entrar, un pase de un solo uso abre el subdominio del
+ * negocio con sesión (solo quien abrió el acceso, mientras dure).
  */
 export default async function SoportePage({
   searchParams,
 }: {
   searchParams: Promise<{ org?: string }>;
 }) {
-  const [{ org }, orgs, accesos] = await Promise.all([
+  const [actor, { org }, orgs, accesos] = await Promise.all([
+    requirePlataformaPagina(),
     searchParams,
     listarOrganizaciones(),
     listarAccesos(),
@@ -28,7 +30,7 @@ export default async function SoportePage({
       />
       <GestorSoporte
         orgInicial={orgs.some((o) => o.id === org) ? org : undefined}
-        raiz={raizPlataforma()}
+        yo={actor.userId}
         maxHoras={MAX_HORAS_SOPORTE}
         organizaciones={orgs.map((o) => ({
           id: o.id,

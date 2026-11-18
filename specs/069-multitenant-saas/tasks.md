@@ -227,6 +227,14 @@ Bloque 1 — Fix-A (lógica y seguridad) + Fix-B (Blueprint y MCP):
 - [x] T085 Pruebas: `auditoria-069-logica.test.ts` (Fix-A) y `auditoria-069-blueprint.test.ts` (Fix-B, incluida la equivalencia REST ↔ MCP de lo nuevo)
 - [ ] ~~`labTestCases`~~ — **no se incluye**: `agent_test_case` guarda los RESULTADOS de cada corrida del Laboratorio (FK a `agent_test_run`, conversación, veredicto) y las personas son un catálogo en código; no existen casos de prueba definibles que aprovisionar. Casos por nicho necesitan tabla propia y cambio en el runner → 071 (Vertical Packs).
 
+Staging (`169.58.118.66.sslip.io`) — sesión y navegación:
+
+- [x] T094 Cookies de un host (sin `crossSubDomainCookies`): la raíz y `{slug}.<base>` no se pisan; compatible con la Public Suffix List
+- [x] T095 Pase de sesión: `POST /api/pase` (raíz, solo sesión, mismo origen) emite; `GET /api/auth/pase/canjear` (plugin `pasePlataforma`) canjea en el subdominio — HMAC con `BETTER_AUTH_SECRET`, ≤ 60 s, atado al host, un solo uso (`verification`, `DELETE … RETURNING`), acceso re-verificado; auditado `pase_emitido` / `pase_canjeado`
+- [x] T096 `requirePlataformaPagina`: sin sesión → `/login`; con sesión y sin Super-Admin → 404; desde un subdominio → `<raiz>/platform`; fuera de `multi` → 404 (`decidirPaginaPlataforma`, pura)
+- [x] T097 «Abrir negocio» (directorio y ficha), «Entrar» (soporte, solo con accesos propios) y `/empresas`: con membresía o soporte vigente, pase; sin acceso, «Entrar con soporte» → `/platform/soporte?org=…`
+- [x] T098 Pruebas: `pase-sesion.test.ts`
+
 Bloque 2 — Fix-C (panel 100 % editable) + Fix-D (rediseño):
 
 - [x] T086 Layout: `ShellPlataforma` — lateral fijo con isotipo «Aliantis · Plataforma», iconos `lucide-react`, ruta activa, cajón en móvil, tema claro/oscuro (`ThemeToggle`) y salir; `EncabezadoPagina` común

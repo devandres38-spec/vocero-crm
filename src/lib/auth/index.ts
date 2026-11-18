@@ -12,7 +12,8 @@ import {
   sincronizarSuperAdmin,
 } from "@/server/auth/on-signup";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
-import { dominioBase, esPlataforma, origenesDePlataforma, raizPlataforma } from "@/lib/tenancy";
+import { esPlataforma, origenesDePlataforma, raizPlataforma } from "@/lib/tenancy";
+import { pasePlataforma } from "@/lib/auth/pase-plugin";
 
 /**
  * Contexto interno del proceso: permite que el alta de cuentas de equipo
@@ -58,22 +59,18 @@ export function organizationPathBloqueado(path: string): boolean {
 }
 
 /**
- * 069 (D3) — En modo plataforma, UNA sesión para todos los subdominios: la
- * cookie vive en el dominio base y los orígenes `https://*.dominio` son de
- * confianza. Que la cookie se comparta NO decide la organización: la decide
- * el host de cada petición, validado contra la membresía (resolverContexto).
+ * 069 (D3, revisado en staging) — Cookies de UN host. La sesión del
+ * Super-Admin en la raíz y la de un dueño en `{slug}.<base>` conviven en el
+ * mismo navegador sin pisarse, y funciona en dominios de la Public Suffix
+ * List (`*.sslip.io`), donde el navegador rechaza `Domain=` compartido. Para
+ * entrar a un negocio desde la raíz se usa un pase de un solo uso
+ * (`server/platform/pase.ts`). Los orígenes `{protocolo}//*.dominio` siguen
+ * siendo de confianza: cada subdominio habla con su propio Better Auth.
  */
 function opcionesDePlataforma() {
-  const base = dominioBase();
   const raiz = raizPlataforma();
-  if (!esPlataforma() || !base || !raiz) return {};
-  return {
-    // Protocolo y puerto de APP_BASE_URL: staging por HTTP también funciona.
-    trustedOrigins: origenesDePlataforma(raiz),
-    advanced: {
-      crossSubDomainCookies: { enabled: true, domain: base },
-    },
-  };
+  if (!esPlataforma() || !raiz) return {};
+  return { trustedOrigins: origenesDePlataforma(raiz) };
 }
 
 function createAuth() {
@@ -99,7 +96,7 @@ function createAuth() {
       requireEmailVerification: false,
       minPasswordLength: 8,
     },
-    plugins: [organization({ creatorRole: "owner" })],
+    plugins: [organization({ creatorRole: "owner" }), pasePlataforma()],
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         // Rate limit por IP en login/registro (FR-062): 10 / 10 min → 429.

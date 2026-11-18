@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
 import { clientIp } from "@/lib/rate-limit";
-import { esPlataforma } from "@/lib/tenancy";
+import { dominioBase, esPlataforma, raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
+import { hostDeHeaders, slugDelHost } from "@/server/tenant/host";
 import type { Actor } from "@/server/platform/invitaciones";
 import { tokenDeHeaders, verificarToken, type Alcance } from "@/server/platform/tokens";
 import { esSuperAdmin } from "@/server/tenant/consultas";
@@ -67,10 +68,46 @@ export async function requirePlataforma(
   return { ok: true, actor };
 }
 
-/** Para páginas y layouts de `/platform`: 404 si no es Super-Admin. */
+/**
+ * Pura (staging): qué hacer con una página de `/platform` según el modo, el
+ * host, la sesión y el rol.
+ * - Fuera de `multi`: 404 (la superficie no existe).
+ * - Desde el subdominio de un negocio: a `<raiz>/platform` (el panel vive en
+ *   la raíz; las cookies son de un host, la sesión de allá es otra).
+ * - Sin sesión: al login (aquí no hay nada que esconder a quien no entró).
+ * - Con sesión de alguien que no es Super-Admin: 404.
+ */
+export type DecisionPagina = { tipo: "pasar" } | { tipo: "404" } | { tipo: "redirigir"; a: string };
+
+export function decidirPaginaPlataforma(d: {
+  multi: boolean;
+  hostDeNegocio: boolean;
+  urlRaizPlatform: string | null;
+  sesion: boolean;
+  superAdmin: boolean;
+}): DecisionPagina {
+  if (!d.multi) return { tipo: "404" };
+  if (d.hostDeNegocio) return d.urlRaizPlatform ? { tipo: "redirigir", a: d.urlRaizPlatform } : { tipo: "404" };
+  if (!d.sesion) return { tipo: "redirigir", a: "/login" };
+  return d.superAdmin ? { tipo: "pasar" } : { tipo: "404" };
+}
+
+/** Para páginas y layouts de `/platform`. */
 export async function requirePlataformaPagina(): Promise<ActorPlataforma> {
   if (!esPlataforma()) notFound();
-  const actor = await actorDeSesion(await headers());
-  if (!actor) notFound();
-  return actor;
+  const h = await headers();
+  const raiz = raizPlataforma();
+  const hostDeNegocio = slugDelHost(hostDeHeaders(h), dominioBase()).tipo === "organizacion";
+  const s = hostDeNegocio ? null : await getAuth().api.getSession({ headers: h });
+  const superAdmin = s ? await esSuperAdmin(s.user.id) : false;
+  const d = decidirPaginaPlataforma({
+    multi: true,
+    hostDeNegocio,
+    urlRaizPlatform: raiz ? urlDeRaiz(raiz, "/platform") : null,
+    sesion: Boolean(s),
+    superAdmin,
+  });
+  if (d.tipo === "redirigir") redirect(d.a);
+  if (d.tipo === "404" || !s) notFound();
+  return { userId: s.user.id, via: "sesion", ip: clientIp(h), alcances: TODOS };
 }

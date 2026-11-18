@@ -44,11 +44,16 @@ function ok(name, cond, extra = "") {
   }
 }
 
-/** Un cliente con su propio frasco de cookies (una persona = un frasco). */
+/**
+ * Un cliente con su propio frasco de cookies (una persona = un frasco), POR
+ * HOST, como un navegador con cookies de un host: la sesión de la raíz no
+ * viaja a `{slug}.<base>` ni al revés.
+ */
 function cliente() {
-  let cookie = "";
+  const frasco = new Map();
   return async function api(url, opts = {}) {
-    const origin = new URL(url).origin;
+    const { origin, host } = new URL(url);
+    const cookie = frasco.get(host) ?? "";
     const res = await fetch(url, {
       ...opts,
       redirect: "manual",
@@ -60,7 +65,7 @@ function cliente() {
       },
     });
     const set = res.headers.getSetCookie?.() ?? [];
-    if (set.length) cookie = set.map((c) => c.split(";")[0]).join("; ");
+    if (set.length) frasco.set(host, set.map((c) => c.split(";")[0]).join("; "));
     let json = null;
     try {
       json = await res.clone().json();
@@ -112,6 +117,7 @@ const blueprintA = {
   owner: { email: `dueno-${stamp}@e2e.test` },
 };
 let invitacionA = "";
+let idA = "";
 {
   const malo = await conToken(`${BASE}/api/platform/organizations`, post({ ...blueprintA, brand: { accent: "azul" } }));
   ok("Blueprint inválido → 422 con la ruta exacta", malo.res.status === 422 && JSON.stringify(malo.json).includes("brand.accent"));
@@ -122,6 +128,7 @@ let invitacionA = "";
   const r = await conToken(`${BASE}/api/platform/organizations`, post(blueprintA));
   ok("crea el negocio A", r.res.status === 201, `status ${r.res.status} ${JSON.stringify(r.json)}`);
   invitacionA = r.json?.invitation?.url ?? "";
+  idA = r.json?.organizationId ?? "";
   ok("devuelve el enlace de invitación en su subdominio", invitacionA.startsWith(`${orgUrl(SLUG_A)}/invitacion/`), invitacionA);
   const repetido = await conToken(`${BASE}/api/platform/organizations`, post(blueprintA));
   ok("el mismo slug otra vez → 409", repetido.res.status === 409);
@@ -192,13 +199,23 @@ console.log("\n7 · Suspensión");
 console.log("\n8 · Acceso de soporte en dos niveles");
 {
   const sin = await admin(`${orgUrl(SLUG_A)}/api/conversations`);
-  ok("el Super-Admin sin acceso no ve nada (404)", sin.res.status === 404, `status ${sin.res.status}`);
+  ok("cookies de un host: la sesión de la raíz no viaja al subdominio", sin.res.status === 401, `status ${sin.res.status}`);
+  const paseSin = await admin(`${BASE}/api/pase`, post({ organizationId: idA }));
+  ok("sin membresía ni soporte no hay pase (403)", paseSin.res.status === 403, `status ${paseSin.res.status}`);
   const porToken = await conToken(`${BASE}/api/platform/organizations/${SLUG_A}/support`, post({ level: "lectura", reason: "E2E ticket 123", hours: 1 }));
   ok("un token no abre accesos de soporte", porToken.res.status === 404);
   const corto = await admin(`${BASE}/api/platform/organizations/${SLUG_A}/support`, post({ level: "lectura", reason: "corto", hours: 1 }));
   ok("motivo corto → 422", corto.res.status === 422);
   const g = await admin(`${BASE}/api/platform/organizations/${SLUG_A}/support`, post({ level: "lectura", reason: "E2E ticket 123", hours: 1 }));
   ok("abre un acceso de lectura", g.res.status === 201);
+  const pase = await admin(`${BASE}/api/pase`, post({ organizationId: idA }));
+  ok("con soporte vigente: pase al subdominio", pase.res.status === 200 && String(pase.json?.url).startsWith(orgUrl(SLUG_A)));
+  const canje = await admin(pase.json?.url);
+  ok("el canje crea la sesión del subdominio y lleva a /", canje.res.status === 302 && canje.res.headers.get("location")?.endsWith("/"));
+  const otraVez = await extrano(pase.json?.url);
+  ok("el pase es de un solo uso", otraVez.res.headers.get("location")?.endsWith("/login") ?? false);
+  const sinAcceso = await admin(`${orgUrl(SLUG_A)}/api/conversations`);
+  ok("con sesión en el subdominio, el acceso se valida en cada petición", sinAcceso.res.status === 200, `status ${sinAcceso.res.status}`);
   const lee = await admin(`${orgUrl(SLUG_A)}/api/conversations`);
   ok("con acceso: lee", lee.res.status === 200, `status ${lee.res.status}`);
   const escribe = await admin(`${orgUrl(SLUG_A)}/api/agent/profile`, put({ greeting: "hola" }));

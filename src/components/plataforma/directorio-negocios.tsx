@@ -2,11 +2,12 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, ExternalLink, LifeBuoy, Megaphone, Search, Users } from "lucide-react";
+import { CalendarDays, LifeBuoy, Megaphone, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { EstadoBadge } from "@/components/plataforma/estado-badge";
 import { resolveAccentSet } from "@/lib/branding";
-import { urlDeNegocio, type RaizPlataforma } from "@/lib/tenancy";
+import type { RaizPlataforma } from "@/lib/tenancy";
+import { BotonEntrarNegocio } from "@/components/plataforma/boton-entrar-negocio";
 import { Pastillas } from "./formulario/controles";
 
 /** Auditoría 069 (Fix-D) — El directorio de negocios: buscar, filtrar y entrar. */
@@ -24,6 +25,8 @@ export type NegocioDirectorio = {
   atribucion: boolean;
   canales: string[];
   soporteVigente: boolean;
+  /** ¿Quien mira puede entrar ya (miembro o SU soporte vigente)? */
+  acceso: boolean;
 };
 
 type Filtro = "todos" | "activa" | "suspendida";
@@ -114,16 +117,7 @@ export function DirectorioNegocios({ negocios, raiz }: { negocios: NegocioDirect
                 <div className="flex items-center gap-2">
                   <EstadoBadge status={o.status} />
                   {raiz && o.slug && o.status === "activa" && (
-                    <a
-                      href={urlDeNegocio(raiz, o.slug)}
-                      target="_blank"
-                      rel="noreferrer"
-                      title="Abrir el negocio"
-                      aria-label={`Abrir ${o.name}`}
-                      className="rounded-md p-1.5 text-text-3 hover:bg-subtle hover:text-foreground"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </a>
+                    <BotonEntrarNegocio organizationId={o.id} acceso={o.acceso} compacto />
                   )}
                 </div>
               </li>
