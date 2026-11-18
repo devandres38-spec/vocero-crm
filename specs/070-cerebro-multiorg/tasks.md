@@ -1,7 +1,7 @@
 # Tasks: Cerebro multi-organización (`/api/brains/*`)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains.md](contracts/brains.md)
-**Estado**: diseño aprobado (2026-11-17). Bloque 1 (T001–T014) implementado en `feat/070-cerebro-multiorg`; Bloques 2 y 3 pendientes.
+**Estado**: diseño aprobado (2026-11-17). Bloques 1 (T001–T014) y 2 (T015–T027) implementados en `feat/070-cerebro-multiorg`; Bloque 3 pendiente.
 
 Convenciones: `[P]` paralelizable · `[local]` gate de este equipo (typecheck,
 lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
@@ -34,21 +34,21 @@ lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
 ## Bloque 2 — Superficie y despacho (F4–F5)
 
 ### F4 Superficie (US5)
-- [ ] T015 `GET /api/brains/context`: solo `conversationId`; cuerpo de bot + `agent` (+ `coordinationFollowupEnabled:false`) + `knowledge` (`qa`/`block`) + `llm` solo con credencial `source:"org"` activa
-- [ ] T016 `POST /api/brains/messages`: `dispatchId` validado (org + conversación + < 24 h + no `descartado`), 409 `cerebro_reasignado`, idempotencia `brain_reply`, 201, 422 `fuera_de_ventana`, resto de 409 como `/api/bot`
-- [ ] T017 [P] `PUT /ficha`, `POST /stage`, `POST /handoff`, `POST /typing` sobre el núcleo
-- [ ] T018 [P] `GET /api/brains/media/[mediaId]`: adjunto buscado dentro de la organización; streaming
-- [ ] T019 `POST /api/brains/llm/[...ruta]`: proxy con la llave del negocio; prohibido el respaldo del entorno; 402 `sin_credencial`; pausa la credencial ante 401/402 del proveedor (como hoy)
-- [ ] T020 Pruebas por endpoint (camino feliz, errores tipados, formas exactas que lee Nea) y prueba que espía el `fetch` del proxy (token del negocio A, nunca `OPENROUTER_API_TOKEN`)
+- [x] T015 `GET /api/brains/context`: solo `conversationId`; cuerpo de bot + `agent` (+ `coordinationFollowupEnabled:false`) + `knowledge` (`qa`/`block`) + `llm` solo con credencial `source:"org"` activa
+- [x] T016 `POST /api/brains/messages`: `dispatchId` validado (org + conversación + < 24 h + no `descartado`), 409 `cerebro_reasignado`, idempotencia `brain_reply`, 201, 422 `fuera_de_ventana`, resto de 409 como `/api/bot`
+- [x] T017 [P] `PUT /ficha`, `POST /stage`, `POST /handoff`, `POST /typing` sobre el núcleo
+- [x] T018 [P] `GET /api/brains/media/[mediaId]`: adjunto buscado dentro de la organización; streaming
+- [x] T019 `POST /api/brains/llm/[...ruta]`: proxy con la llave del negocio; prohibido el respaldo del entorno; 402 `sin_credencial`; pausa la credencial ante 401/402 del proveedor (como hoy)
+- [x] T020 Pruebas por endpoint (camino feliz, errores tipados, formas exactas que lee Nea) y prueba que espía el `fetch` del proxy (token del negocio A, nunca `OPENROUTER_API_TOKEN`)
 
 ### F5 Despacho (US4)
-- [ ] T021 `destinoDe(orgId)` y `despachoActivoPara(orgId)`; `despacharAlCerebro` añade «tiene destino» en `multi`; en `single` sin cambios
-- [ ] T022 Worker: destino por fila al entregar, `dispatch.brain_deployment_id`, `expiresAt` al final del cuerpo solo en `multi`; sin destino → la fila caduca a humano con motivo legible
-- [ ] T023 `avisarOlvido` al despliegue de la organización de la conversación borrada
-- [ ] T024 Interruptor del agente y tarjeta «Quién responde» en `multi` (D11); `GET /api/agent/brain-status` por organización sin URL ni secreto
-- [ ] T025 Laboratorio en `multi`: conversaciones `is_test` al cerebro asignado; sandbox intacto
-- [ ] T026 Pruebas: cuerpo `multi` + firma fijados (vector gemelo nuevo), olvido firmado con el secreto correcto, suspendida/sin cerebro/pausado/agente apagado no despachan; `single` idéntico
-- [ ] T027 `[local]` gate — commit del Bloque 2
+- [x] T021 `destinoDe(orgId)` y `despachoActivoPara(orgId)`; `despacharAlCerebro` añade «tiene destino» en `multi`; en `single` sin cambios
+- [x] T022 Worker: destino por fila al entregar, `dispatch.brain_deployment_id`, `expiresAt` (creación + 10 min) al final del cuerpo solo en `multi`; sin destino → la fila se descarta (igual que en `single`) y el mensaje queda en la bandeja
+- [x] T023 `avisarOlvido` al despliegue de la organización de la conversación borrada
+- [x] T024 Interruptor del agente y tarjeta «Quién responde» en `multi` (D11); `GET /api/agent/brain-status` por organización sin URL ni secreto
+- [x] T025 Laboratorio en `multi`: conversaciones `is_test` al cerebro asignado; sandbox intacto
+- [x] T026 Pruebas: cuerpo `multi` + firma fijados (vector gemelo nuevo), olvido firmado con el secreto correcto, suspendida/sin cerebro/pausado/agente apagado no despachan; `single` idéntico
+- [x] T027 `[local]` gate — commit del Bloque 2
 
 ## Bloque 3 — Agenda, Blueprint/MCP, aislamiento, cierre (F6–F9)
 

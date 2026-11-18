@@ -43,7 +43,7 @@ también `code` plano). **Excepción**: el 404 de la agenda apagada va **vacío*
 | `POST /handoff` | `{conversationId, reason}` (catálogo `cliente|modelo|error|ventana|hostilidad`) | 200 | 404, 422 |
 | `POST /typing` | `{conversationId}` | 200 | 404 |
 | `GET /media/{mediaId}` | `mediaId` = el del evento | 200 binario + `content-type` | 404 (incluye adjuntos de otra organización) |
-| `POST /llm/{ruta}` | cuerpo OpenAI tal cual (rutas permitidas = las de `/api/bot/llm`) | status y cuerpo del proveedor | 402 `sin_credencial`; 504 `proveedor_sin_respuesta` |
+| `POST /llm/{ruta}` | cuerpo OpenAI tal cual; solo `chat/completions` (otra ruta → 404) | status y cuerpo del proveedor | 402 `sin_credencial`; 504 `proveedor_sin_respuesta` |
 
 ### 2.1 `context`: campos que añade `/api/brains`
 
@@ -57,7 +57,8 @@ también `code` plano). **Excepción**: el 404 de la agenda apagada va **vacío*
 ```
 
 `llm` es `null` si la organización **no** tiene credencial propia activa (nunca
-se ofrece la del entorno). Con `null`, Nea no piensa y pasa a humano
+se ofrece la del entorno). `transcribeModel` va `""` en 070: el CRM no sabe si
+el modelo elegido oye, y Nea prefiere no transcribir antes que inventar. Con `null`, Nea no piensa y pasa a humano
 (`sin_credencial`).
 
 ### 2.2 `messages`: idempotencia y despacho
@@ -94,7 +95,7 @@ Módulo agenda efectivo apagado **en esa organización** → **404 vacío** en t
 al final y solo en `multi`:
 
 ```jsonc
-"expiresAt": "<ISO: createdAt + vida del despacho>"
+"expiresAt": "<ISO: dispatch.createdAt + 10 min (VIDA_DESPACHO_MS)>"
 // sin "capabilities" en 070 (Nea → agenda v1); sin "brainGeneration"
 ```
 
