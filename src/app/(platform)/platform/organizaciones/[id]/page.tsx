@@ -22,6 +22,8 @@ import { techoDeInstancia } from "@/server/modulos/efectivos";
 import { ETAPAS_POR_DEFECTO } from "@/server/platform/catalogo";
 import { detalleOrganizacion } from "@/server/platform/organizaciones";
 import { accesosDeOrganizacion } from "@/server/platform/soporte";
+import { AsignarCerebro } from "@/components/plataforma/asignar-cerebro";
+import { cerebroDeOrganizacion, listarDespliegues } from "@/server/brains/deployment";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +50,11 @@ export default async function DetalleOrganizacionPage({
   // Entrar solo si ya puede (miembro de un negocio activo, o SU soporte
   // vigente, también en uno suspendido — F-03); si no, «Entrar con soporte».
   const puedeEntrar = accesoPermiteEntrar(await accesoANegocio(actor.userId, org.id), org.status);
-  const accesos = await accesosDeOrganizacion(org.id, 5);
+  const [accesos, cerebro, cerebros] = await Promise.all([
+    accesosDeOrganizacion(org.id, 5),
+    cerebroDeOrganizacion(org.id),
+    listarDespliegues(),
+  ]);
   const raiz = raizPlataforma();
   const instancia = getRegion();
   const techo = techoDeInstancia();
@@ -90,6 +96,16 @@ export default async function DetalleOrganizacionPage({
             v={new Date(org.createdAt).toISOString().slice(0, 10)}
           />
         </dl>
+      </Seccion>
+      <Seccion
+        titulo="Cerebro"
+        descripcion="El agente que contesta por este negocio (una Nea multiorg)."
+      >
+        <AsignarCerebro
+          organizationId={org.id}
+          actual={cerebro}
+          opciones={cerebros.map((c) => ({ id: c.id, name: c.name, status: c.status }))}
+        />
       </Seccion>
       <Seccion titulo={`Equipo (${org.equipo.length})`}>
         {org.equipo.length === 0 ? (

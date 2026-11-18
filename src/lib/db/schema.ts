@@ -5,6 +5,8 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
+  type AnyPgColumn,
   text,
   timestamp,
   uniqueIndex,
@@ -103,6 +105,15 @@ export const organization = pgTable("organization", {
     channels?: string[];
     modules?: string[];
   }>(),
+  /**
+   * 070 — El despliegue de cerebro que atiende a ESTE negocio en `multi`
+   * (`src/server/brains/deployment.ts`). `null` = bandeja manual. En `single`
+   * no se lee: manda `BRAIN_DISPATCH_URL`.
+   */
+  brainDeploymentId: text("brain_deployment_id").references(
+    (): AnyPgColumn => brainDeployment.id,
+    { onDelete: "restrict" }
+  ),
 });
 
 export const member = pgTable("member", {
@@ -183,6 +194,34 @@ export const platformApiToken = pgTable("platform_api_token", {
   lastUsedAt: timestamp("last_used_at"),
   revokedAt: timestamp("revoked_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+/**
+ * 070 — Un despliegue de cerebro (una Nea `multiorg`) que atiende a N
+ * negocios. Su secreto firma los despachos y deriva la credencial de cada
+ * organización (`vocero:cerebro:v1`), así que se guarda CIFRADO (el CRM lo
+ * necesita en claro), nunca hasheado. Solo `secretLast4` sale hacia afuera.
+ */
+export const brainDeployment = pgTable("brain_deployment", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  dispatchUrl: text("dispatch_url").notNull(),
+  /** `null` = `{origen de dispatchUrl}/health`. */
+  healthUrl: text("health_url"),
+  secretCipher: text("secret_cipher").notNull(),
+  secretIv: text("secret_iv").notNull(),
+  secretTag: text("secret_tag").notNull(),
+  secretLast4: text("secret_last4").notNull(),
+  status: text("status", { enum: ["activo", "pausado"] })
+    .notNull()
+    .default("activo"),
+  lastHealthAt: timestamp("last_health_at"),
+  lastHealthOk: boolean("last_health_ok"),
+  /** Solo `{status, version, mode, llm, error}`: nada de URLs ni secretos. */
+  lastHealthDetail: jsonb("last_health_detail").$type<Record<string, unknown>>(),
+  createdBy: text("created_by").references((): AnyPgColumn => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
 /** Rastro de toda acción de plataforma (Ley 1581). */
@@ -1352,6 +1391,11 @@ export const dispatch = pgTable(
     messageIds: jsonb("message_ids").$type<string[]>(),
     /** Motivo del último fallo. Nunca el cuerpo firmado ni la llave. */
     lastError: text("last_error"),
+    /** 070 — Qué despliegue recibió este despacho (`multi`). */
+    brainDeploymentId: text("brain_deployment_id").references(
+      () => brainDeployment.id,
+      { onDelete: "set null" }
+    ),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -1380,6 +1424,42 @@ export const dispatch = pgTable(
     // La consulta del worker: pendientes cuya ventana ya venció.
     index("dispatch_status_notbefore_idx").on(t.status, t.notBefore),
   ]
+);
+
+/**
+ * 070 — Respuestas de un cerebro ya aceptadas por `/api/brains/messages`.
+ * Un turno puede mandar varios textos por despacho; un reintento del MISMO
+ * texto devuelve el mensaje ya creado en vez de enviarlo dos veces.
+ */
+export const brainReply = pgTable(
+  "brain_reply",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    dispatchId: text("dispatch_id").notNull(),
+    textHash: text("text_hash").notNull(),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => message.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.dispatchId, t.textHash] })]
+);
+
+/** 070 — Resultado de una operación de agenda v2 por `idempotencyKey`. */
+export const brainOperation = pgTable(
+  "brain_operation",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    action: text("action").notNull(),
+    response: jsonb("response").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.idempotencyKey] })]
 );
 
 /* ============================================================

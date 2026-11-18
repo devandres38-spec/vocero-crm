@@ -25,6 +25,11 @@ const MENSAJES: Record<string, string> = {
   atajo_invalido: "Un atajo de respuesta rápida está vacío o no es válido.",
   atajos_repetidos: "Hay dos respuestas rápidas con el mismo atajo.",
   invitacion_inexistente: "Esa invitación ya no existe.",
+  url_invalida: "La URL debe ser http(s) y no llevar usuario ni clave.",
+  secreto_invalido: "El secreto debe tener al menos 32 caracteres y no llevar espacios.",
+  cerebro_no_encontrado: "Ese cerebro no existe.",
+  cerebro_en_uso: "Ese cerebro atiende negocios: reasígnalos antes de borrarlo.",
+  cerebro_pausado: "Ese cerebro está pausado: reactívalo antes de asignarlo.",
 };
 
 type Issue = { path?: string; message?: string };

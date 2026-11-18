@@ -29,6 +29,15 @@ export const ACCIONES_AUDITORIA = [
   "soporte_revocado",
   "soporte_peticion",
   "acceso_denegado",
+  // 070 — despliegues de cerebro
+  "cerebro_creado",
+  "cerebro_actualizado",
+  "cerebro_secreto_rotado",
+  "cerebro_pausado",
+  "cerebro_reactivado",
+  "cerebro_borrado",
+  "cerebro_asignado",
+  "cerebro_probado",
 ] as const;
 
 export type AccionAuditoria = (typeof ACCIONES_AUDITORIA)[number];
