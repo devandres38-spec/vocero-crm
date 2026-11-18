@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { schema } from "@/lib/db";
 import { auditar } from "@/server/platform/auditoria";
-import { BlueprintError } from "@/server/platform/blueprint/errores";
+import { exigirDespliegueActivo } from "@/server/brains/deployment";
 import type { Actor } from "@/server/platform/invitaciones";
 import type { Tx } from "./metadata";
 
@@ -20,30 +20,19 @@ export async function aplicarCerebro(
   deseado: { deployment: string } | null
 ): Promise<boolean> {
   const destino = deseado?.deployment ?? null;
-  if (destino) {
-    const [d] = await tx
-      .select({ status: schema.brainDeployment.status })
-      .from(schema.brainDeployment)
-      .where(eq(schema.brainDeployment.id, destino))
-      .limit(1);
-    if (!d) {
-      throw new BlueprintError("cerebro_no_encontrado", 422, [
-        { path: "brain.deployment", message: "No existe ese despliegue de cerebro" },
-      ]);
-    }
-    if (d.status !== "activo") {
-      throw new BlueprintError("cerebro_pausado", 422, [
-        { path: "brain.deployment", message: "Ese despliegue está pausado" },
-      ]);
-    }
-  }
   const [org] = await tx
     .select({ actual: schema.organization.brainDeploymentId })
     .from(schema.organization)
     .where(eq(schema.organization.id, organizationId))
     .limit(1);
   const antes = org?.actual ?? null;
+  // Auditoría 070 (A-9): «sin cambios» PRIMERO. `get_blueprint` exporta el
+  // cerebro asignado aunque esté pausado, y re-aplicar ese mismo Blueprint
+  // (o editar otra sección) fallaba con 422 `cerebro_pausado`.
   if (antes === destino) return false;
+  // Solo al asignar uno DISTINTO se exige que exista y esté activo, con su
+  // fila bloqueada hasta confirmar (M-2).
+  if (destino) await exigirDespliegueActivo(tx as never, destino);
   await tx
     .update(schema.organization)
     .set({ brainDeploymentId: destino })

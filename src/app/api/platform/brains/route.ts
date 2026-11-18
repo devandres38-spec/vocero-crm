@@ -27,7 +27,7 @@ const esquemaCrear = z
   .strict();
 
 export async function POST(req: Request): Promise<Response> {
-  const g = await requirePlataforma(req, { soloSesion: true });
+  const g = await requirePlataforma(req, { soloSesion: true, exigirOrigen: true });
   if (!g.ok) return g.response;
   const body = await leerJson(req);
   if (!body.ok) return body.response;
@@ -42,7 +42,11 @@ export async function POST(req: Request): Promise<Response> {
   }
   try {
     const r = await crearDespliegue(g.actor, p.data);
-    return Response.json({ secret: r.secret, deployment: r.despliegue }, { status: 201 });
+    // Auditoría 070 (B-2): lleva el secreto en claro; que nadie lo guarde.
+    return Response.json(
+      { secret: r.secret, deployment: r.despliegue },
+      { status: 201, headers: { "cache-control": "no-store, private" } }
+    );
   } catch (err) {
     return respuestaDeError(err);
   }

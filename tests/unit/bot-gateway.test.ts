@@ -61,7 +61,8 @@ describe("requireBotKey: límites (autentica primero, cuenta después)", () => {
   function desde(ip: string, key?: string): Request {
     return new Request("http://localhost/api/bot/context", {
       headers: {
-        // Primer salto = el cliente; el resto lo agregan los proxies.
+        // Dos proxies de confianza delante (TRUSTED_PROXY_HOPS=2): el
+        // cliente es el segundo desde la derecha (auditoría 070, A-1).
         "x-forwarded-for": `${ip}, 10.0.0.2`,
         ...(key ? { "x-api-key": key } : {}),
       },
@@ -70,6 +71,7 @@ describe("requireBotKey: límites (autentica primero, cuenta después)", () => {
 
   beforeEach(() => {
     vi.stubEnv("BOT_API_KEY", KEY);
+    vi.stubEnv("TRUSTED_PROXY_HOPS", "2");
     resetRateLimit();
   });
   afterEach(() => vi.unstubAllEnvs());

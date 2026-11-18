@@ -14,7 +14,7 @@ const esquema = z.object({ secret: z.string().max(256).nullable().optional() }).
  * direcciones; el nuevo se devuelve UNA vez. Solo con sesión.
  */
 export async function POST(req: Request, ctx: Params): Promise<Response> {
-  const g = await requirePlataforma(req, { soloSesion: true });
+  const g = await requirePlataforma(req, { soloSesion: true, exigirOrigen: true });
   if (!g.ok) return g.response;
   let data: unknown = {};
   const texto = await req.text();
@@ -29,7 +29,11 @@ export async function POST(req: Request, ctx: Params): Promise<Response> {
   if (!p.success) return errorPlataforma(422, "invalid_body", "Datos inválidos");
   try {
     const r = await rotarSecreto(g.actor, (await ctx.params).id, p.data.secret);
-    return Response.json({ secret: r.secret, deployment: r.despliegue });
+    // Auditoría 070 (B-2): lleva el secreto en claro; que nadie lo guarde.
+    return Response.json(
+      { secret: r.secret, deployment: r.despliegue },
+      { headers: { "cache-control": "no-store, private" } }
+    );
   } catch (err) {
     return respuestaDeError(err);
   }

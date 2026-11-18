@@ -4,10 +4,13 @@ import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { esPlataforma } from "@/lib/tenancy";
 import {
+  BRAIN_FALLO_IP_RATE_LIMIT,
+  BRAIN_FALLO_ORG_RATE_LIMIT,
   checkRateLimit,
   clientIp,
+  llaveFalloCerebro,
+  llaveFalloCerebroIp,
   rateLimitExcedido,
-  TOKEN_FALLIDO_RATE_LIMIT,
 } from "@/lib/rate-limit";
 import { credencialDerivada, secretoDeDespliegue } from "@/server/brains/deployment";
 
@@ -23,8 +26,9 @@ import { credencialDerivada, secretoDeDespliegue } from "@/server/brains/deploym
  *   en `multi`).
  * - Todo fallo de credencial es el MISMO 401: no se distingue «no existe esa
  *   organización» de «credencial equivocada» (sin oráculo de slugs).
- * - Cada rechazo cuenta en el limitador por IP de los tokens `alp_`; pasado
- *   el tope, 429 antes de tocar la base.
+ * - Cada rechazo cuenta por (IP, organización) y, más holgado, por IP, en
+ *   llaves propias (no las de los tokens `alp_`); pasado el tope, 429 antes
+ *   de tocar la base (auditoría 070, A-1 y C-1).
  * - Suspendida → 403 DESPUÉS de autenticar (solo quien tiene la credencial
  *   se entera).
  */
@@ -67,18 +71,27 @@ function noAutorizado(): Response {
 export async function requireBrain(req: Request): Promise<ResultadoCerebro> {
   if (!esPlataforma()) return { ok: false, response: new Response(null, { status: 404 }) };
 
+  // Auditoría 070 (A-1, C-1): los fallos se cuentan por (IP, organización)
+  // —todos los negocios de una Nea `multiorg` salen por la MISMA IP, y uno
+  // reasignado no puede tumbar a los demás— más un tope holgado por IP. Y en
+  // llaves propias: no se mezclan con las de los tokens `alp_`.
   const ip = clientIp(req.headers);
-  const llaveFallos = `token-fallido:${ip}`;
-  if (rateLimitExcedido(llaveFallos, TOKEN_FALLIDO_RATE_LIMIT)) {
+  const cabecera = req.headers.get(CABECERA_ORGANIZACION)?.trim() ?? "";
+  const llaveOrg = llaveFalloCerebro(ip, cabecera || "-");
+  const llaveIp = llaveFalloCerebroIp(ip);
+  if (
+    rateLimitExcedido(llaveOrg, BRAIN_FALLO_ORG_RATE_LIMIT) ||
+    rateLimitExcedido(llaveIp, BRAIN_FALLO_IP_RATE_LIMIT)
+  ) {
     return { ok: false, response: apiError(429, "rate_limited", "Demasiados intentos fallidos") };
   }
   const rechazar = (): ResultadoCerebro => {
-    checkRateLimit(llaveFallos, TOKEN_FALLIDO_RATE_LIMIT);
+    checkRateLimit(llaveOrg, BRAIN_FALLO_ORG_RATE_LIMIT);
+    checkRateLimit(llaveIp, BRAIN_FALLO_IP_RATE_LIMIT);
     return { ok: false, response: noAutorizado() };
   };
 
   const credencial = bearer(req);
-  const cabecera = req.headers.get(CABECERA_ORGANIZACION)?.trim() ?? "";
   if (!credencial || !cabecera || cabecera.length > MAX_CABECERA) return rechazar();
 
   const filas = await getDb()
@@ -87,16 +100,24 @@ export async function requireBrain(req: Request): Promise<ResultadoCerebro> {
       slug: schema.organization.slug,
       status: schema.organization.status,
       deploymentId: schema.organization.brainDeploymentId,
+      // M-1: el estado y la versión del despliegue salen de la base en CADA
+      // petición; el secreto en caché solo vale si su versión coincide.
+      despliegueEstado: schema.brainDeployment.status,
+      despliegueVersion: schema.brainDeployment.updatedAt,
     })
     .from(schema.organization)
+    .leftJoin(schema.brainDeployment, eq(schema.brainDeployment.id, schema.organization.brainDeploymentId))
     .where(or(eq(schema.organization.slug, cabecera), eq(schema.organization.id, cabecera)))
     .limit(2);
   // Un slug idéntico al id de OTRA organización sería ambiguo: se rechaza.
   if (filas.length !== 1) return rechazar();
   const org = filas[0]!;
   if (!org.deploymentId) return rechazar();
+  if (org.despliegueEstado != null && org.despliegueEstado !== "activo") return rechazar();
 
-  const despliegue = await secretoDeDespliegue(org.deploymentId);
+  const despliegue = await secretoDeDespliegue(org.deploymentId, {
+    version: org.despliegueVersion ?? undefined,
+  });
   if (!despliegue || despliegue.status !== "activo") return rechazar();
   if (!credencialCoincide(credencial, credencialDerivada(despliegue.secreto, org.id))) {
     return rechazar();

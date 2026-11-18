@@ -5,6 +5,7 @@ import { newId } from "@/lib/db/ids";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { auditar } from "@/server/platform/auditoria";
 import { BlueprintError } from "@/server/platform/blueprint/errores";
+import { hostBloqueado } from "@/server/brains/red";
 
 /**
  * 070 — Despliegues de cerebro (una Nea `multiorg` atiende a N negocios).
@@ -42,7 +43,11 @@ export function generarSecreto(): string {
   return randomBytes(32).toString("base64url");
 }
 
-/** Pura: la URL es http(s) y no lleva usuario ni clave. `null` si no sirve. */
+/**
+ * Pura: la URL es http(s), sin usuario ni clave, y su host no es loopback,
+ * link-local, metadatos de nube ni otra dirección reservada (auditoría 070,
+ * A-2; `src/server/brains/red.ts`). `null` si no sirve.
+ */
 export function urlDeCerebro(raw: string | null | undefined): URL | null {
   if (typeof raw !== "string" || !raw.trim() || raw.length > 2048) return null;
   let u: URL;
@@ -53,7 +58,45 @@ export function urlDeCerebro(raw: string | null | undefined): URL | null {
   }
   if (u.protocol !== "http:" && u.protocol !== "https:") return null;
   if (u.username || u.password) return null;
+  if (hostBloqueado(u.hostname)) return null;
   return u;
+}
+
+export type FalloUrl = { code: "url_invalida" | "url_sin_ruta" | "url_con_query" | "url_otro_origen"; message: string };
+
+/**
+ * Auditoría 070 (A-2, A-3) — La URL de DESPACHO: además de `urlDeCerebro`,
+ * con ruta (registrar `http://nea:8000` a secas pasaba la validación y la
+ * prueba de salud salía verde, pero cada despacho iba a `POST /` → 404) y sin
+ * `?query` ni `#fragmento`.
+ */
+export function revisarUrlDespacho(raw: string): { ok: true; url: URL } | { ok: false; fallo: FalloUrl } {
+  const u = urlDeCerebro(raw);
+  if (!u) {
+    return { ok: false, fallo: { code: "url_invalida", message: "Debe ser una URL http(s) sin usuario ni clave, a un host permitido" } };
+  }
+  if (u.search || u.hash) {
+    return { ok: false, fallo: { code: "url_con_query", message: "La URL de despacho no lleva ?query ni #fragmento" } };
+  }
+  if (u.pathname === "/" || u.pathname === "") {
+    return {
+      ok: false,
+      fallo: { code: "url_sin_ruta", message: "La URL de despacho debe incluir la ruta, por ejemplo http://nea:8000/vocero/dispatch" },
+    };
+  }
+  return { ok: true, url: u };
+}
+
+/** Auditoría 070 (A-2) — La URL de SALUD: válida y del MISMO origen que el despacho. */
+export function revisarUrlSalud(raw: string, despacho: string): { ok: true; url: URL } | { ok: false; fallo: FalloUrl } {
+  const u = urlDeCerebro(raw);
+  if (!u) {
+    return { ok: false, fallo: { code: "url_invalida", message: "Debe ser una URL http(s) sin usuario ni clave, a un host permitido" } };
+  }
+  if (u.origin !== new URL(despacho).origin) {
+    return { ok: false, fallo: { code: "url_otro_origen", message: "La URL de salud debe estar en el mismo origen que la de despacho" } };
+  }
+  return { ok: true, url: u };
 }
 
 /** A dónde preguntar si está sano: la explícita o `{origen del despacho}/health`. */
@@ -115,28 +158,54 @@ export function despliegueVista(f: FilaDespliegue, organizations: number): Despl
  * cambia. Toda escritura de este módulo la invalida en el acto, así que rotar
  * o pausar se nota de inmediato en este proceso.
  */
-const TTL_CACHE_MS = 60_000;
-type EnCache = { secreto: string; status: EstadoDespliegue; hasta: number };
+/**
+ * Auditoría 070 (M-1):
+ * - TTL de 10 s (antes 60): otros procesos (web y worker, réplicas) no ven la
+ *   invalidación de este; es el tope de lo que pueden tardar en enterarse.
+ * - `version` (`updated_at`): quien ya leyó la fila del despliegue en su
+ *   consulta (`requireBrain`) la pasa, y una entrada con otra versión se
+ *   descarta: rotar o pausar se nota en cualquier proceso en la siguiente
+ *   petición, no al vencer el TTL.
+ * - Época por id: una lectura en vuelo que termine DESPUÉS de una
+ *   invalidación no vuelve a guardar el secreto ya revocado.
+ */
+export const TTL_CACHE_MS = 10_000;
+type EnCache = { secreto: string; status: EstadoDespliegue; hasta: number; version: number | null };
 const cache = new Map<string, EnCache>();
+const epoca = new Map<string, number>();
+let epocaGlobal = 0;
+
+const epocaDe = (id: string) => `${epocaGlobal}:${epoca.get(id) ?? 0}`;
 
 export function invalidarCacheCerebro(id?: string): void {
-  if (id) cache.delete(id);
-  else cache.clear();
+  if (id) {
+    cache.delete(id);
+    epoca.set(id, (epoca.get(id) ?? 0) + 1);
+  } else {
+    cache.clear();
+    epocaGlobal++;
+  }
 }
 
 /** El secreto en claro de un despliegue, o `null` si no existe. */
 export async function secretoDeDespliegue(
   id: string,
-  ahora: number = Date.now()
+  opts: { version?: Date; ahora?: number } = {}
 ): Promise<{ secreto: string; status: EstadoDespliegue } | null> {
+  const ahora = opts.ahora ?? Date.now();
+  const versionPedida = opts.version instanceof Date ? opts.version.getTime() : null;
   const c = cache.get(id);
-  if (c && c.hasta > ahora) return { secreto: c.secreto, status: c.status };
+  if (c && c.hasta > ahora && (versionPedida === null || c.version === versionPedida)) {
+    return { secreto: c.secreto, status: c.status };
+  }
+  const epocaAntes = epocaDe(id);
   const [f] = await getDb()
     .select({
       cipher: schema.brainDeployment.secretCipher,
       iv: schema.brainDeployment.secretIv,
       tag: schema.brainDeployment.secretTag,
       status: schema.brainDeployment.status,
+      updatedAt: schema.brainDeployment.updatedAt,
     })
     .from(schema.brainDeployment)
     .where(eq(schema.brainDeployment.id, id))
@@ -146,7 +215,15 @@ export async function secretoDeDespliegue(
     return null;
   }
   const secreto = decryptSecret({ cipher: f.cipher, iv: f.iv, tag: f.tag });
-  cache.set(id, { secreto, status: f.status, hasta: ahora + TTL_CACHE_MS });
+  // Solo se guarda si nadie invalidó mientras se leía.
+  if (epocaDe(id) === epocaAntes) {
+    cache.set(id, {
+      secreto,
+      status: f.status,
+      hasta: ahora + TTL_CACHE_MS,
+      version: f.updatedAt instanceof Date ? f.updatedAt.getTime() : null,
+    });
+  }
   return { secreto, status: f.status };
 }
 
@@ -154,9 +231,9 @@ export async function secretoDeDespliegue(
 
 export type Actor = { userId: string; ip?: string | null; via?: "sesion" | "api" | "mcp"; tokenId?: string | null };
 
-function errorUrl(path: string): BlueprintError {
-  return new BlueprintError("url_invalida", 422, [
-    { path, message: "Debe ser una URL http(s) sin usuario ni clave" },
+function errorUrl(path: string, fallo?: FalloUrl): BlueprintError {
+  return new BlueprintError(fallo?.code ?? "url_invalida", 422, [
+    { path, message: fallo?.message ?? "Debe ser una URL http(s) sin usuario ni clave" },
   ]);
 }
 
@@ -215,10 +292,15 @@ export async function crearDespliegue(
   actor: Actor,
   input: EntradaDespliegue
 ): Promise<{ secret: string; despliegue: DesplieguePublico }> {
-  const despacho = urlDeCerebro(input.dispatchUrl);
-  if (!despacho) throw errorUrl("dispatchUrl");
-  const salud = input.healthUrl ? urlDeCerebro(input.healthUrl) : null;
-  if (input.healthUrl && !salud) throw errorUrl("healthUrl");
+  const rd = revisarUrlDespacho(input.dispatchUrl);
+  if (!rd.ok) throw errorUrl("dispatchUrl", rd.fallo);
+  const despacho = rd.url;
+  let salud: URL | null = null;
+  if (input.healthUrl) {
+    const rs = revisarUrlSalud(input.healthUrl, despacho.toString());
+    if (!rs.ok) throw errorUrl("healthUrl", rs.fallo);
+    salud = rs.url;
+  }
   const secret = input.secret?.trim() || generarSecreto();
   if (!secretoValido(secret)) {
     throw new BlueprintError("secreto_invalido", 422, [
@@ -261,38 +343,60 @@ export async function crearDespliegue(
   };
 }
 
+/**
+ * Editar nombre/URLs y, en la MISMA transacción, pausar o reactivar
+ * (auditoría 070, B-3). La salud se valida contra el despacho final (el
+ * nuevo o el que ya tenía).
+ */
 export async function actualizarDespliegue(
   actor: Actor,
   id: string,
-  input: { name?: string; dispatchUrl?: string; healthUrl?: string | null }
+  input: { name?: string; dispatchUrl?: string; healthUrl?: string | null; status?: EstadoDespliegue }
 ): Promise<DesplieguePublico> {
-  await filaDe(id);
+  const actual = await filaDe(id);
   const cambios: Partial<typeof schema.brainDeployment.$inferInsert> = {};
   if (input.name !== undefined) cambios.name = input.name.trim();
   if (input.dispatchUrl !== undefined) {
-    const u = urlDeCerebro(input.dispatchUrl);
-    if (!u) throw errorUrl("dispatchUrl");
-    cambios.dispatchUrl = u.toString();
+    const r = revisarUrlDespacho(input.dispatchUrl);
+    if (!r.ok) throw errorUrl("dispatchUrl", r.fallo);
+    cambios.dispatchUrl = r.url.toString();
   }
-  if (input.healthUrl !== undefined) {
-    if (input.healthUrl === null || input.healthUrl === "") cambios.healthUrl = null;
-    else {
-      const u = urlDeCerebro(input.healthUrl);
-      if (!u) throw errorUrl("healthUrl");
-      cambios.healthUrl = u.toString();
-    }
+  const despachoFinal = cambios.dispatchUrl ?? actual.dispatchUrl;
+  const saludPedida = input.healthUrl !== undefined ? input.healthUrl : actual.healthUrl;
+  if (saludPedida === null || saludPedida === "") {
+    if (input.healthUrl !== undefined) cambios.healthUrl = null;
+  } else {
+    const r = revisarUrlSalud(saludPedida, despachoFinal);
+    if (!r.ok) throw errorUrl("healthUrl", r.fallo);
+    if (input.healthUrl !== undefined) cambios.healthUrl = r.url.toString();
   }
   const campos = Object.keys(cambios);
-  if (campos.length) {
+  const cambiaEstado = input.status !== undefined && input.status !== actual.status;
+  if (campos.length || cambiaEstado) {
     await getDb().transaction(async (tx) => {
       await tx
         .update(schema.brainDeployment)
-        .set({ ...cambios, updatedAt: new Date() })
+        .set({ ...cambios, ...(cambiaEstado ? { status: input.status } : {}), updatedAt: new Date() })
         .where(eq(schema.brainDeployment.id, id));
-      await auditar(
-        { actorUserId: actor.userId, action: "cerebro_actualizado", via: actor.via, tokenId: actor.tokenId, ip: actor.ip, detail: { deploymentId: id, campos } },
-        tx
-      );
+      if (campos.length) {
+        await auditar(
+          { actorUserId: actor.userId, action: "cerebro_actualizado", via: actor.via, tokenId: actor.tokenId, ip: actor.ip, detail: { deploymentId: id, campos } },
+          tx
+        );
+      }
+      if (cambiaEstado) {
+        await auditar(
+          {
+            actorUserId: actor.userId,
+            action: input.status === "pausado" ? "cerebro_pausado" : "cerebro_reactivado",
+            via: actor.via,
+            tokenId: actor.tokenId,
+            ip: actor.ip,
+            detail: { deploymentId: id },
+          },
+          tx
+        );
+      }
     });
     invalidarCacheCerebro(id);
   }
@@ -356,22 +460,56 @@ export async function cambiarEstadoDespliegue(
 }
 
 /** Solo sin negocios asignados (la FK es RESTRICT; aquí se dice antes y claro). */
-export async function borrarDespliegue(actor: Actor, id: string): Promise<void> {
-  const f = await filaDe(id);
-  const conteo = await contarNegocios();
-  const n = conteo.get(id) ?? 0;
-  if (n > 0) {
-    throw new BlueprintError("cerebro_en_uso", 409, [
-      { path: "id", message: `Atiende a ${n} negocio(s): reasígnalos antes de borrarlo` },
-    ]);
+/** Auditoría 070 (M-2) — ¿Violación de llave foránea (`23503`) de Postgres? */
+export function esViolacionFk(err: unknown): boolean {
+  let e: unknown = err;
+  for (let i = 0; i < 3 && e && typeof e === "object"; i++) {
+    if ((e as { code?: unknown }).code === "23503") return true;
+    e = (e as { cause?: unknown }).cause;
   }
-  await getDb().transaction(async (tx) => {
-    await tx.delete(schema.brainDeployment).where(eq(schema.brainDeployment.id, id));
-    await auditar(
-      { actorUserId: actor.userId, action: "cerebro_borrado", via: actor.via, tokenId: actor.tokenId, ip: actor.ip, detail: { deploymentId: id, name: f.name } },
-      tx
-    );
-  });
+  return false;
+}
+
+function errorEnUso(n?: number): BlueprintError {
+  return new BlueprintError("cerebro_en_uso", 409, [
+    {
+      path: "id",
+      message: n ? `Atiende a ${n} negocio(s): reasígnalos antes de borrarlo` : "Atiende negocios: reasígnalos antes de borrarlo",
+    },
+  ]);
+}
+
+/**
+ * Solo sin negocios asignados. Auditoría 070 (M-2): la fila se bloquea
+ * (`FOR UPDATE`) y el conteo se hace DENTRO de la transacción; si aun así una
+ * asignación se cuela, la FK (RESTRICT) lo impide y se responde 409, no 500.
+ */
+export async function borrarDespliegue(actor: Actor, id: string): Promise<void> {
+  try {
+    await getDb().transaction(async (tx) => {
+      const [f] = await tx
+        .select({ name: schema.brainDeployment.name })
+        .from(schema.brainDeployment)
+        .where(eq(schema.brainDeployment.id, id))
+        .for("update")
+        .limit(1);
+      if (!f) throw new BlueprintError("cerebro_no_encontrado", 404);
+      const [c] = await tx
+        .select({ n: count() })
+        .from(schema.organization)
+        .where(eq(schema.organization.brainDeploymentId, id));
+      const n = Number(c?.n ?? 0);
+      if (n > 0) throw errorEnUso(n);
+      await tx.delete(schema.brainDeployment).where(eq(schema.brainDeployment.id, id));
+      await auditar(
+        { actorUserId: actor.userId, action: "cerebro_borrado", via: actor.via, tokenId: actor.tokenId, ip: actor.ip, detail: { deploymentId: id, name: f.name } },
+        tx
+      );
+    });
+  } catch (err) {
+    if (esViolacionFk(err)) throw errorEnUso();
+    throw err;
+  }
   invalidarCacheCerebro(id);
 }
 
@@ -379,33 +517,55 @@ export async function borrarDespliegue(actor: Actor, id: string): Promise<void> 
  * Asigna (o quita, con `null`) el cerebro de un negocio. Solo a un despliegue
  * activo: asignar uno pausado dejaría al negocio sin respuesta sin avisar.
  */
+/**
+ * Pura de la transacción (auditoría 070, A-9 y M-2): exige un despliegue que
+ * exista y esté activo, con su fila bloqueada (`FOR SHARE`) hasta confirmar,
+ * para que nadie lo pause ni lo borre a mitad de la asignación.
+ */
+export async function exigirDespliegueActivo(tx: Tx, deploymentId: string): Promise<void> {
+  const [d] = await tx
+    .select({ status: schema.brainDeployment.status })
+    .from(schema.brainDeployment)
+    .where(eq(schema.brainDeployment.id, deploymentId))
+    .for("share")
+    .limit(1);
+  if (!d) {
+    throw new BlueprintError("cerebro_no_encontrado", 422, [
+      { path: "brain.deployment", message: "No existe ese despliegue de cerebro" },
+    ]);
+  }
+  if (d.status !== "activo") {
+    throw new BlueprintError("cerebro_pausado", 422, [
+      { path: "brain.deployment", message: "Ese despliegue está pausado" },
+    ]);
+  }
+}
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+/**
+ * Asigna (o quita, con `null`) el cerebro de un negocio. Solo a un despliegue
+ * activo: asignar uno pausado dejaría al negocio sin respuesta sin avisar.
+ * Reasignar el mismo no exige nada (A-9: «sin cambios» no falla aunque esté
+ * pausado).
+ */
 export async function asignarCerebro(
   actor: Actor,
   organizationId: string,
   deploymentId: string | null
 ): Promise<{ antes: string | null; despues: string | null }> {
-  if (deploymentId) {
-    const f = await filaDe(deploymentId).catch(() => null);
-    if (!f) {
-      throw new BlueprintError("cerebro_no_encontrado", 422, [
-        { path: "brain.deployment", message: "No existe ese despliegue de cerebro" },
-      ]);
-    }
-    if (f.status !== "activo") {
-      throw new BlueprintError("cerebro_pausado", 422, [
-        { path: "brain.deployment", message: "Ese despliegue está pausado" },
-      ]);
-    }
-  }
-  return getDb().transaction(async (tx) => {
-    const [org] = await tx
-      .select({ antes: schema.organization.brainDeploymentId })
-      .from(schema.organization)
-      .where(eq(schema.organization.id, organizationId))
-      .limit(1);
-    if (!org) throw new BlueprintError("organizacion_no_encontrada", 404);
-    const antes = org.antes ?? null;
-    if (antes !== deploymentId) {
+  try {
+    return await getDb().transaction(async (tx) => {
+      const [org] = await tx
+        .select({ antes: schema.organization.brainDeploymentId })
+        .from(schema.organization)
+        .where(eq(schema.organization.id, organizationId))
+        .for("update")
+        .limit(1);
+      if (!org) throw new BlueprintError("organizacion_no_encontrada", 404);
+      const antes = org.antes ?? null;
+      if (antes === deploymentId) return { antes, despues: deploymentId };
+      if (deploymentId) await exigirDespliegueActivo(tx, deploymentId);
       await tx
         .update(schema.organization)
         .set({ brainDeploymentId: deploymentId })
@@ -422,9 +582,17 @@ export async function asignarCerebro(
         },
         tx
       );
+      return { antes, despues: deploymentId };
+    });
+  } catch (err) {
+    // M-2: un borrado concurrente que se coló → 422, no 500.
+    if (esViolacionFk(err)) {
+      throw new BlueprintError("cerebro_no_encontrado", 422, [
+        { path: "brain.deployment", message: "No existe ese despliegue de cerebro" },
+      ]);
     }
-    return { antes, despues: deploymentId };
-  });
+    throw err;
+  }
 }
 
 /** El despliegue asignado a un negocio (solo id, nombre y estado). */

@@ -1,10 +1,5 @@
 import { z } from "zod";
-import {
-  actualizarDespliegue,
-  borrarDespliegue,
-  cambiarEstadoDespliegue,
-  obtenerDespliegue,
-} from "@/server/brains/deployment";
+import { actualizarDespliegue, borrarDespliegue, obtenerDespliegue } from "@/server/brains/deployment";
 import { requirePlataforma } from "@/server/platform/guardia";
 import { errorPlataforma, leerJson, respuestaDeError } from "@/server/platform/http";
 
@@ -34,7 +29,7 @@ const esquema = z
 
 /** Editar nombre/URLs o pausar/reactivar. Solo con sesión. */
 export async function PATCH(req: Request, ctx: Params): Promise<Response> {
-  const g = await requirePlataforma(req, { soloSesion: true });
+  const g = await requirePlataforma(req, { soloSesion: true, exigirOrigen: true });
   if (!g.ok) return g.response;
   const body = await leerJson(req);
   if (!body.ok) return body.response;
@@ -49,12 +44,8 @@ export async function PATCH(req: Request, ctx: Params): Promise<Response> {
   }
   const id = (await ctx.params).id;
   try {
-    const { status, ...resto } = p.data;
-    let d = Object.keys(resto).length
-      ? await actualizarDespliegue(g.actor, id, resto)
-      : await obtenerDespliegue(id);
-    if (status) d = await cambiarEstadoDespliegue(g.actor, id, status);
-    return Response.json({ deployment: d });
+    // B-3: campos y estado en UNA transacción.
+    return Response.json({ deployment: await actualizarDespliegue(g.actor, id, p.data) });
   } catch (err) {
     return respuestaDeError(err);
   }
@@ -62,7 +53,7 @@ export async function PATCH(req: Request, ctx: Params): Promise<Response> {
 
 /** Borrar: solo sin negocios asignados (409 `cerebro_en_uso`). */
 export async function DELETE(req: Request, ctx: Params): Promise<Response> {
-  const g = await requirePlataforma(req, { soloSesion: true });
+  const g = await requirePlataforma(req, { soloSesion: true, exigirOrigen: true });
   if (!g.ok) return g.response;
   try {
     await borrarDespliegue(g.actor, (await ctx.params).id);

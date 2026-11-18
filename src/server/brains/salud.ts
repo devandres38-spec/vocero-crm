@@ -3,6 +3,7 @@ import { getDb, schema } from "@/lib/db";
 import { auditar } from "@/server/platform/auditoria";
 import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { urlDeSalud, type Actor } from "@/server/brains/deployment";
+import { verificarDestino } from "@/server/brains/red";
 
 /**
  * 070 (D13) — «Probar» un despliegue: `GET` a su `/health`.
@@ -119,7 +120,8 @@ export async function consultarSalud(
 export async function probarDespliegue(
   actor: Actor,
   id: string,
-  fetchImpl: typeof fetch = fetch
+  fetchImpl: typeof fetch = fetch,
+  verificar: (url: string) => Promise<string | null> = verificarDestino
 ): Promise<ResultadoSalud> {
   const [f] = await getDb()
     .select({ dispatchUrl: schema.brainDeployment.dispatchUrl, healthUrl: schema.brainDeployment.healthUrl })
@@ -127,7 +129,12 @@ export async function probarDespliegue(
     .where(eq(schema.brainDeployment.id, id))
     .limit(1);
   if (!f) throw new BlueprintError("cerebro_no_encontrado", 404);
-  const r = await consultarSalud(urlDeSalud(f), fetchImpl);
+  // Auditoría 070 (A-2): el host y sus IPs resueltas, justo antes de conectar.
+  const url = urlDeSalud(f);
+  const bloqueo = await verificar(url);
+  const r: ResultadoSalud = bloqueo
+    ? { ok: false, status: null, version: null, mode: null, llm: null, multiorg: false, error: `Destino no permitido (${bloqueo})` }
+    : await consultarSalud(url, fetchImpl);
   const detalle = { status: r.status, version: r.version, mode: r.mode, llm: r.llm, error: r.error };
   await getDb().transaction(async (tx) => {
     await tx

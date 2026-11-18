@@ -21,7 +21,7 @@ const esquema = z.object({ deployment: z.string().trim().min(1).max(64).nullable
 
 /** Asigna (o quita con `null`) el despliegue. Auditado `cerebro_asignado`. */
 export async function PUT(req: Request, ctx: Params): Promise<Response> {
-  const g = await requirePlataforma(req, { scope: "provision" });
+  const g = await requirePlataforma(req, { scope: "provision", exigirOrigen: true });
   if (!g.ok) return g.response;
   const body = await leerJson(req);
   if (!body.ok) return body.response;
