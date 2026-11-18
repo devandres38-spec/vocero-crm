@@ -2,10 +2,17 @@ import { desc } from "drizzle-orm";
 import { apiError, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { isAiConfiguredFor } from "@/lib/ai/provider";
+import { isAiConfiguredFor, resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { leerConfigDespacho } from "@/server/brains/config";
 import { despachoActivoPara } from "@/server/brains/destino";
 import { esPlataforma } from "@/lib/tenancy";
+
+/** 070 — En `multi` el juez solo paga con la llave propia del negocio. */
+async function iaDelNegocio(organizationId: string): Promise<boolean> {
+  return esPlataforma()
+    ? (await resolveAiProviderDeOrganizacion(organizationId)).ok
+    : isAiConfiguredFor(organizationId);
+}
 
 /** 070 — En `multi`, el cerebro asignado a ESTE negocio. */
 async function hayCerebro(organizationId: string): Promise<boolean> {
@@ -44,7 +51,7 @@ export const GET = withAuth(async (session) => {
   });
   return Response.json({
     runs: withDelta,
-    aiConfigured: await isAiConfiguredFor(session.organizationId),
+    aiConfigured: await iaDelNegocio(session.organizationId),
     // 036 — Sin cerebro conectado, la pantalla lo dice en vez de ofrecer correr.
     brainConnected: await hayCerebro(session.organizationId),
   });
@@ -59,7 +66,7 @@ export const POST = withAuth(async (session) => {
       "Conecta tu agente para correr el Laboratorio: prueba al cerebro que contesta a tus clientes"
     );
   }
-  if (!(await isAiConfiguredFor(session.organizationId))) {
+  if (!(await iaDelNegocio(session.organizationId))) {
     return apiError(
       409,
       "ai_not_configured",

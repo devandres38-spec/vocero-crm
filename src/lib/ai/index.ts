@@ -2,6 +2,7 @@ import type { z } from "zod";
 import { chatCompletionsUrl } from "@/lib/ai/presets";
 import {
   resolveAiProvider,
+  resolveAiProviderDeOrganizacion,
   type AiProvider,
   type EstadoIa,
 } from "@/lib/ai/provider";
@@ -52,9 +53,18 @@ export async function chatJson<T>(
      * solo cuenta el entorno: no hay fila que consultar ni que pausar.
      */
     organizationId?: string;
+    /**
+     * 070 — Solo la llave PROPIA de esa organización, sin el respaldo
+     * `OPENROUTER_*` del entorno (el juez del Laboratorio en modo plataforma:
+     * la plataforma no paga las corridas de un negocio sin llave).
+     */
+    soloOrganizacion?: boolean;
   }
 ): Promise<ChatJsonResult<T>> {
-  const resolved = await resolveAiProvider(opts?.organizationId);
+  const resolved =
+    opts?.soloOrganizacion && opts.organizationId
+      ? await resolveAiProviderDeOrganizacion(opts.organizationId)
+      : await resolveAiProvider(opts?.organizationId);
   if (!resolved.ok) {
     return {
       ok: false,

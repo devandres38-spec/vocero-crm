@@ -55,7 +55,7 @@ import { PUT as ficha } from "@/app/api/brains/ficha/route";
 import { POST as etapa } from "@/app/api/brains/stage/route";
 import { POST as handoff } from "@/app/api/brains/handoff/route";
 import { POST as typing } from "@/app/api/brains/typing/route";
-import { conocimientoDe, llmDelCerebro } from "@/server/brains/context";
+import { conocimientoDe, llmDelCerebro, modeloQueOye } from "@/server/brains/context";
 import { hashTexto, VIGENCIA_RESPUESTA_MS } from "@/server/brains/respuestas";
 
 const fake = () => h.fake!;
@@ -155,17 +155,34 @@ describe("GET /api/brains/context", () => {
     expect(JSON.stringify(c)).not.toContain("sk-or-de-la-plataforma");
   });
 
-  it("con la llave propia del negocio: llm por /api/brains/llm, sin transcribir", async () => {
+  it("con la llave propia (proveedor compatible): llm por /api/brains/llm, sin transcribir", async () => {
     h.credencial.mockResolvedValue({
       status: "active",
       tokenLast4: "abcd",
       statusChangedAt: null,
-      baseUrl: "https://openrouter.ai/api/v1",
+      baseUrl: "https://api.openai.com/v1",
       model: "modelo/del-negocio",
       token: "sk-del-negocio",
     });
     expect(await llmDelCerebro("org_A")).toEqual({ path: "/api/brains/llm", model: "modelo/del-negocio", transcribeModel: "" });
     expect(h.credencial).toHaveBeenCalledWith("org_A");
+  });
+
+  it("con llave de OpenRouter: transcribe con el modelo que oye de Nea (pagado por el negocio)", async () => {
+    h.credencial.mockResolvedValue({
+      status: "active",
+      tokenLast4: "abcd",
+      statusChangedAt: null,
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "z-ai/glm-4.6",
+      token: "sk-or-del-negocio",
+    });
+    expect(await llmDelCerebro("org_A")).toEqual({
+      path: "/api/brains/llm",
+      model: "z-ai/glm-4.6",
+      transcribeModel: "google/gemini-3.5-flash-lite",
+    });
+    expect(modeloQueOye("no es url")).toBe("");
   });
 
   it("una llave pausada del negocio no se reemplaza por la del entorno", async () => {

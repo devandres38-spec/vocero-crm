@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
+import { OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import { contextoDeConversacion } from "@/server/bot/nucleo/contexto";
 import { serializeBotProfile } from "@/server/bot/profile";
 
@@ -15,9 +16,26 @@ import { serializeBotProfile } from "@/server/bot/profile";
  * - `knowledge`: pares `qa` y bloques `block`, tal como los aplana Nea.
  * - `llm`: por dónde y con qué modelo piensa. SOLO con la llave propia del
  *   negocio (D6); sin ella, `null`, y Nea no piensa (pasa a una persona).
- *   `transcribeModel` va vacío: el CRM no sabe si el modelo elegido oye, y
- *   Nea prefiere no transcribir antes que inventar una transcripción.
+ *   `transcribeModel`: en `multi` Nea manda el audio DENTRO del chat por
+ *   `/api/brains/llm`, así que hace falta un modelo que oiga ogg/opus (las
+ *   notas de voz de WhatsApp). Con una llave de OpenRouter se usa el mismo
+ *   que Nea trae para eso (`MODELO_QUE_OYE` de `nea-agent/app/config.py`),
+ *   pagado con la llave del negocio. Con otro proveedor, vacío: el chat de
+ *   OpenAI solo acepta wav/mp3, y Nea prefiere no transcribir antes que
+ *   inventar. Elegirlo por negocio es una mejora posterior a la 070.
  */
+
+/** El modelo que oye por OpenRouter (igual que `MODELO_QUE_OYE` de Nea). */
+export const MODELO_QUE_OYE_OPENROUTER = "google/gemini-3.5-flash-lite";
+
+/** Pura: el modelo de transcripción según el proveedor de la llave. */
+export function modeloQueOye(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host === new URL(OPENROUTER_BASE_URL).host ? MODELO_QUE_OYE_OPENROUTER : "";
+  } catch {
+    return "";
+  }
+}
 
 export const RUTA_LLM_CEREBRO = "/api/brains/llm";
 
@@ -26,7 +44,7 @@ export type LlmDelCerebro = { path: string; model: string; transcribeModel: stri
 export async function llmDelCerebro(organizationId: string): Promise<LlmDelCerebro> {
   const ia = await resolveAiProviderDeOrganizacion(organizationId);
   if (!ia.ok || ia.provider.source !== "org" || !ia.provider.model) return null;
-  return { path: RUTA_LLM_CEREBRO, model: ia.provider.model, transcribeModel: "" };
+  return { path: RUTA_LLM_CEREBRO, model: ia.provider.model, transcribeModel: modeloQueOye(ia.provider.baseUrl) };
 }
 
 export type ConocimientoDelCerebro =
