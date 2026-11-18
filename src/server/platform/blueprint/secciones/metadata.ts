@@ -2,11 +2,13 @@ import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { normalizeBranding, type Branding } from "@/lib/branding";
 import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
+import { aparienciaSchema } from "@/lib/temas";
 
 /**
  * 069 — Secciones que viven en la fila de la organización: `organization`
  * (nombre), `region` (`metadata.region`, D9) y `brand` (`metadata.branding`,
- * el mismo que edita Ajustes → Marca; el icono no se toca).
+ * el mismo que edita Ajustes → Marca; el icono no se toca) y `appearance`
+ * (`metadata.apariencia`, la de Ajustes → Apariencia; se reemplaza entera).
  */
 
 type Db = ReturnType<typeof getDb>;
@@ -48,10 +50,11 @@ export async function aplicarMetadata(
   org: OrgParaBlueprint,
   bp: OrganizationBlueprint,
   created: boolean
-): Promise<{ organization: boolean; region: boolean; brand: boolean }> {
+): Promise<{ organization: boolean; region: boolean; brand: boolean; appearance: boolean }> {
   const meta = leerMetadata(org.metadata);
   let region = false;
   let brand = false;
+  let appearance = false;
 
   if (bp.region) {
     const actual = regionGuardada(meta);
@@ -72,19 +75,33 @@ export async function aplicarMetadata(
     if (brand) meta.branding = deseada;
   }
 
+  if (bp.appearance) {
+    const actual = aparienciaGuardada(meta);
+    const deseada = limpiar(bp.appearance);
+    appearance = actual === null || !igual(actual, deseada);
+    if (appearance) meta.apariencia = deseada;
+  }
+
   const nombre = bp.organization?.name;
   const organization = !created && nombre !== undefined && nombre !== org.name;
 
-  if (region || brand || organization) {
+  const metadata = region || brand || appearance;
+  if (metadata || organization) {
     await tx
       .update(schema.organization)
       .set({
         ...(organization ? { name: nombre } : {}),
-        ...(region || brand ? { metadata: JSON.stringify(meta) } : {}),
+        ...(metadata ? { metadata: JSON.stringify(meta) } : {}),
       })
       .where(eq(schema.organization.id, org.id));
   }
-  return { organization, region, brand };
+  return { organization, region, brand, appearance };
+}
+
+/** La apariencia guardada si es válida (sin claves indefinidas), o null. */
+export function aparienciaGuardada(meta: Record<string, unknown>): Record<string, unknown> | null {
+  const r = aparienciaSchema.safeParse(meta.apariencia);
+  return r.success ? limpiar(r.data) : null;
 }
 
 function limpiar<T extends object>(o: T): Partial<T> {

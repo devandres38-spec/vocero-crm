@@ -11,6 +11,7 @@ ambos).
 | 1 — Base + US1 + US2 | T001–T028 | `3784baa` spec · `5425461` base + US1 · `04d76dc` US2 | typecheck ✓ · lint ✓ · Vitest 138 archivos / 1606 pruebas ✓ |
 | 2 — US3 + US7 + US8 | T029–T047 | `f4a5bcf` US3 · `91dccf8` + `b52bfff` US7 · `72f4a76` US8 | typecheck ✓ · lint ✓ · Vitest 142 archivos / 1646 pruebas ✓ |
 | 3 — US5 + US4/US6 + US9 + cierre | T048–T070 | `10a6894` US5 · `c324fe2` US4/US6 · `56f8519` US9 · cierre (docs, E2E, 2.9.0) | typecheck ✓ · lint ✓ · Vitest 146 archivos / 1686 pruebas ✓ |
+| Auditoría 1 — Fix-A + Fix-B | T074–T085 | `99e6d2e` Fix-A (H-01…H-08) · Fix-B (Blueprint + MCP) | typecheck ✓ · lint ✓ · Vitest 148 archivos / 1729 pruebas ✓ |
 
 Antes de la 069: 130 archivos / 1489 pruebas. Ninguna expectativa existente
 cambió (SC-001); solo se añadieron casos.
@@ -204,6 +205,28 @@ Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
 - [ ] T071 Build + E2E (`e2e-plataforma` y los existentes con `TENANCY` vacía y con `multi`) `[CI/staging]`
 - [ ] T072 DNS y certificado comodín verificados en Coolify — **verificación humana** `[CI/staging]`
 - [ ] T073 Marcar 069 como hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T071–T072
+
+---
+
+## Phase 13: Remediación de la auditoría (`../../../AUDITORIA-069.md`)
+
+Bloque 1 — Fix-A (lógica y seguridad) + Fix-B (Blueprint y MCP):
+
+- [x] T074 H-01 `raizPlataforma`/`urlDeRaiz`/`urlDeNegocio`/`origenesDePlataforma` en `lib/tenancy.ts` (protocolo y puerto de `APP_BASE_URL`) en los 7 sitios con `https://` cableado
+- [x] T075 H-02 Super-Admin en la raíz → `/platform` (`server/tenant/inicio.ts`, carga perezosa en `app/page.tsx`); enlace «Plataforma» en el nav
+- [x] T076 H-03 `promoverSuperAdmin`/`sincronizarSuperAdmin`: promoción idempotente también al crear sesión (single → multi), auditada con `origen`
+- [x] T077 H-04 `leerBlueprint` audita `blueprint_exportado` (REST `GET …/blueprint` y MCP `get_blueprint`)
+- [x] T078 H-05 `POST /api/platform/organizations?dryRun=true` con alcance `read`
+- [x] T079 H-06 invitaciones vencidas con `vencida` (insignia «Vencida», botón «Quitar»)
+- [x] T080 H-07 locale del negocio (`localeDeOrganizacion`) en agenda, Citas, contexto de citas, avisos de longitud y el 409 de borrar conversación
+- [x] T081 H-08 `structuredContent` solo con `MCP-Protocol-Version: 2025-06-18` (400 si no soportada); Origin admite el origen exacto de `APP_BASE_URL` (`mcp/origen.ts`)
+- [x] T082 Blueprint `appearance` (`metadata.apariencia`, tema propio con control de contraste) y `quickReplies` (`quick_reply`, merge/exact, atajo normalizado) en contrato, aplicar, exportar y catálogo
+- [x] T083 MCP `revoke_invitation` y `list_audit_log` + REST gemela `GET /api/platform/audit` (`auditoria-consulta.ts`, paginación por cursor)
+- [x] T084 `get_catalog`: presets de color, temas/letras/tamaños/densidades, regiones sugeridas (CO primero), etapas por defecto, reglas de respuestas rápidas, ejemplo mínimo y completo (validados por prueba)
+- [x] T085 Pruebas: `auditoria-069-logica.test.ts` (Fix-A) y `auditoria-069-blueprint.test.ts` (Fix-B, incluida la equivalencia REST ↔ MCP de lo nuevo)
+- [ ] ~~`labTestCases`~~ — **no se incluye**: `agent_test_case` guarda los RESULTADOS de cada corrida del Laboratorio (FK a `agent_test_run`, conversación, veredicto) y las personas son un catálogo en código; no existen casos de prueba definibles que aprovisionar. Casos por nicho necesitan tabla propia y cambio en el runner → 071 (Vertical Packs).
+
+Bloque 2 — Fix-C + Fix-D (panel `/platform` editable y rediseño): pendiente de aprobación.
 
 ---
 

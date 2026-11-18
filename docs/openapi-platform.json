@@ -6,96 +6,448 @@
     "description": "Solo con TENANCY=multi. Autenticación: sesión de Super-Admin (panel) o token personal alp_… (Authorization: Bearer). Sin credenciales válidas la superficie responde 404; un token presentado e inválido, 401; sin el alcance, 403. El JSON Schema completo del OrganizationBlueprint lo devuelve GET /api/platform/catalog (campo `schema`). Errores: { error: { code, message, issues?: [{ path, message }] } }."
   },
   "components": {
-    "securitySchemes": { "token": { "type": "http", "scheme": "bearer", "description": "Token personal alp_…" } },
+    "securitySchemes": {
+      "token": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Token personal alp_…"
+      }
+    },
     "schemas": {
       "Error": {
         "type": "object",
         "properties": {
           "error": {
             "type": "object",
-            "required": ["code", "message"],
+            "required": [
+              "code",
+              "message"
+            ],
             "properties": {
-              "code": { "type": "string" },
-              "message": { "type": "string" },
-              "issues": { "type": "array", "items": { "type": "object", "properties": { "path": { "type": "string" }, "message": { "type": "string" } } } }
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "path": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           }
         }
       },
       "OrganizationBlueprint": {
         "type": "object",
-        "description": "Ver GET /api/platform/catalog → schema. Secciones opcionales: organization, region, brand, modules, pipeline, agent, knowledge, agenda, owner.",
-        "required": ["version"],
-        "properties": { "version": { "const": 1 } }
+        "description": "Ver GET /api/platform/catalog → schema (y examples). Secciones opcionales: organization, region, brand, appearance, modules, pipeline, agent, knowledge, agenda, quickReplies, owner.",
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "const": 1
+          }
+        }
       },
       "Resultado": {
         "type": "object",
         "properties": {
-          "organizationId": { "type": "string" },
-          "slug": { "type": "string" },
-          "created": { "type": "boolean" },
-          "dryRun": { "type": "boolean" },
-          "sections": { "type": "object", "additionalProperties": { "enum": ["creada", "actualizada", "sin_cambios"] } },
-          "warnings": { "type": "array", "items": { "type": "string" } },
-          "invitation": { "type": "object", "properties": { "status": { "enum": ["creada", "pendiente", "ya_miembro", "se_generaria"] }, "url": { "type": "string" }, "expiresAt": { "type": "string" } } }
+          "organizationId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "sections": {
+            "type": "object",
+            "additionalProperties": {
+              "enum": [
+                "creada",
+                "actualizada",
+                "sin_cambios"
+              ]
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "invitation": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "enum": [
+                  "creada",
+                  "pendiente",
+                  "ya_miembro",
+                  "se_generaria"
+                ]
+              },
+              "url": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
     },
     "parameters": {
-      "idOrSlug": { "name": "idOrSlug", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Id (org_…) o slug" },
-      "dryRun": { "name": "dryRun", "in": "query", "schema": { "type": "boolean" }, "description": "Planifica sin escribir" }
+      "idOrSlug": {
+        "name": "idOrSlug",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "Id (org_…) o slug"
+      },
+      "dryRun": {
+        "name": "dryRun",
+        "in": "query",
+        "schema": {
+          "type": "boolean"
+        },
+        "description": "Planifica sin escribir"
+      }
     }
   },
-  "security": [{ "token": [] }],
+  "security": [
+    {
+      "token": []
+    }
+  ],
   "paths": {
     "/api/platform/catalog": {
-      "get": { "summary": "Valores válidos y JSON Schema del Blueprint (alcance read)", "responses": { "200": { "description": "Catálogo" } } }
+      "get": {
+        "summary": "Valores válidos y JSON Schema del Blueprint (alcance read)",
+        "responses": {
+          "200": {
+            "description": "Catálogo"
+          }
+        }
+      }
     },
     "/api/platform/organizations": {
-      "get": { "summary": "Listar negocios (read)", "responses": { "200": { "description": "{ organizations: [...] }" } } },
+      "get": {
+        "summary": "Listar negocios (read)",
+        "responses": {
+          "200": {
+            "description": "{ organizations: [...] }"
+          }
+        }
+      },
       "post": {
         "summary": "Crear un negocio con un Blueprint (provision; con dryRun, read)",
-        "parameters": [{ "$ref": "#/components/parameters/dryRun" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrganizationBlueprint" } } } },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/dryRun"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationBlueprint"
+              }
+            }
+          }
+        },
         "responses": {
-          "201": { "description": "Creado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Resultado" } } } },
-          "200": { "description": "Plan (dryRun)" },
-          "409": { "description": "slug_en_uso", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
-          "422": { "description": "blueprint_invalido / slug_requerido / nombre_requerido", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "201": {
+            "description": "Creado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resultado"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Plan (dryRun)"
+          },
+          "409": {
+            "description": "slug_en_uso",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "blueprint_invalido / slug_requerido / nombre_requerido",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         }
       }
     },
     "/api/platform/organizations/{idOrSlug}": {
-      "get": { "summary": "Detalle de configuración (read). Nunca conversaciones ni contactos.", "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }], "responses": { "200": { "description": "{ organization }" }, "404": { "description": "organizacion_inexistente" } } }
+      "get": {
+        "summary": "Detalle de configuración (read). Nunca conversaciones ni contactos.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ organization }"
+          },
+          "404": {
+            "description": "organizacion_inexistente"
+          }
+        }
+      }
     },
     "/api/platform/organizations/{idOrSlug}/blueprint": {
-      "get": { "summary": "Blueprint vigente (read). Aplicarlo tal cual no cambia nada.", "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }], "responses": { "200": { "description": "OrganizationBlueprint" } } },
+      "get": {
+        "summary": "Blueprint vigente (read). Aplicarlo tal cual no cambia nada.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OrganizationBlueprint"
+          }
+        }
+      },
       "put": {
         "summary": "Aplicar un Blueprint (provision; con dryRun, read). Declarativo e idempotente.",
-        "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }, { "$ref": "#/components/parameters/dryRun" }],
-        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/OrganizationBlueprint" } } } },
-        "responses": { "200": { "description": "Resultado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Resultado" } } } }, "422": { "description": "blueprint_invalido / slug_inmutable" } }
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          },
+          {
+            "$ref": "#/components/parameters/dryRun"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrganizationBlueprint"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resultado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Resultado"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "blueprint_invalido / slug_inmutable"
+          }
+        }
       }
     },
     "/api/platform/organizations/{idOrSlug}/suspend": {
-      "post": { "summary": "Suspender (provision). Idempotente.", "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }], "responses": { "200": { "description": "{ organizationId, status, changed }" } } }
+      "post": {
+        "summary": "Suspender (provision). Idempotente.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ organizationId, status, changed }"
+          }
+        }
+      }
     },
     "/api/platform/organizations/{idOrSlug}/reactivate": {
-      "post": { "summary": "Reactivar (provision). Idempotente.", "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }], "responses": { "200": { "description": "{ organizationId, status, changed }" } } }
+      "post": {
+        "summary": "Reactivar (provision). Idempotente.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ organizationId, status, changed }"
+          }
+        }
+      }
     },
     "/api/platform/organizations/{idOrSlug}/invitations": {
       "post": {
         "summary": "Enlace de invitación de un uso, 7 días (provision). Se muestra una vez.",
-        "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }],
-        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "required": ["email"], "properties": { "email": { "type": "string", "format": "email" }, "role": { "enum": ["owner", "admin", "member"] } } } } } },
-        "responses": { "201": { "description": "{ invitationId, url, expiresAt }" }, "409": { "description": "ya_miembro" } }
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "role": {
+                    "enum": [
+                      "owner",
+                      "admin",
+                      "member"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "{ invitationId, url, expiresAt }"
+          },
+          "409": {
+            "description": "ya_miembro"
+          }
+        }
       }
     },
     "/api/platform/organizations/{idOrSlug}/invitations/{invitationId}": {
-      "delete": { "summary": "Revocar una invitación pendiente (provision)", "parameters": [{ "$ref": "#/components/parameters/idOrSlug" }, { "name": "invitationId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "{ revoked: true }" } } }
+      "delete": {
+        "summary": "Revocar una invitación pendiente (provision)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          },
+          {
+            "name": "invitationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ revoked: true }"
+          }
+        }
+      }
     },
     "/api/platform/mcp": {
-      "post": { "summary": "Servidor MCP (JSON-RPC 2.0, Streamable HTTP sin estado). Solo con PLATFORM_MCP=on y token alp_. Ver docs/plataforma-mcp.md.", "responses": { "200": { "description": "Respuesta JSON-RPC" }, "202": { "description": "Notificación aceptada" }, "401": { "description": "token_invalido" } } }
+      "post": {
+        "summary": "Servidor MCP (JSON-RPC 2.0, Streamable HTTP sin estado). Solo con PLATFORM_MCP=on y token alp_. Ver docs/plataforma-mcp.md.",
+        "responses": {
+          "200": {
+            "description": "Respuesta JSON-RPC"
+          },
+          "202": {
+            "description": "Notificación aceptada"
+          },
+          "401": {
+            "description": "token_invalido"
+          }
+        }
+      }
+    },
+    "/api/platform/audit": {
+      "get": {
+        "summary": "Rastro de auditoría (read). Mismos filtros que la herramienta MCP list_audit_log.",
+        "parameters": [
+          {
+            "name": "org",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id o slug"
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "via",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "sesion",
+                "api",
+                "mcp"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "nextBefore de la página anterior"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ entries: [...], nextBefore }"
+          }
+        }
+      }
     }
   }
 }

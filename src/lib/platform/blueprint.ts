@@ -6,6 +6,8 @@ import { esLocale, esPais, esZonaValida } from "@/lib/region";
 import { validarSlug } from "@/lib/tenancy";
 import { LIMITS } from "@/server/agenda/settings";
 import { modulosOrganizacionSchema } from "@/server/modulos/efectivos";
+import { aparienciaSchema, temaPropio } from "@/lib/temas";
+import { ATAJO_RE, normalizarAtajo, TEXTO_MAX, TOPE_RESPUESTAS } from "@/lib/respuestas-rapidas";
 
 /**
  * 069 (D12, FR-016) — `OrganizationBlueprint` v1: un negocio completo descrito
@@ -20,6 +22,8 @@ import { modulosOrganizacionSchema } from "@/server/modulos/efectivos";
  *   texto con forma de llave se rechaza (`secreto_detectado`).
  * - Los límites son los de las pantallas que editan lo mismo (Ajustes →
  *   Agente, Conocimiento, Pipeline): el Blueprint no permite más que la UI.
+ * - `appearance` y `quickReplies` (auditoría 069, Fix-B) son lo mismo que
+ *   editan Ajustes → Apariencia y Ajustes → Respuestas rápidas.
  * - No existe `agent.enabled`: encender el agente exige un cerebro sano, y en
  *   modo plataforma el despacho por organización llega en la 070.
  */
@@ -153,6 +157,45 @@ const agendaSchema = z
   })
   .strict();
 
+/**
+ * La apariencia por defecto del negocio (`metadata.apariencia`, 062): la misma
+ * forma que guarda Ajustes → Apariencia, completa (se reemplaza entera). Un
+ * tema propio debe pasar el mismo control de contraste que en la pantalla.
+ */
+const appearanceSchema = aparienciaSchema
+  .extend({ propio: aparienciaSchema.shape.propio.unwrap().strict().optional() })
+  .strict()
+  .superRefine((a, ctx) => {
+    if (a.tema === "propio" && !temaPropio(a.propio).ok) {
+      ctx.addIssue({ code: "custom", path: ["propio"], message: "tema_propio_ilegible" });
+    }
+  });
+
+/**
+ * Respuestas rápidas (`/atajo`, 049). Identidad: el atajo normalizado (sin
+ * `/`, acentos ni espacios). `merge` agrega y actualiza; `exact` además borra
+ * las que no vengan.
+ */
+const respuestaSchema = z
+  .object({
+    shortcut: z
+      .string()
+      .transform(normalizarAtajo)
+      .refine((a) => ATAJO_RE.test(a), { message: "atajo_invalido" }),
+    text: z.string().trim().min(1).max(TEXTO_MAX),
+  })
+  .strict();
+
+const quickRepliesSchema = z
+  .object({
+    mode: z.enum(["merge", "exact"]).default("merge"),
+    entries: z
+      .array(respuestaSchema)
+      .max(TOPE_RESPUESTAS)
+      .refine((xs) => new Set(xs.map((x) => x.shortcut)).size === xs.length, { message: "atajos_repetidos" }),
+  })
+  .strict();
+
 const ownerSchema = z
   .object({
     email: z
@@ -190,6 +233,8 @@ export const blueprintSchema = z
     agent: agentSchema.optional(),
     knowledge: knowledgeSchema.optional(),
     agenda: agendaSchema.optional(),
+    appearance: appearanceSchema.optional(),
+    quickReplies: quickRepliesSchema.optional(),
     owner: ownerSchema.optional(),
   })
   .strict()
@@ -207,6 +252,8 @@ export const SECCIONES_BLUEPRINT = [
   "agent",
   "knowledge",
   "agenda",
+  "appearance",
+  "quickReplies",
   "owner",
 ] as const;
 export type SeccionBlueprint = (typeof SECCIONES_BLUEPRINT)[number];

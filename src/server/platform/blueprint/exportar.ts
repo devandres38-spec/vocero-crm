@@ -6,7 +6,7 @@ import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
 import { getSettings } from "@/server/agenda/settings";
 import { auditar } from "@/server/platform/auditoria";
 import type { Actor } from "@/server/platform/invitaciones";
-import { leerMetadata, regionGuardada } from "./secciones/metadata";
+import { aparienciaGuardada, leerMetadata, regionGuardada } from "./secciones/metadata";
 
 type Entrada = NonNullable<OrganizationBlueprint["knowledge"]>["entries"][number];
 
@@ -33,7 +33,7 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
   const region = regionGuardada(meta);
   const branding = normalizeBranding((meta.branding as Partial<Branding> | undefined) ?? null);
 
-  const [etapas, [perfil], kb, calendario] = await Promise.all([
+  const [etapas, [perfil], kb, calendario, respuestas] = await Promise.all([
     db
       .select({ name: schema.pipelineStage.name, kind: schema.pipelineStage.kind })
       .from(schema.pipelineStage)
@@ -50,6 +50,11 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
       .from(schema.calendarSettings)
       .where(eq(schema.calendarSettings.organizationId, organizationId))
       .limit(1),
+    db
+      .select({ atajo: schema.quickReply.atajo, texto: schema.quickReply.texto })
+      .from(schema.quickReply)
+      .where(eq(schema.quickReply.organizationId, organizationId))
+      .orderBy(asc(schema.quickReply.atajo)),
   ]);
 
   const bp: OrganizationBlueprint = {
@@ -59,6 +64,9 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
   };
   if (Object.keys(region).length > 0) bp.region = region;
   if (org.modules) bp.modules = org.modules as OrganizationBlueprint["modules"];
+  // Una apariencia nunca elegida no se exporta (vale la de la plataforma).
+  const apariencia = aparienciaGuardada(meta);
+  if (apariencia) bp.appearance = apariencia as OrganizationBlueprint["appearance"];
 
   const abiertas = etapas.filter((e) => e.kind === "open").map((e) => e.name);
   if (abiertas.length > 0) bp.pipeline = { stages: abiertas };
@@ -83,6 +91,15 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
       return [];
     }),
   };
+
+  // Sin respuestas rápidas, la sección no se exporta: ausente = no se toca,
+  // que para un negocio sin ninguna es lo mismo.
+  if (respuestas && respuestas.length > 0) {
+    bp.quickReplies = {
+      mode: "exact",
+      entries: respuestas.map((q) => ({ shortcut: q.atajo, text: q.texto })),
+    };
+  }
 
   if (calendario.length > 0) {
     const s = await getSettings(organizationId);

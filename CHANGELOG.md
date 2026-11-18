@@ -30,6 +30,20 @@ que `single` no usa.
   y el despacho está apagado hasta `/api/brains/*` (070): cada negocio atiende
   su bandeja a mano.
 
+### Auditoría de la 069 (antes de publicar)
+
+- URLs de la plataforma con el protocolo y el puerto de `APP_BASE_URL`
+  (staging por HTTP y desarrollo funcionan); el Super-Admin entra directo a
+  `/platform` y tiene un enlace de vuelta dentro de un negocio; quien ya tenía
+  cuenta en `single` queda Super-Admin con solo iniciar sesión si su correo
+  está en `PLATFORM_ADMIN_EMAILS`.
+- Leer un Blueprint queda auditado; planificar una creación pide solo `read`;
+  las invitaciones vencidas se marcan; fechas de citas y avisos en el idioma
+  del negocio.
+- Blueprint con `appearance` y `quickReplies`; MCP con `revoke_invitation` y
+  `list_audit_log` (y `GET /api/platform/audit`); `get_catalog` con presets,
+  temas, regiones sugeridas y ejemplos.
+
 ### Nuevo
 
 - **Modo plataforma** (`TENANCY=multi`): cada negocio en

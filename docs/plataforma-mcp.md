@@ -64,6 +64,8 @@ Los conectores que exigen OAuth (p. ej. ChatGPT) aún no están soportados.
 | `plan_blueprint` | read | Dry run: qué cambiaría, advertencias y errores con su ruta. |
 | `apply_blueprint` | provision | Crea (sin `idOrSlug`) o aplica cambios. Idempotente. |
 | `create_owner_invitation` | provision | Enlace de invitación de un uso (7 días). |
+| `revoke_invitation` | provision | Revoca una invitación pendiente. |
+| `list_audit_log` | read | Rastro de la plataforma con filtros y página siguiente. |
 | `suspend_organization` / `reactivate_organization` | provision | Suspender / reactivar. |
 
 No existen, a propósito: abrir accesos de soporte, leer conversaciones o
@@ -79,6 +81,14 @@ contactos, borrar negocios ni gestionar tokens.
 El asistente llama `get_catalog`, arma el Blueprint, lo revisa con
 `plan_blueprint` y lo aplica con `apply_blueprint`; te devuelve el enlace de
 invitación para que se lo pases a la dueña.
+
+El Blueprint cubre también la **apariencia** (`appearance`: tema, letra,
+tamaño, densidad) y las **respuestas rápidas** (`quickReplies`: `/atajo` →
+texto, con `{nombre}`). `get_catalog` trae un ejemplo mínimo y uno completo.
+
+Los clientes que hablan la versión `2025-06-18` del protocolo (mandan
+`MCP-Protocol-Version`) reciben además `structuredContent`; los demás, solo
+`content`.
 
 Reglas del Blueprint: secciones opcionales (las ausentes no se tocan), nunca
 secretos (las llaves de IA y de WhatsApp las conecta cada negocio), y nunca

@@ -4,7 +4,9 @@ import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { leerBlueprint } from "@/server/platform/blueprint/exportar";
 import { catalogoPlataforma } from "@/server/platform/catalogo";
 import type { ActorPlataforma } from "@/server/platform/guardia";
-import { invitarAOrganizacion } from "@/server/platform/invitaciones";
+import { invitarAOrganizacion, revocarInvitacion } from "@/server/platform/invitaciones";
+import { ACCIONES_AUDITORIA } from "@/server/platform/auditoria";
+import { LIMITE_AUDITORIA, listarAuditoria, VIAS_AUDITORIA } from "@/server/platform/auditoria-consulta";
 import { cambiarEstado, detalleOrganizacion, listarOrganizaciones } from "@/server/platform/organizaciones";
 import type { Alcance } from "@/server/platform/tokens";
 
@@ -14,7 +16,9 @@ import type { Alcance } from "@/server/platform/tokens";
  * API REST: aquí no hay lógica de negocio (prueba de equivalencia REST↔MCP).
  *
  * Fuera, a propósito: abrir accesos de soporte, leer conversaciones,
- * contactos o mensajes, borrar organizaciones y gestionar tokens.
+ * contactos o mensajes, borrar organizaciones y gestionar tokens. El rastro
+ * de auditoría sí se lee (`list_audit_log`): solo trae acciones, conteos y
+ * nombres de campos, nunca textos de clientes.
  */
 
 export class ErrorHerramienta extends Error {
@@ -90,7 +94,7 @@ export function herramientas(): Herramienta[] {
       name: "get_catalog",
       title: "Catálogo de la plataforma",
       description:
-        "Valores válidos para armar un OrganizationBlueprint: roles y herramientas del agente, monedas, módulos que esta instancia permite, reglas del slug, límites de la agenda y el JSON Schema del contrato. Llámala primero.",
+        "Valores válidos para armar un OrganizationBlueprint: roles y herramientas del agente, monedas, regiones sugeridas, presets de color, temas de apariencia, módulos que esta instancia permite, etapas por defecto, reglas del slug y de las respuestas rápidas, límites de la agenda, un ejemplo mínimo y uno completo, y el JSON Schema del contrato. Llámala primero.",
       inputSchema: { type: "object", properties: {}, additionalProperties: false },
       scope: "read",
       annotations: { readOnlyHint: true },
@@ -165,6 +169,51 @@ export function herramientas(): Herramienta[] {
         const r = await invitarAOrganizacion(actor, org, email, role);
         if (!r) throw new ErrorHerramienta("ya_miembro");
         return { invitationId: r.id, url: r.url, expiresAt: r.expiresAt.toISOString() };
+      },
+    },
+    {
+      name: "revoke_invitation",
+      title: "Revocar una invitación",
+      description:
+        "Revoca una invitación pendiente de un negocio (el enlace deja de servir). El invitationId sale de get_organization → invitaciones.",
+      inputSchema: conOrganizacion({ invitationId: { type: "string", description: "Id inv_… de la invitación" } }, ["invitationId"]),
+      scope: "provision",
+      annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true },
+      run: async (actor, args) => {
+        const org = await organizacion(args);
+        if (!(await revocarInvitacion(actor, org.id, texto(args, "invitationId")))) {
+          throw new ErrorHerramienta("invitacion_inexistente");
+        }
+        return { revoked: true };
+      },
+    },
+    {
+      name: "list_audit_log",
+      title: "Rastro de auditoría",
+      description:
+        "Entradas de la auditoría de la plataforma, de la más reciente a la más antigua: acción, vía (sesion/api/mcp), negocio, quién y cuándo. Para la página siguiente, pasa `before` = nextBefore.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          idOrSlug: { ...idOrSlug, description: "Solo las de este negocio (opcional)" },
+          action: { type: "string", enum: [...ACCIONES_AUDITORIA] },
+          via: { type: "string", enum: [...VIAS_AUDITORIA] },
+          limit: { type: "integer", minimum: 1, maximum: LIMITE_AUDITORIA.maximo, default: LIMITE_AUDITORIA.porDefecto },
+          before: { type: "string", format: "date-time" },
+        },
+        additionalProperties: false,
+      },
+      scope: "read",
+      annotations: { readOnlyHint: true },
+      run: async (_a, args) => {
+        const org = args.idOrSlug === undefined ? null : await organizacion(args);
+        return listarAuditoria({
+          organizationId: org?.id ?? null,
+          action: typeof args.action === "string" ? args.action : null,
+          via: typeof args.via === "string" ? args.via : null,
+          limit: typeof args.limit === "number" ? args.limit : undefined,
+          before: typeof args.before === "string" ? args.before : null,
+        });
       },
     },
     {

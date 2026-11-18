@@ -15,6 +15,7 @@ import { aplicarPipeline } from "@/server/platform/blueprint/secciones/pipeline"
 import { aplicarAgente } from "@/server/platform/blueprint/secciones/agente";
 import { aplicarConocimiento } from "@/server/platform/blueprint/secciones/conocimiento";
 import { aplicarAgenda } from "@/server/platform/blueprint/secciones/agenda";
+import { aplicarRespuestas } from "@/server/platform/blueprint/secciones/respuestas";
 import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { modulosEfectivos, techoDeInstancia } from "@/server/modulos/efectivos";
 import { aplicarOwner } from "@/server/platform/blueprint/secciones/owner";
@@ -104,6 +105,7 @@ export async function aplicarBlueprint(
       if (meta.organization) r.sections.organization = estado(true);
       if (bp.region) r.sections.region = estado(meta.region);
       if (bp.brand || created) r.sections.brand = estado(meta.brand);
+      if (bp.appearance) r.sections.appearance = estado(meta.appearance);
       let modulosGuardados = org.modules;
       if (bp.modules) {
         const m = await aplicarModulos(tx, org, bp.modules);
@@ -124,6 +126,11 @@ export async function aplicarBlueprint(
       if (bp.agenda) {
         r.sections.agenda = estado(await aplicarAgenda(tx, org.id, bp.agenda));
         if (!modulosEfectivos(techoDeInstancia(), modulosGuardados).agenda) r.warnings.push("modulo_apagado:agenda");
+      }
+      if (bp.quickReplies) {
+        const q = await aplicarRespuestas(tx, org.id, bp.quickReplies);
+        r.sections.quickReplies = estado(q.cambio);
+        conteos.quickReplies = q.conteos;
       }
       if (bp.owner) {
         const o = await aplicarOwner(tx, actor, org, bp.owner, dryRun);

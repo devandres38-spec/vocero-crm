@@ -55,7 +55,7 @@ export const ERRORES_RPC = {
 } as const;
 
 const INSTRUCCIONES =
-  "Aprovisiona y configura negocios de una plataforma Aliantis (CRM de WhatsApp). Flujo recomendado: get_catalog → (get_blueprint si el negocio existe) → plan_blueprint → apply_blueprint. El OrganizationBlueprint es declarativo e idempotente. Nunca pongas llaves ni tokens en él: cada negocio conecta sus credenciales. No hay herramientas para leer conversaciones ni contactos.";
+  "Aprovisiona y configura negocios de una plataforma Aliantis (CRM de WhatsApp). Flujo recomendado: get_catalog (trae ejemplos) → (get_blueprint si el negocio existe) → plan_blueprint → apply_blueprint. Para verificar lo hecho: list_audit_log. El OrganizationBlueprint es declarativo e idempotente. Nunca pongas llaves ni tokens en él: cada negocio conecta sus credenciales. No hay herramientas para leer conversaciones ni contactos.";
 
 /** Procesa UN mensaje. `null` para notificaciones (no llevan respuesta). */
 export async function procesarMensaje(
