@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, Copy, KeyRound } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { leerErrorPlataforma } from "@/components/plataforma/errores";
+import { Campo, FilaInterruptor, Seccion } from "@/components/plataforma/formulario/controles";
+import { COPIA_MANUAL, copiarAlPortapapeles } from "@/lib/clipboard";
 
 type Token = {
   id: string;
@@ -21,14 +23,33 @@ type Token = {
 const fecha = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
 
-/** 069 (D14) — Crear y revocar tokens personales. El token se ve UNA vez. */
+export type EstadoToken = "vigente" | "vencido" | "revocado";
+
+/** Pura: el estado de un token para su insignia. */
+export function estadoToken(t: Pick<Token, "expiresAt" | "revokedAt">, ahora: number = Date.now()): EstadoToken {
+  if (t.revokedAt) return "revocado";
+  if (t.expiresAt && Date.parse(t.expiresAt) <= ahora) return "vencido";
+  return "vigente";
+}
+
+export const INSIGNIA_ESTADO: Record<EstadoToken, { texto: string; variante: "success" | "secondary" | "destructive" }> = {
+  vigente: { texto: "Vigente", variante: "success" },
+  vencido: { texto: "Vencido", variante: "secondary" },
+  revocado: { texto: "Revocado", variante: "destructive" },
+};
+
+/**
+ * 069 (D14) — Crear y revocar tokens personales. El token se ve UNA vez.
+ * Auditoría final (F-01, F-08): mismo diseño que el resto del panel y copia
+ * que funciona también por HTTP (y solo dice «Copiado» si copió).
+ */
 export function GestorTokens({ inicial }: { inicial: Token[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [provision, setProvision] = useState(false);
   const [dias, setDias] = useState("90");
   const [nuevo, setNuevo] = useState<string | null>(null);
-  const [copiado, setCopiado] = useState(false);
+  const [copiado, setCopiado] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
@@ -52,7 +73,7 @@ export function GestorTokens({ inicial }: { inicial: Token[] }) {
         return;
       }
       setNuevo(data.token);
-      setCopiado(false);
+      setCopiado(null);
       setName("");
       router.refresh();
     } finally {
@@ -62,76 +83,76 @@ export function GestorTokens({ inicial }: { inicial: Token[] }) {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Nuevo token</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <p className="text-text-2">
-            Para la API (`Authorization: Bearer alp_…`) y el servidor MCP. Cada acción queda en la auditoría con tu
-            nombre y el del token.
-          </p>
-          <form onSubmit={crear} className="flex flex-wrap items-end gap-3">
-            <div className="min-w-56 flex-1 space-y-1.5">
-              <Label htmlFor="tok-nombre">Nombre (para reconocerlo)</Label>
-              <Input id="tok-nombre" required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tok-dias">Vence en (días, vacío = no vence)</Label>
-              <Input id="tok-dias" type="number" min={1} max={365} value={dias} onChange={(e) => setDias(e.target.value)} />
-            </div>
-            <label className="flex items-center gap-2 pb-2">
-              <input type="checkbox" checked={provision} onChange={(e) => setProvision(e.target.checked)} />
-              <span>Puede aprovisionar (crear y cambiar negocios)</span>
-            </label>
-            <Button type="submit" disabled={ocupado}>
-              Crear token
-            </Button>
-          </form>
-          {nuevo && (
-            <div className="space-y-2 rounded-md border border-warning-soft bg-warning-tint p-3">
-              <p className="font-medium text-warning-text">Copia el token ahora: no se puede volver a mostrar.</p>
-              <code className="block break-all rounded bg-background p-2 font-mono text-xs">{nuevo}</code>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(nuevo).catch(() => undefined);
-                  setCopiado(true);
-                }}
-              >
+      <Seccion
+        titulo="Nuevo token"
+        descripcion="Para la API (Authorization: Bearer alp_…) y el servidor MCP. Cada acción queda en la auditoría con tu nombre y el del token."
+      >
+        <form onSubmit={crear} className="space-y-2">
+          <div className="grid gap-4 sm:grid-cols-[1fr_200px]">
+            <Campo etiqueta="Nombre (para reconocerlo)">
+              {(id) => <Input id={id} required maxLength={60} placeholder="Claude de Ana" value={name} onChange={(e) => setName(e.target.value)} />}
+            </Campo>
+            <Campo etiqueta="Vence en (días)" ayuda="Vacío = no vence.">
+              {(id) => <Input id={id} type="number" min={1} max={365} value={dias} onChange={(e) => setDias(e.target.value)} />}
+            </Campo>
+          </div>
+          <FilaInterruptor
+            titulo="Puede aprovisionar"
+            descripcion="Crear y cambiar negocios, invitar y suspender. Sin esto, solo lee y planifica."
+            checked={provision}
+            onChange={setProvision}
+          />
+          <Button type="submit" disabled={ocupado}>
+            <KeyRound className="mr-1.5 h-4 w-4" /> Crear token
+          </Button>
+        </form>
+        {nuevo && (
+          <div className="space-y-2 rounded-lg border border-warning-soft bg-warning-tint p-3 text-sm">
+            <p className="font-medium text-warning-text">Copia el token ahora: no se puede volver a mostrar.</p>
+            <code className="block select-all break-all rounded bg-background p-2 font-mono text-xs">{nuevo}</code>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button size="sm" type="button" onClick={async () => setCopiado(await copiarAlPortapapeles(nuevo))}>
+                {copiado ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
                 {copiado ? "Copiado" : "Copiar"}
               </Button>
+              {copiado === false && <span className="text-xs text-danger-text">{COPIA_MANUAL}</span>}
             </div>
-          )}
-          {error && (
-            <p role="alert" className="text-danger-text">
-              {error}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+        {error && (
+          <p role="alert" className="rounded-md border border-danger-soft bg-danger-tint p-3 text-sm text-danger-text">
+            {error}
+          </p>
+        )}
+      </Seccion>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Tus tokens</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {inicial.length === 0 ? (
-            <p className="text-sm text-text-3">Aún no tienes tokens.</p>
-          ) : (
-            <ul className="divide-y text-sm">
-              {inicial.map((t) => (
-                <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+      <Seccion titulo={`Tus tokens (${inicial.length})`}>
+        {inicial.length === 0 ? (
+          <p className="text-sm text-text-3">Aún no tienes tokens.</p>
+        ) : (
+          <ul className="divide-y text-sm">
+            {inicial.map((t) => {
+              const estado = estadoToken(t);
+              const insignia = INSIGNIA_ESTADO[estado];
+              return (
+                <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                   <div className="min-w-0">
-                    <p className="font-medium">
-                      {t.name} <span className="font-mono text-xs text-text-3">…{t.last4}</span>
+                    <p className="flex flex-wrap items-center gap-2 font-medium">
+                      {t.name}
+                      <span className="font-mono text-xs text-text-3">…{t.last4}</span>
+                      <Badge variant={insignia.variante}>{insignia.texto}</Badge>
+                      {t.scopes.map((s) => (
+                        <span key={s} className="rounded-md bg-subtle px-1.5 py-0.5 text-[11px] font-normal text-text-2">
+                          {s}
+                        </span>
+                      ))}
                     </p>
                     <p className="text-xs text-text-3">
-                      {t.scopes.join(" + ")} · último uso {fecha(t.lastUsedAt)} · vence {fecha(t.expiresAt)}
+                      Último uso {fecha(t.lastUsedAt)} · vence {fecha(t.expiresAt)}
                       {t.revokedAt ? ` · revocado ${fecha(t.revokedAt)}` : ""}
                     </p>
                   </div>
-                  {!t.revokedAt && (
+                  {estado === "vigente" && (
                     <Button
                       size="sm"
                       variant="outline"
@@ -147,11 +168,11 @@ export function GestorTokens({ inicial }: { inicial: Token[] }) {
                     </Button>
                   )}
                 </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </ul>
+        )}
+      </Seccion>
     </div>
   );
 }

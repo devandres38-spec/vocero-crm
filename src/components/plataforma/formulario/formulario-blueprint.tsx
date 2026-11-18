@@ -30,6 +30,7 @@ import {
   formularioDesdeBlueprint,
   formularioInicial,
   seccionesDelFormulario,
+  tarjetasIncompletas,
   type DefaultsForm,
   type FormBlueprint,
   type ModoFormulario,
@@ -130,6 +131,11 @@ export function FormularioBlueprint(p: PropsFormulario) {
   const upd: Actualizar = (k, v) => setF((x) => ({ ...x, [k]: { ...x[k], ...v } }));
   const envio = useMemo(() => blueprintParaEnviar(f, p.modo, p.techo, base), [f, p.modo, p.techo, base]);
   const pestanasCambiadas = new Set(envio.modificadas.map((s) => PESTANA_DE_SECCION[s]));
+  const incompletas = tarjetasIncompletas(f);
+  const avisoIncompletas = [
+    incompletas.conocimiento ? `${incompletas.conocimiento} en Conocimiento` : null,
+    incompletas.respuestas ? `${incompletas.respuestas} en Respuestas rápidas` : null,
+  ].filter(Boolean);
   const hayCambios = p.modo === "crear" ? f.organization.name.trim() !== "" : envio.modificadas.length > 0;
 
   async function enviar(dryRun: boolean) {
@@ -287,6 +293,11 @@ export function FormularioBlueprint(p: PropsFormulario) {
       )}
 
       <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:-mx-6 sm:px-6">
+        {avisoIncompletas.length > 0 && (
+          <p className="mb-2 rounded-md border border-warning-soft bg-warning-tint px-3 py-2 text-xs text-warning-text">
+            Tarjetas incompletas que no se guardarán: {avisoIncompletas.join(" y ")}. Complétalas o quítalas.
+          </p>
+        )}
         {error && (
           <p role="alert" className="mb-2 rounded-md border border-danger-soft bg-danger-tint px-3 py-2 text-sm text-danger-text">
             {error}

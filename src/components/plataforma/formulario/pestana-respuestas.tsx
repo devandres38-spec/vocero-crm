@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizarAtajo, TEXTO_MAX, TOPE_RESPUESTAS } from "@/lib/respuestas-rapidas";
-import type { FormBlueprint } from "@/lib/platform/formulario-blueprint";
+import { nuevoUid, respuestaCompleta, type FormBlueprint } from "@/lib/platform/formulario-blueprint";
+import { cn } from "@/lib/utils";
 import { BotonIcono, Pastillas, Seccion, type Actualizar } from "./controles";
 
 /** Pestaña «Respuestas rápidas»: `/atajo` → texto, con `{nombre}`. */
@@ -18,7 +19,7 @@ export function PestanaRespuestas({ f, upd }: { f: FormBlueprint; upd: Actualiza
       titulo={`Respuestas rápidas (${xs.length})`}
       descripcion="El equipo escribe «/atajo» en el chat y se inserta el texto. {nombre} se cambia por el primer nombre del contacto."
       accion={
-        <Button type="button" size="sm" variant="outline" disabled={xs.length >= TOPE_RESPUESTAS} onClick={() => set([...xs, { shortcut: "", text: "" }])}>
+        <Button type="button" size="sm" variant="outline" disabled={xs.length >= TOPE_RESPUESTAS} onClick={() => set([...xs, { shortcut: "", text: "", uid: nuevoUid() }])}>
           <Plus className="mr-1 h-4 w-4" /> Respuesta
         </Button>
       }
@@ -41,7 +42,10 @@ export function PestanaRespuestas({ f, upd }: { f: FormBlueprint; upd: Actualiza
           {xs.map((r, i) => {
             const atajo = normalizarAtajo(r.shortcut);
             return (
-              <li key={i} className="space-y-2 rounded-lg border p-3">
+              <li
+                key={r.uid ?? `qr-${i}`}
+                className={cn("space-y-2 rounded-lg border p-3", !respuestaCompleta(r) && "border-warning-soft bg-warning-tint")}
+              >
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-sm text-text-3">/</span>
                   <Input
@@ -52,6 +56,7 @@ export function PestanaRespuestas({ f, upd }: { f: FormBlueprint; upd: Actualiza
                     onChange={(e) => set(xs.map((x, j) => (j === i ? { ...x, shortcut: e.target.value } : x)))}
                   />
                   {r.shortcut && atajo !== r.shortcut && <span className="font-mono text-xs text-text-3">se guarda como /{atajo || "—"}</span>}
+                  {!respuestaCompleta(r) && <span className="text-xs text-warning-text">incompleta: no se guardará</span>}
                   <span className="flex-1" />
                   <BotonIcono etiqueta="Quitar" peligro onClick={() => set(xs.filter((_, j) => j !== i))}>
                     <Trash2 className="h-4 w-4" />

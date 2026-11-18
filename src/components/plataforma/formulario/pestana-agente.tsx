@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HERRAMIENTAS, ROLES } from "@/lib/agent-roles";
-import type { EntradaKb, FormBlueprint } from "@/lib/platform/formulario-blueprint";
+import { entradaKbCompleta, nuevoUid, type EntradaKb, type FormBlueprint } from "@/lib/platform/formulario-blueprint";
+import { cn } from "@/lib/utils";
 import { BotonIcono, Campo, FilaInterruptor, Pastillas, SELECT, Seccion, mover, type Actualizar } from "./controles";
 
 /** Pestaña «Agente»: identidad, rol, herramientas e instrucciones. */
@@ -100,10 +101,10 @@ export function PestanaConocimiento({ f, upd }: { f: FormBlueprint; upd: Actuali
       descripcion="Lo que el agente sabe del negocio: precios, políticas, ubicación… Cada tarjeta admite varias líneas."
       accion={
         <div className="flex flex-wrap gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => set([...entradas, { kind: "qa", question: "", answer: "" }])}>
+          <Button type="button" size="sm" variant="outline" onClick={() => set([...entradas, { kind: "qa", question: "", answer: "", uid: nuevoUid() }])}>
             <Plus className="mr-1 h-4 w-4" /> Pregunta
           </Button>
-          <Button type="button" size="sm" variant="outline" onClick={() => set([...entradas, { kind: "block", content: "" }])}>
+          <Button type="button" size="sm" variant="outline" onClick={() => set([...entradas, { kind: "block", content: "", uid: nuevoUid() }])}>
             <Plus className="mr-1 h-4 w-4" /> Bloque
           </Button>
         </div>
@@ -130,10 +131,16 @@ export function PestanaConocimiento({ f, upd }: { f: FormBlueprint; upd: Actuali
       ) : (
         <ul className="space-y-3">
           {entradas.map((e, i) => (
-            <li key={i} className="space-y-2 rounded-lg border p-3">
+            <li
+              key={e.uid ?? `kb-${i}`}
+              className={cn("space-y-2 rounded-lg border p-3", !entradaKbCompleta(e) && "border-warning-soft bg-warning-tint")}
+            >
               <div className="flex items-center gap-2">
                 {e.kind === "qa" ? <MessageSquareText className="h-4 w-4 text-text-3" /> : <Text className="h-4 w-4 text-text-3" />}
-                <span className="flex-1 text-xs font-medium text-text-3">{e.kind === "qa" ? "Pregunta y respuesta" : "Bloque de texto"}</span>
+                <span className="flex-1 text-xs font-medium text-text-3">
+                  {e.kind === "qa" ? "Pregunta y respuesta" : "Bloque de texto"}
+                  {!entradaKbCompleta(e) && <span className="ml-2 text-warning-text">· incompleta: no se guardará</span>}
+                </span>
                 <BotonIcono etiqueta="Subir" disabled={i === 0} onClick={() => set(mover(entradas, i, -1))}>
                   <ArrowUp className="h-4 w-4" />
                 </BotonIcono>

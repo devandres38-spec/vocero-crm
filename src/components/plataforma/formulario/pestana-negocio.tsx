@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { REGIONES_SUGERIDAS } from "@/lib/region";
-import { sugerirSlug, type FormBlueprint, type ModoFormulario } from "@/lib/platform/formulario-blueprint";
+import { cambiosAlElegirPais, sugerirSlug, type FormBlueprint, type ModoFormulario } from "@/lib/platform/formulario-blueprint";
 import { Campo, Seccion, SelectGuiado, type Actualizar } from "./controles";
 
 /** Únicos, en el orden de las regiones sugeridas (Colombia primero). */
@@ -25,16 +25,16 @@ export function PestanaNegocio({
 }) {
   const slug = f.organization.slugTocado ? f.organization.slug : sugerirSlug(f.organization.name);
 
-  /** Elegir un país sugerido completa idioma, zona y moneda de una vez. */
+  /**
+   * Elegir un país sugerido completa idioma y zona. Al CREAR también la
+   * moneda y la zona de la agenda; al editar no (F-06): cambiarlas en un
+   * negocio que ya opera es una decisión aparte, en Marca y en Agenda.
+   */
   function elegirPais(country: string) {
-    const r = REGIONES_SUGERIDAS.find((x) => x.country === country);
-    if (!r) {
-      upd("region", { country });
-      return;
-    }
-    upd("region", { country: r.country, locale: r.locale, timezone: r.timezone });
-    upd("brand", { currency: r.currency });
-    upd("agenda", { timezone: r.timezone });
+    const c = cambiosAlElegirPais(country, modo);
+    upd("region", c.region);
+    if (c.brand) upd("brand", c.brand);
+    if (c.agenda) upd("agenda", c.agenda);
   }
 
   return (
@@ -76,7 +76,11 @@ export function PestanaNegocio({
 
       <Seccion
         titulo="Región"
-        descripcion="Formato de fechas, números y moneda, y la zona en que se cuentan los días. Elegir el país completa el resto."
+        descripcion={
+          modo === "crear"
+            ? "Formato de fechas, números y moneda, y la zona en que se cuentan los días. Elegir el país completa el resto."
+            : "Formato de fechas y números, y la zona en que se cuentan los días. Cambiar el país no cambia la moneda (Marca) ni la zona de la agenda (Agenda)."
+        }
       >
         <div className="grid gap-4 sm:grid-cols-3">
           <Campo etiqueta="País">

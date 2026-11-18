@@ -39,6 +39,7 @@ import { formatBytes, mediaLabel } from "./helpers";
 import { ForwardDialog } from "./forward-dialog";
 import { LinkedText } from "./linked-text";
 import { QuoteBlock } from "./quote-block";
+import { copiarAlPortapapeles } from "@/lib/clipboard";
 
 function StatusTicks({ status }: { status: MessageDto["status"] }) {
   const cls = "h-[13px] w-[13px]";
@@ -723,12 +724,7 @@ function MenuMensaje({
   );
 
   async function copiar(t: string) {
-    try {
-      await navigator.clipboard.writeText(t);
-      onCopied(true);
-    } catch {
-      onCopied(false);
-    }
+    onCopied(await copiarAlPortapapeles(t));
   }
 
   return (

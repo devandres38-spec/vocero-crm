@@ -42,7 +42,8 @@ vi.mock("@/server/tenant/consultas", () => ({
 }));
 vi.mock("@/lib/auth", () => ({ getAuth: () => ({ api: { getSession: h.sesion } }) }));
 
-import { canjearPase, emitirPase, firmarPase, leerPase, PASE_TTL_MS } from "@/server/platform/pase";
+import { accesoPermiteEntrar, canjearPase, emitirPase, firmarPase, leerPase, PASE_TTL_MS } from "@/server/platform/pase";
+import { resetRateLimit } from "@/lib/rate-limit";
 import { decidirPaginaPlataforma } from "@/server/platform/guardia";
 import { POST as pedirPase } from "@/app/api/pase/route";
 
@@ -54,6 +55,7 @@ const AHORA = Date.UTC(2026, 10, 17, 12, 0, 0);
 
 beforeEach(() => {
   fake().reiniciar();
+  resetRateLimit();
   vi.stubEnv("TENANCY", "multi");
   vi.stubEnv("PLATFORM_BASE_DOMAIN", BASE);
   vi.stubEnv("APP_BASE_URL", `http://${BASE}`);
@@ -177,12 +179,13 @@ describe("POST /api/pase", () => {
       })
     );
 
-  it("sin sesión → 401; desde otro origen → 403; en `single` → 404", async () => {
+  it("sin sesión → 401; sin Origin o de otro origen → 403; en `single` → 404", async () => {
     h.sesion.mockResolvedValue(null);
-    expect((await pedir()).status).toBe(401);
+    expect((await pedir({ origin: `http://${BASE}` })).status).toBe(401);
+    expect((await pedir()).status).toBe(403);
     expect((await pedir({ origin: "https://evil.example" })).status).toBe(403);
     vi.stubEnv("TENANCY", "single");
-    expect((await pedir()).status).toBe(404);
+    expect((await pedir({ origin: `http://${BASE}` })).status).toBe(404);
   });
 
   it("con sesión y acceso → la URL del pase; sin acceso → 403", async () => {
@@ -209,5 +212,74 @@ describe("puerta de las páginas de /platform", () => {
   it("fuera de `multi` → 404; Super-Admin en la raíz → pasa", () => {
     expect(decidirPaginaPlataforma({ ...base, multi: false })).toEqual({ tipo: "404" });
     expect(decidirPaginaPlataforma(base)).toEqual({ tipo: "pasar" });
+  });
+});
+
+describe("auditoría final F-03 — negocios suspendidos", () => {
+  const SUSPENDIDA = { ...ORG, status: "suspendida" };
+
+  it("regla pura: el miembro no entra a uno suspendido; el soporte sí", () => {
+    expect(accesoPermiteEntrar("miembro", "activa")).toBe(true);
+    expect(accesoPermiteEntrar("miembro", "suspendida")).toBe(false);
+    expect(accesoPermiteEntrar("soporte", "suspendida")).toBe(true);
+    expect(accesoPermiteEntrar(null, "activa")).toBe(false);
+  });
+
+  it("emitir para un miembro de un negocio suspendido → 403 organizacion_suspendida, sin escribir", async () => {
+    h.orgPorId.mockResolvedValue(SUSPENDIDA);
+    h.membresia.mockResolvedValue({ role: "owner" });
+    expect(await emitirPase("u_1", "org_A", null, AHORA)).toEqual({
+      ok: false,
+      error: { status: 403, code: "organizacion_suspendida" },
+    });
+    expect(fake().escrituras).toEqual([]);
+  });
+
+  it("Super-Admin con soporte vigente en un suspendido → emite", async () => {
+    h.orgPorId.mockResolvedValue(SUSPENDIDA);
+    h.esSuperAdmin.mockResolvedValue(true);
+    h.grantVigente.mockResolvedValue({ id: "sop_1", level: "lectura", expiresAt: new Date(AHORA + 3_600_000) });
+    expect((await emitirPase("u_1", "org_A", null, AHORA)).ok).toBe(true);
+  });
+
+  it("canjear como miembro de un negocio que se suspendió entre medias → sin_acceso", async () => {
+    h.orgPorSlug.mockResolvedValue(SUSPENDIDA);
+    h.membresia.mockResolvedValue({ role: "owner" });
+    const token = firmarPase({ u: "u_1", o: "org_A", n: "n9", e: AHORA + 30_000 }, SECRETO);
+    expect(await canjearPase(token, `clinica.${BASE}`, null, AHORA)).toEqual({ ok: false, motivo: "sin_acceso" });
+  });
+});
+
+describe("auditoría final F-04 — límites y limpieza del pase", () => {
+  const pedir = (host = BASE) =>
+    pedirPase(
+      new Request(`http://${host}/api/pase`, {
+        method: "POST",
+        headers: { host, origin: `http://${host}`, "content-type": "application/json" },
+        body: JSON.stringify({ organizationId: "org_A" }),
+      })
+    );
+
+  it("emitir purga los pases vencidos de `verification` antes de guardar el nuevo", async () => {
+    h.membresia.mockResolvedValue({ role: "owner" });
+    await emitirPase("u_1", "org_A", null, AHORA);
+    const ops = fake()
+      .escrituras.filter((e) => e.tabla === schema.verification)
+      .map((e) => e.op);
+    expect(ops).toEqual(["delete", "insert"]);
+  });
+
+  it("solo en el dominio raíz: desde el subdominio de un negocio → 404", async () => {
+    h.sesion.mockResolvedValue({ user: { id: "u_1" } });
+    expect((await pedir(`clinica.${BASE}`)).status).toBe(404);
+  });
+
+  it("más de 10 pases por minuto para la misma persona → 429", async () => {
+    h.sesion.mockResolvedValue({ user: { id: "u_1" } });
+    h.membresia.mockResolvedValue({ role: "owner" });
+    const estados: number[] = [];
+    for (let i = 0; i < 11; i++) estados.push((await pedir()).status);
+    expect(estados.slice(0, 10).every((s) => s === 200)).toBe(true);
+    expect(estados[10]).toBe(429);
   });
 });

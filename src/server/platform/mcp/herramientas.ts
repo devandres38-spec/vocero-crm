@@ -199,7 +199,7 @@ export function herramientas(): Herramienta[] {
           action: { type: "string", enum: [...ACCIONES_AUDITORIA] },
           via: { type: "string", enum: [...VIAS_AUDITORIA] },
           limit: { type: "integer", minimum: 1, maximum: LIMITE_AUDITORIA.maximo, default: LIMITE_AUDITORIA.porDefecto },
-          before: { type: "string", format: "date-time" },
+          before: { type: "string", description: "El nextBefore de la página anterior (opaco). Un ISO simple también sirve." },
         },
         additionalProperties: false,
       },

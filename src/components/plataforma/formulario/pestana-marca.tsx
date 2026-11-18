@@ -96,12 +96,18 @@ export function PestanaMarca({
         titulo="Apariencia por defecto"
         descripcion="La que ve el equipo hasta que cada persona elija la suya. Sin elegir, vale la de la plataforma."
       >
-        <FilaInterruptor
-          titulo="Definir la apariencia del negocio"
-          checked={f.appearance.usar}
-          onChange={(v) => upd("appearance", { usar: v })}
-        />
-        {f.appearance.usar && (
+        {f.appearance.guardada ? (
+          <p className="rounded-lg bg-subtle px-3 py-2 text-xs text-text-2">
+            Este negocio ya tiene su apariencia elegida: aquí se cambia. (Volver a la de la plataforma no se hace desde aquí.)
+          </p>
+        ) : (
+          <FilaInterruptor
+            titulo="Definir la apariencia del negocio"
+            checked={f.appearance.usar}
+            onChange={(v) => upd("appearance", { usar: v })}
+          />
+        )}
+        {(f.appearance.usar || f.appearance.guardada) && (
           <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -187,7 +193,7 @@ export function PestanaMarca({
             <VistaPrevia nombre={nombreMarca || "Tu negocio"} accent={f.brand.accent} apariencia={a} />
           </div>
         )}
-        {!f.appearance.usar && <VistaPrevia nombre={nombreMarca || "Tu negocio"} accent={f.brand.accent} />}
+        {!f.appearance.usar && !f.appearance.guardada && <VistaPrevia nombre={nombreMarca || "Tu negocio"} accent={f.brand.accent} />}
       </Seccion>
 
       {organizationId && <SubirLogo organizationId={organizationId} />}

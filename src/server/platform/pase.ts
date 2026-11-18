@@ -1,5 +1,5 @@
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, like, lt } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { dominioBase, esPlataforma, raizPlataforma, urlDeNegocio } from "@/lib/tenancy";
@@ -70,13 +70,36 @@ export async function accesoANegocio(userId: string, organizationId: string): Pr
   return null;
 }
 
-/** Los negocios en que esta persona puede entrar ya (para los botones del panel). */
+/**
+ * Los negocios en que esta persona puede entrar ya (para los botones del
+ * panel), con la misma regla que el pase: miembro de uno activo, o soporte
+ * vigente (también en uno suspendido) — F-03.
+ */
 export async function negociosConAcceso(userId: string): Promise<Set<string>> {
   const [miembro, soporte] = await Promise.all([membresiasDe(userId), organizacionesConSoporteVigente(userId)]);
-  return new Set([...miembro.map((m) => m.organizationId), ...soporte]);
+  const deMiembro = new Set(miembro.map((m) => m.organizationId));
+  const puede = new Set<string>();
+  for (const m of miembro) if (accesoPermiteEntrar("miembro", m.status)) puede.add(m.organizationId);
+  // Un miembro actúa como miembro (como en resolverContexto): su soporte no cuenta.
+  for (const o of soporte) if (!deMiembro.has(o)) puede.add(o);
+  return puede;
 }
 
-export type ErrorPase = { status: 403 | 404; code: "sin_acceso" | "organizacion_inexistente" | "sin_dominio" };
+/**
+ * Pura (auditoría final F-03): ¿ese acceso deja entrar a un negocio en ese
+ * estado? Igual que `resolverContexto`: un miembro de un negocio suspendido
+ * solo vería «suspendida» (no se le abre sesión para eso); el soporte sí
+ * entra a uno suspendido (para ayudar a reactivarlo).
+ */
+export function accesoPermiteEntrar(acceso: "miembro" | "soporte" | null, status: string): boolean {
+  if (acceso === "soporte") return true;
+  return acceso === "miembro" && status !== "suspendida";
+}
+
+export type ErrorPase = {
+  status: 403 | 404;
+  code: "sin_acceso" | "organizacion_suspendida" | "organizacion_inexistente" | "sin_dominio";
+};
 
 export async function emitirPase(
   userId: string,
@@ -90,6 +113,13 @@ export async function emitirPase(
   if (!org?.slug) return { ok: false, error: { status: 404, code: "organizacion_inexistente" } };
   const acceso = await accesoANegocio(userId, org.id);
   if (!acceso) return { ok: false, error: { status: 403, code: "sin_acceso" } };
+  if (!accesoPermiteEntrar(acceso, org.status)) return { ok: false, error: { status: 403, code: "organizacion_suspendida" } };
+
+  // F-04 — Los pases que nadie canjeó (pestaña cerrada) se limpian aquí, de
+  // paso: la tabla no crece sin un cron.
+  await getDb()
+    .delete(schema.verification)
+    .where(and(like(schema.verification.identifier, "pase:%"), lt(schema.verification.expiresAt, new Date(ahora))));
 
   const carga: CargaPase = { u: userId, o: org.id, n: b64(randomBytes(18)), e: ahora + PASE_TTL_MS };
   await getDb()
@@ -147,7 +177,7 @@ export async function canjearPase(
 
   // El acceso pudo cerrarse entre emitir y canjear.
   const acceso = await accesoANegocio(c.u, c.o);
-  if (!acceso) return { ok: false, motivo: "sin_acceso" };
+  if (!acceso || !accesoPermiteEntrar(acceso, org.status)) return { ok: false, motivo: "sin_acceso" };
   await auditar({
     actorUserId: c.u,
     action: "pase_canjeado",

@@ -349,7 +349,8 @@ describe("Fix-B — equivalencia REST ↔ MCP de lo nuevo", () => {
       nextBefore: string | null;
     };
     expect(rest.entries).toHaveLength(2);
-    expect(rest.nextBefore).toBe("2026-11-17T12:00:59.000Z");
+    // F-05: cursor compuesto `<fecha>|<id>` (la base falsa no da microsegundos: vale el ISO).
+    expect(rest.nextBefore).toBe("2026-11-17T12:00:59.000Z|aud_1");
 
     fake().reiniciar();
     fake().responder(schema.platformApiToken, [filaToken(["read"])]);

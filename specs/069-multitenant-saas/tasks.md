@@ -227,6 +227,18 @@ Bloque 1 — Fix-A (lógica y seguridad) + Fix-B (Blueprint y MCP):
 - [x] T085 Pruebas: `auditoria-069-logica.test.ts` (Fix-A) y `auditoria-069-blueprint.test.ts` (Fix-B, incluida la equivalencia REST ↔ MCP de lo nuevo)
 - [ ] ~~`labTestCases`~~ — **no se incluye**: `agent_test_case` guarda los RESULTADOS de cada corrida del Laboratorio (FK a `agent_test_run`, conversación, veredicto) y las personas son un catálogo en código; no existen casos de prueba definibles que aprovisionar. Casos por nicho necesitan tabla propia y cambio en el runner → 071 (Vertical Packs).
 
+Auditoría final (`../../../AUDITORIA-069-FINAL.md`, F-01…F-08):
+
+- [x] T099 F-01 `src/lib/clipboard.ts` (`copiarAlPortapapeles`: API moderna o `<textarea>` + `execCommand`, `true` solo si copió) en los 8 sitios; «Copiado» solo si copió, «cópialo a mano» si no; guardarraíl: nadie más toca `navigator.clipboard`
+- [x] T100 F-02 apariencia/agenda ya guardadas: sin interruptor engañoso al editar (`guardada`), se editan en su lugar
+- [x] T101 F-03 pase: miembro de negocio suspendido → 403 `organizacion_suspendida` (emitir y canjear); el soporte vigente sí entra; botones del directorio y la ficha alineados (`accesoPermiteEntrar`)
+- [x] T102 F-04 `POST /api/pase`: solo dominio raíz, `Origin` obligatorio y del mismo host, 10/min por persona y 30/min por IP; tokens rechazados (MCP y REST) 20 / 10 min por IP → 429 sin tocar la base (`rateLimitExcedido`); purga de `pase:%` vencidos al emitir
+- [x] T103 F-05 auditoría: orden `(createdAt, id)` y cursor `<fecha con µs>|<id>` (ISO simple sigue sirviendo)
+- [x] T104 F-06 elegir país al editar no cambia moneda ni zona de agenda (`cambiosAlElegirPais`)
+- [x] T105 F-07 `uid` local estable en conocimiento, respuestas rápidas y franjas (nunca se envía); aviso de tarjetas incompletas en la tarjeta y en la barra
+- [x] T106 F-08 `/platform/tokens` y `/platform/soporte` con `Seccion`, `Switch`/pastillas e insignias Vigente/Vencido/Revocado
+- [x] T107 Pruebas: `auditoria-069-final.test.ts` y casos F-03/F-04 en `pase-sesion.test.ts`
+
 Staging (`169.58.118.66.sslip.io`) — sesión y navegación:
 
 - [x] T094 Cookies de un host (sin `crossSubDomainCookies`): la raíz y `{slug}.<base>` no se pisan; compatible con la Public Suffix List

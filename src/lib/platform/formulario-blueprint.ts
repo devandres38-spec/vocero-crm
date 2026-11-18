@@ -1,5 +1,7 @@
 import type { OrganizationBlueprint, SeccionBlueprint } from "@/lib/platform/blueprint";
 import { APARIENCIA_POR_DEFECTO, type Apariencia } from "@/lib/temas";
+import { normalizarAtajo } from "@/lib/respuestas-rapidas";
+import { REGIONES_SUGERIDAS } from "@/lib/region";
 
 /**
  * Auditoría 069 (Fix-C) — El estado del `FormularioBlueprint` de `/platform`
@@ -23,9 +25,22 @@ export const DIAS_SEMANA = [
 export type DiaSemana = (typeof DIAS_SEMANA)[number][0];
 export const DIAS_LABORABLES: DiaSemana[] = ["mon", "tue", "wed", "thu", "fri"];
 
-export type Franja = { start: string; end: string };
-export type EntradaKb = { kind: "qa"; question: string; answer: string } | { kind: "block"; content: string };
-export type RespuestaRapidaForm = { shortcut: string; text: string };
+/**
+ * Auditoría final (F-07) — `uid`: id local y estable de cada elemento de una
+ * lista editable (para `key` de React al reordenar o quitar). Nunca se envía.
+ */
+type ConUid = { uid?: string };
+export type Franja = { start: string; end: string } & ConUid;
+export type EntradaKb = ({ kind: "qa"; question: string; answer: string } | { kind: "block"; content: string }) & ConUid;
+export type RespuestaRapidaForm = { shortcut: string; text: string } & ConUid;
+
+let contadorUid = 0;
+/** Un id local único en esta pestaña del navegador (sin `crypto.randomUUID`: no existe por HTTP). */
+export function nuevoUid(): string {
+  contadorUid += 1;
+  return `u${contadorUid.toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+}
+const conUid = <T extends object>(x: T): T & ConUid => ({ ...x, uid: (x as ConUid).uid ?? nuevoUid() });
 
 export type TechoForm = { agenda: boolean; atribucion: boolean; channels: string[] };
 export type DefaultsForm = {
@@ -43,7 +58,12 @@ export type FormBlueprint = {
   organization: { name: string; slug: string; slugTocado: boolean };
   region: { country: string; locale: string; timezone: string };
   brand: { name: string; nameTocado: boolean; accent: string; currency: string };
-  appearance: { usar: boolean; valor: Apariencia };
+  /**
+   * `guardada` (F-02): el negocio ya tenía esa sección. Al editar, el
+   * Blueprint no sabe «borrar» una apariencia o una agenda: el interruptor
+   * `usar` no se ofrece y la sección se edita en su lugar.
+   */
+  appearance: { usar: boolean; guardada: boolean; valor: Apariencia };
   modules: ModulosForm;
   pipeline: { stages: string[] };
   agent: {
@@ -60,6 +80,7 @@ export type FormBlueprint = {
   knowledge: { mode: "merge" | "exact"; entries: EntradaKb[] };
   agenda: {
     usar: boolean;
+    guardada: boolean;
     weeklyHours: Record<DiaSemana, Franja[]>;
     slotMinutes: number;
     bufferMinutes: number;
@@ -92,12 +113,12 @@ export function sugerirSlug(nombre: string): string {
 /** Un formulario nuevo para crear un negocio. */
 export function formularioInicial(d: DefaultsForm, techo: TechoForm): FormBlueprint {
   const semana = semanaVacia();
-  for (const dia of DIAS_LABORABLES) semana[dia] = [{ start: "09:00", end: "18:00" }];
+  for (const dia of DIAS_LABORABLES) semana[dia] = [conUid({ start: "09:00", end: "18:00" })];
   return {
     organization: { name: "", slug: "", slugTocado: false },
     region: { country: d.country, locale: d.locale, timezone: d.timezone },
     brand: { name: "", nameTocado: false, accent: d.accent, currency: d.currency },
-    appearance: { usar: false, valor: { ...APARIENCIA_POR_DEFECTO } },
+    appearance: { usar: false, guardada: false, valor: { ...APARIENCIA_POR_DEFECTO } },
     modules: { agenda: techo.agenda, atribucion: techo.atribucion, channels: ["whatsapp", ...techo.channels.filter((c) => c !== "whatsapp")] },
     pipeline: { stages: [...d.etapas] },
     agent: {
@@ -113,6 +134,7 @@ export function formularioInicial(d: DefaultsForm, techo: TechoForm): FormBluepr
     knowledge: { mode: "merge", entries: [] },
     agenda: {
       usar: false,
+      guardada: false,
       weeklyHours: semana,
       slotMinutes: 30,
       bufferMinutes: 0,
@@ -150,7 +172,7 @@ export function formularioDesdeBlueprint(
     accent: bp.brand?.accent ?? d.accent,
     currency: bp.brand?.currency ?? d.currency,
   };
-  if (bp.appearance) f.appearance = { usar: true, valor: { ...(bp.appearance as Apariencia) } };
+  if (bp.appearance) f.appearance = { usar: true, guardada: true, valor: { ...(bp.appearance as Apariencia) } };
   const m = modulosEfectivos ?? f.modules;
   f.modules = {
     agenda: bp.modules?.agenda ?? m.agenda,
@@ -171,13 +193,14 @@ export function formularioDesdeBlueprint(
     };
   }
   if (bp.knowledge) {
-    f.knowledge = { mode: bp.knowledge.mode ?? "merge", entries: bp.knowledge.entries.map((e) => ({ ...e })) };
+    f.knowledge = { mode: bp.knowledge.mode ?? "merge", entries: bp.knowledge.entries.map((e) => conUid({ ...e })) };
   }
   if (bp.agenda) {
     const semana = semanaVacia();
-    for (const [dia] of DIAS_SEMANA) semana[dia] = (bp.agenda.weeklyHours?.[dia] ?? []).map((x) => ({ ...x }));
+    for (const [dia] of DIAS_SEMANA) semana[dia] = (bp.agenda.weeklyHours?.[dia] ?? []).map((x) => conUid({ ...x }));
     f.agenda = {
       usar: true,
+      guardada: true,
       weeklyHours: bp.agenda.weeklyHours ? semana : f.agenda.weeklyHours,
       slotMinutes: bp.agenda.slotMinutes ?? f.agenda.slotMinutes,
       bufferMinutes: bp.agenda.bufferMinutes ?? f.agenda.bufferMinutes,
@@ -188,7 +211,7 @@ export function formularioDesdeBlueprint(
     };
   }
   if (bp.quickReplies) {
-    f.quickReplies = { mode: bp.quickReplies.mode ?? "merge", entries: bp.quickReplies.entries.map((e) => ({ ...e })) };
+    f.quickReplies = { mode: bp.quickReplies.mode ?? "merge", entries: bp.quickReplies.entries.map((e) => conUid({ ...e })) };
   }
   return f;
 }
@@ -218,7 +241,7 @@ export function seccionesDelFormulario(
     accent: t(f.brand.accent).toLowerCase(),
     currency: f.brand.currency,
   };
-  if (f.appearance.usar) {
+  if (f.appearance.usar || f.appearance.guardada) {
     const a = f.appearance.valor;
     s.appearance = a.tema === "propio" ? { ...a } : { tema: a.tema, letra: a.letra, tamano: a.tamano, densidad: a.densidad };
   }
@@ -249,10 +272,12 @@ export function seccionesDelFormulario(
     .filter((e) => (e.kind === "qa" ? e.question && e.answer : e.content));
   if (!(modo === "crear" && entradas.length === 0)) s.knowledge = { mode: f.knowledge.mode, entries: entradas };
 
-  if (f.agenda.usar) {
+  if (f.agenda.usar || f.agenda.guardada) {
     const g = f.agenda;
     const semana = Object.fromEntries(
-      DIAS_SEMANA.map(([d]) => [d, g.weeklyHours[d].filter((x) => x.start && x.end)] as const).filter(([, xs]) => xs.length > 0)
+      DIAS_SEMANA.map(([d]) => [d, g.weeklyHours[d].filter((x) => x.start && x.end).map((x) => ({ start: x.start, end: x.end }))] as const).filter(
+        ([, xs]) => xs.length > 0
+      )
     );
     const enlace = t(g.meetingLink);
     s.agenda = {
@@ -327,9 +352,48 @@ export const PESTANA_DE_SECCION: Record<SeccionBlueprint, string> = {
   quickReplies: "respuestas",
 };
 
-/** Pura: copiar el horario de un día a lunes–viernes. */
+/** Pura: copiar el horario de un día a lunes–viernes (con ids nuevos). */
 export function copiarALaborables(semana: Record<DiaSemana, Franja[]>, desde: DiaSemana): Record<DiaSemana, Franja[]> {
   const copia = { ...semana };
-  for (const d of DIAS_LABORABLES) copia[d] = semana[desde].map((x) => ({ ...x }));
+  for (const d of DIAS_LABORABLES) copia[d] = semana[desde].map((x) => ({ start: x.start, end: x.end, uid: nuevoUid() }));
   return copia;
+}
+
+/** Pura (F-07): ¿una tarjeta de conocimiento está completa? Las incompletas no se envían. */
+export function entradaKbCompleta(e: EntradaKb): boolean {
+  return e.kind === "qa" ? Boolean(e.question.trim() && e.answer.trim()) : Boolean(e.content.trim());
+}
+
+/** Pura (F-07): ¿una respuesta rápida está completa (atajo válido tras normalizar y texto)? */
+export function respuestaCompleta(r: RespuestaRapidaForm): boolean {
+  return Boolean(normalizarAtajo(r.shortcut) && r.text.trim());
+}
+
+/** Pura (F-07): cuántas tarjetas se descartarían al enviar, para avisar antes. */
+export function tarjetasIncompletas(f: FormBlueprint): { conocimiento: number; respuestas: number } {
+  return {
+    conocimiento: f.knowledge.entries.filter((e) => !entradaKbCompleta(e)).length,
+    respuestas: f.quickReplies.entries.filter((r) => !respuestaCompleta(r)).length,
+  };
+}
+
+/**
+ * Pura (auditoría final F-06): qué cambia al elegir un país. Siempre idioma y
+ * zona; la moneda y la zona de la agenda SOLO al crear: en un negocio que ya
+ * opera, cambiarlas es una decisión aparte (Marca y Agenda).
+ */
+export function cambiosAlElegirPais(
+  country: string,
+  modo: ModoFormulario
+): {
+  region: Partial<FormBlueprint["region"]>;
+  brand?: Partial<FormBlueprint["brand"]>;
+  agenda?: Partial<FormBlueprint["agenda"]>;
+} {
+  const r = REGIONES_SUGERIDAS.find((x) => x.country === country);
+  if (!r) return { region: { country } };
+  return {
+    region: { country: r.country, locale: r.locale, timezone: r.timezone },
+    ...(modo === "crear" ? { brand: { currency: r.currency }, agenda: { timezone: r.timezone } } : {}),
+  };
 }

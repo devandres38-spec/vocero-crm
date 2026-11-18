@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   DIAS_SEMANA,
   copiarALaborables,
+  nuevoUid,
   type DiaSemana,
   type FormBlueprint,
   type Franja,
@@ -69,8 +70,14 @@ export function PestanaAgenda({
       )}
 
       <Seccion titulo="Horario de atención" descripcion="Cada día puede tener varias franjas (p. ej. mañana y tarde, con almuerzo en medio).">
-        <FilaInterruptor titulo="Configurar la agenda" checked={g.usar} onChange={(v) => upd("agenda", { usar: v })} />
-        {g.usar && (
+        {g.guardada ? (
+          <p className="rounded-lg bg-subtle px-3 py-2 text-xs text-text-2">
+            Este negocio ya tiene agenda configurada: aquí se cambia. Para dejar de usarla, apaga el módulo Agenda en «Módulos».
+          </p>
+        ) : (
+          <FilaInterruptor titulo="Configurar la agenda" checked={g.usar} onChange={(v) => upd("agenda", { usar: v })} />
+        )}
+        {(g.usar || g.guardada) && (
           <ul className="divide-y rounded-lg border">
             {DIAS_SEMANA.map(([d, nombre]) => {
               const franjas = semana[d];
@@ -83,14 +90,14 @@ export function PestanaAgenda({
                       size="sm"
                       checked={abierto}
                       label={`${nombre} abierto`}
-                      onCheckedChange={(v) => setDia(d, v ? [{ start: "09:00", end: "18:00" }] : [])}
+                      onCheckedChange={(v) => setDia(d, v ? [{ start: "09:00", end: "18:00", uid: nuevoUid() }] : [])}
                     />
                     <span className="text-sm font-medium">{nombre}</span>
                   </div>
                   {abierto ? (
                     <div className="flex-1 space-y-2">
                       {franjas.map((x, i) => (
-                        <div key={i} className="flex flex-wrap items-center gap-2">
+                        <div key={x.uid ?? `${d}-${i}`} className="flex flex-wrap items-center gap-2">
                           <Input
                             type="time"
                             aria-label={`${nombre}: desde`}
@@ -118,7 +125,10 @@ export function PestanaAgenda({
                           className="inline-flex items-center gap-1 text-brand-ink hover:underline disabled:opacity-40"
                           onClick={() => {
                             const ultima = franjas[franjas.length - 1];
-                            setDia(d, [...franjas, { start: ultima?.end && ultima.end < "22:00" ? sumarHora(ultima.end) : "14:00", end: "18:00" }]);
+                            setDia(d, [
+                              ...franjas,
+                              { start: ultima?.end && ultima.end < "22:00" ? sumarHora(ultima.end) : "14:00", end: "18:00", uid: nuevoUid() },
+                            ]);
                           }}
                         >
                           <Plus className="h-3.5 w-3.5" /> Agregar franja
@@ -143,7 +153,7 @@ export function PestanaAgenda({
         )}
       </Seccion>
 
-      {g.usar && (
+      {(g.usar || g.guardada) && (
         <Seccion titulo="Citas">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Campo etiqueta="Duración (min)">{numero("slotMinutes")}</Campo>

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
-import { clientIp } from "@/lib/rate-limit";
+import { checkRateLimit, clientIp, rateLimitExcedido, TOKEN_FALLIDO_RATE_LIMIT } from "@/lib/rate-limit";
 import { dominioBase, esPlataforma, raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
 import { hostDeHeaders, slugDelHost } from "@/server/tenant/host";
 import type { Actor } from "@/server/platform/invitaciones";
@@ -54,8 +54,16 @@ export async function requirePlataforma(
   let actor: ActorPlataforma | null;
   if (token) {
     if (opciones.soloSesion) return { ok: false, response: noEncontrado() };
+    // F-04 — La misma cuenta de rechazos por IP que el MCP.
+    const llave = `token-fallido:${ip}`;
+    if (rateLimitExcedido(llave, TOKEN_FALLIDO_RATE_LIMIT)) {
+      return { ok: false, response: json(429, "demasiados_intentos", "Demasiados tokens rechazados; espera unos minutos") };
+    }
     const v = await verificarToken(token, ip);
-    if (!v) return { ok: false, response: json(401, "token_invalido", "Token inválido, vencido o revocado") };
+    if (!v) {
+      checkRateLimit(llave, TOKEN_FALLIDO_RATE_LIMIT);
+      return { ok: false, response: json(401, "token_invalido", "Token inválido, vencido o revocado") };
+    }
     actor = { userId: v.userId, via: opciones.via ?? "api", tokenId: v.tokenId, ip, alcances: v.scopes };
   } else {
     actor = await actorDeSesion(req.headers);

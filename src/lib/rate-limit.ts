@@ -62,6 +62,28 @@ export function checkRateLimit(
 }
 
 /**
+ * Auditoría final 069 (F-04) — ¿Esta llave ya agotó su ventana? Mira sin
+ * contar el intento: sirve para frenar ANTES de consultar la base a quien
+ * acumula fallos (tokens inválidos), contando solo cuando falla.
+ */
+export function rateLimitExcedido(
+  key: string,
+  opts: { windowMs: number; max: number },
+  now: number = Date.now()
+): boolean {
+  const cutoff = now - opts.windowMs;
+  const hits = (store().get(key)?.hits ?? []).filter((t) => t > cutoff);
+  return hits.length >= opts.max;
+}
+
+/** F-04 — Tokens `alp_` rechazados (401) por IP: 20 en 10 minutos. */
+export const TOKEN_FALLIDO_RATE_LIMIT = { windowMs: 10 * 60 * 1000, max: 20 };
+
+/** F-04 — Pases de sesión: 10 por minuto por persona y 30 por IP. */
+export const PASE_RATE_LIMIT = { windowMs: 60 * 1000, max: 10 };
+export const PASE_IP_RATE_LIMIT = { windowMs: 60 * 1000, max: 30 };
+
+/**
  * La IP del cliente para LIMITAR, jamás para autorizar: el primer salto de
  * `x-forwarded-for` (detrás de Traefik/Coolify o Caddy es el cliente real),
  * luego `x-real-ip`, y "local" sin proxy. Sin proxy delante, el cliente

@@ -116,9 +116,8 @@ export function DirectorioNegocios({ negocios, raiz }: { negocios: NegocioDirect
                 </div>
                 <div className="flex items-center gap-2">
                   <EstadoBadge status={o.status} />
-                  {raiz && o.slug && o.status === "activa" && (
-                    <BotonEntrarNegocio organizationId={o.id} acceso={o.acceso} compacto />
-                  )}
+                  {/* F-03: también en suspendidos (el soporte vigente entra; sin él, «Entrar con soporte»). */}
+                  {raiz && o.slug && <BotonEntrarNegocio organizationId={o.id} acceso={o.acceso} compacto />}
                 </div>
               </li>
             );

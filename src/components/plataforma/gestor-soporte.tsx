@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LifeBuoy } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { leerErrorPlataforma } from "@/components/plataforma/errores";
 import { BotonEntrarNegocio } from "@/components/plataforma/boton-entrar-negocio";
+import { Campo, Pastillas, SELECT, Seccion } from "@/components/plataforma/formulario/controles";
 
 type Acceso = {
   id: string;
@@ -25,7 +26,18 @@ type Acceso = {
 
 const fecha = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
-/** 069 (US5) — Pedir y cerrar accesos de soporte. */
+/** Pura: la insignia de un acceso de soporte. */
+export function estadoAcceso(a: Pick<Acceso, "vigente" | "revokedAt">): { texto: string; variante: "warning" | "secondary" | "destructive" } {
+  if (a.vigente) return { texto: "Vigente", variante: "warning" };
+  if (a.revokedAt) return { texto: "Revocado", variante: "destructive" };
+  return { texto: "Vencido", variante: "secondary" };
+}
+
+/**
+ * 069 (US5) — Pedir y cerrar accesos de soporte. Auditoría final (F-08):
+ * mismo diseño que el resto del panel; «Entrar» solo con accesos propios y
+ * por pase de un solo uso.
+ */
 export function GestorSoporte({
   yo,
   orgInicial,
@@ -73,119 +85,105 @@ export function GestorSoporte({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Pedir acceso de soporte</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <p className="text-text-2">
-            Sin acceso no ves nada de un negocio. Cada acceso tiene motivo y caducidad (máximo {maxHoras} h), cada
-            petición queda registrada y el dueño del negocio lo ve en su Equipo.
-          </p>
-          <form onSubmit={pedir} className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="sop-org">Negocio</Label>
-              <select
-                id="sop-org"
-                value={org}
-                onChange={(e) => setOrg(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
-              >
-                {organizaciones.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sop-nivel">Nivel</Label>
-              <select
-                id="sop-nivel"
-                value={level}
-                onChange={(e) => setLevel(e.target.value as typeof level)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm"
-              >
-                <option value="lectura">Lectura (solo ver)</option>
-                <option value="configuracion">Configuración (marca, pipeline, agenda, agente, conocimiento)</option>
-              </select>
-            </div>
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="sop-motivo">Motivo (mínimo 10 caracteres; lo verá el dueño)</Label>
-              <Input id="sop-motivo" required minLength={10} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sop-horas">Duración (horas)</Label>
-              <Input
-                id="sop-horas"
-                type="number"
-                min={0.25}
-                max={maxHoras}
-                step={0.25}
-                value={hours}
-                onChange={(e) => setHours(Number(e.target.value))}
-              />
-            </div>
-            <div className="flex items-end">
-              <Button type="submit" disabled={ocupado || !org}>
-                Abrir acceso
-              </Button>
-            </div>
-          </form>
-          {error && (
-            <p role="alert" className="text-danger-text">
-              {error}
+      <Seccion
+        titulo="Pedir acceso de soporte"
+        descripcion={`Cada acceso tiene motivo, nivel y caducidad (máximo ${maxHoras} h). Cada petición queda registrada y el dueño lo ve en su Equipo.`}
+      >
+        <form onSubmit={pedir} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+            <Campo etiqueta="Negocio">
+              {(id) => (
+                <select id={id} value={org} onChange={(e) => setOrg(e.target.value)} className={SELECT}>
+                  {organizaciones.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Campo>
+            <Campo etiqueta="Duración (horas)">
+              {(id) => (
+                <Input id={id} type="number" min={0.25} max={maxHoras} step={0.25} value={hours} onChange={(e) => setHours(Number(e.target.value))} />
+              )}
+            </Campo>
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Nivel</p>
+            <Pastillas
+              etiqueta="Nivel de acceso"
+              valor={level}
+              onChange={setLevel}
+              opciones={[
+                { value: "lectura", label: "Lectura (solo ver)" },
+                { value: "configuracion", label: "Configuración" },
+              ]}
+            />
+            <p className="text-xs text-text-3">
+              {level === "lectura"
+                ? "Ve el negocio sin cambiar nada."
+                : "Además puede cambiar marca, pipeline, agenda, agente y conocimiento. Nunca credenciales, canales ni equipo."}
             </p>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+          <Campo etiqueta="Motivo" ayuda="Mínimo 10 caracteres. Lo verá el dueño.">
+            {(id) => <Input id={id} required minLength={10} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />}
+          </Campo>
+          <Button type="submit" disabled={ocupado || !org}>
+            <LifeBuoy className="mr-1.5 h-4 w-4" /> Abrir acceso
+          </Button>
+        </form>
+        {error && (
+          <p role="alert" className="rounded-md border border-danger-soft bg-danger-tint p-3 text-sm text-danger-text">
+            {error}
+          </p>
+        )}
+      </Seccion>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Accesos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {accesos.length === 0 ? (
-            <p className="text-sm text-text-3">Ningún acceso todavía.</p>
-          ) : (
-            <ul className="divide-y text-sm">
-              {accesos.map((a) => {
-                const slug = slugDe(a.organizationId);
-                return (
-                  <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                    <div className="min-w-0">
-                      <p className="font-medium">
-                        {a.organizacion} · {a.level === "lectura" ? "lectura" : "configuración"}
-                        {a.vigente ? "" : a.revokedAt ? " · cerrado" : " · vencido"}
-                      </p>
-                      <p className="text-xs text-text-3">
-                        {a.actor} · «{a.reason}» · {fecha(a.createdAt)} → {fecha(a.expiresAt)}
-                      </p>
+      <Seccion titulo={`Accesos (${accesos.length})`}>
+        {accesos.length === 0 ? (
+          <p className="text-sm text-text-3">Ningún acceso todavía.</p>
+        ) : (
+          <ul className="divide-y text-sm">
+            {accesos.map((a) => {
+              const estado = estadoAcceso(a);
+              const propio = a.actorId === yo;
+              return (
+                <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 font-medium">
+                      {a.organizacion}
+                      <span className="rounded-md bg-subtle px-1.5 py-0.5 text-[11px] font-normal text-text-2">
+                        {a.level === "lectura" ? "Lectura" : "Configuración"}
+                      </span>
+                      <Badge variant={estado.variante}>{estado.texto}</Badge>
+                    </p>
+                    <p className="text-xs text-text-3">
+                      {a.actor} · «{a.reason}» · {fecha(a.createdAt)} → {fecha(a.expiresAt)}
+                    </p>
+                  </div>
+                  {a.vigente && (
+                    <div className="flex items-center gap-2">
+                      {slugDe(a.organizationId) && propio && (
+                        <BotonEntrarNegocio organizationId={a.organizationId} acceso etiqueta="Entrar" />
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={async () => {
+                          const res = await fetch(`/api/platform/support/${a.id}`, { method: "DELETE" });
+                          if (res.ok) router.refresh();
+                        }}
+                      >
+                        Cerrar
+                      </Button>
                     </div>
-                    {a.vigente && (
-                      <div className="flex gap-2">
-                        {slug && a.actorId === yo && (
-                          <BotonEntrarNegocio organizationId={a.organizationId} acceso etiqueta="Entrar" />
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const res = await fetch(`/api/platform/support/${a.id}`, { method: "DELETE" });
-                            if (res.ok) router.refresh();
-                          }}
-                        >
-                          Cerrar
-                        </Button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Seccion>
     </div>
   );
 }

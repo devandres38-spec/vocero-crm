@@ -1,4 +1,4 @@
-import { clientIp } from "@/lib/rate-limit";
+import { checkRateLimit, clientIp, rateLimitExcedido, TOKEN_FALLIDO_RATE_LIMIT } from "@/lib/rate-limit";
 import { mcpActivo } from "@/lib/tenancy";
 import { origenPermitido } from "@/server/platform/mcp/origen";
 import type { ActorPlataforma } from "@/server/platform/guardia";
@@ -22,6 +22,13 @@ function noAutorizado(): Response {
   );
 }
 
+function demasiados(): Response {
+  return Response.json(
+    { error: { code: "demasiados_intentos", message: "Demasiados tokens rechazados; espera unos minutos" } },
+    { status: 429, headers: { "retry-after": "600" } }
+  );
+}
+
 export async function POST(req: Request): Promise<Response> {
   if (!mcpActivo()) return new Response(null, { status: 404 });
   if (!origenPermitido(req.headers.get("origin"))) return new Response(null, { status: 403 });
@@ -37,11 +44,20 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const token = tokenDeHeaders(req.headers);
-  if (!token) return noAutorizado();
+  // F-04 — Quien acumula tokens rechazados se frena antes de tocar la base.
   const ip = clientIp(req.headers);
+  const llave = `token-fallido:${ip}`;
+  if (rateLimitExcedido(llave, TOKEN_FALLIDO_RATE_LIMIT)) return demasiados();
+  const token = tokenDeHeaders(req.headers);
+  if (!token) {
+    checkRateLimit(llave, TOKEN_FALLIDO_RATE_LIMIT);
+    return noAutorizado();
+  }
   const v = await verificarToken(token, ip);
-  if (!v) return noAutorizado();
+  if (!v) {
+    checkRateLimit(llave, TOKEN_FALLIDO_RATE_LIMIT);
+    return noAutorizado();
+  }
   const actor: ActorPlataforma = { userId: v.userId, via: "mcp", tokenId: v.tokenId, ip, alcances: v.scopes };
 
   let cuerpo: unknown;

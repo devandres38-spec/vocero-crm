@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Braces, Check, Copy, LayoutDashboard, Loader2, Mail, Settings2, type LucideIcon } from "lucide-react";
+import { Braces, Check, Copy, LayoutDashboard, Loader2, Mail, Settings2, X, type LucideIcon } from "lucide-react";
 import { leerErrorPlataforma } from "@/components/plataforma/errores";
 import { FormularioBlueprint, type PropsFormulario } from "@/components/plataforma/formulario/formulario-blueprint";
 import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
 import { cn } from "@/lib/utils";
+import { COPIA_MANUAL, copiarAlPortapapeles } from "@/lib/clipboard";
 
 /**
  * Auditoría 069 (Fix-C/D) — La ficha de un negocio en pestañas: resumen y
@@ -105,20 +106,26 @@ function ConfigurarNegocio(p: Omit<PropsFormulario, "modo" | "inicial"> & { orga
 
 /** El subdominio con botón de copiar. */
 export function CopiarDireccion({ texto }: { texto: string }) {
-  const [copiado, setCopiado] = useState(false);
+  const [copiado, setCopiado] = useState<boolean | null>(null);
   return (
     <button
       type="button"
-      title="Copiar la dirección"
+      title={copiado === false ? COPIA_MANUAL : "Copiar la dirección"}
       onClick={async () => {
-        await navigator.clipboard.writeText(texto).catch(() => undefined);
-        setCopiado(true);
-        setTimeout(() => setCopiado(false), 1500);
+        // «Copiado» solo si de verdad copió (por HTTP no hay API de portapapeles).
+        setCopiado(await copiarAlPortapapeles(texto));
+        setTimeout(() => setCopiado(null), 1500);
       }}
       className="inline-flex max-w-full items-center gap-1.5 rounded-md px-1 font-mono text-xs text-text-3 hover:bg-subtle hover:text-foreground"
     >
       <span className="truncate">{texto}</span>
-      {copiado ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+      {copiado ? (
+        <Check className="h-3.5 w-3.5 text-success" />
+      ) : copiado === false ? (
+        <X className="h-3.5 w-3.5 text-danger-text" aria-label={COPIA_MANUAL} />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
     </button>
   );
 }

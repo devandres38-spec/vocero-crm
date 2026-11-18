@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, type SQL } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql, type SQL } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { ACCIONES_AUDITORIA, type AccionAuditoria } from "@/server/platform/auditoria";
 
@@ -20,7 +20,11 @@ export type FiltroAuditoria = {
   action?: string | null;
   via?: string | null;
   limit?: number;
-  /** ISO: solo entradas anteriores a esta fecha (la página siguiente). */
+  /**
+   * La página siguiente: el `nextBefore` de la anterior (`<fecha>|<id>`). Un
+   * ISO simple (versiones anteriores del MCP) sigue sirviendo: «antes de esa
+   * fecha».
+   */
   before?: string | null;
 };
 
@@ -48,6 +52,25 @@ export function limiteAuditoria(v: unknown): number {
   return Math.min(Math.floor(n), LIMITE_AUDITORIA.maximo);
 }
 
+const FECHA_CURSOR = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z?$/;
+
+/**
+ * Pura (auditoría final F-05): el cursor. Compuesto `(createdAt, id)` porque
+ * varias filas nacen en la MISMA transacción con el mismo `created_at`
+ * (crear un negocio escribe 3): cortar una página en medio de ellas con solo
+ * la fecha perdía las demás. La fecha va con microsegundos (los de
+ * PostgreSQL; un `Date` de JS solo tiene milisegundos).
+ */
+export function leerCursor(before: string | null | undefined): { fecha: string; id: string | null } | null {
+  if (!before) return null;
+  const corte = before.lastIndexOf("|");
+  const fecha = corte >= 0 ? before.slice(0, corte) : before;
+  const id = corte >= 0 ? before.slice(corte + 1) : null;
+  if (!FECHA_CURSOR.test(fecha)) return null;
+  if (id !== null && !/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
+  return { fecha, id };
+}
+
 export async function listarAuditoria(
   f: FiltroAuditoria = {}
 ): Promise<{ entries: EntradaListada[]; nextBefore: string | null }> {
@@ -56,9 +79,17 @@ export async function listarAuditoria(
   if (f.organizationId) filtros.push(eq(schema.platformAuditLog.organizationId, f.organizationId));
   if (esAccionAuditoria(f.action)) filtros.push(eq(schema.platformAuditLog.action, f.action));
   if (esViaAuditoria(f.via)) filtros.push(eq(schema.platformAuditLog.via, f.via));
-  if (f.before) {
-    const antes = new Date(f.before);
-    if (!Number.isNaN(antes.getTime())) filtros.push(lt(schema.platformAuditLog.createdAt, antes));
+  const cursor = leerCursor(f.before);
+  if (cursor) {
+    const fecha = sql`${cursor.fecha}::timestamp`;
+    filtros.push(
+      cursor.id === null
+        ? sql`${schema.platformAuditLog.createdAt} < ${fecha}`
+        : (or(
+            sql`${schema.platformAuditLog.createdAt} < ${fecha}`,
+            and(sql`${schema.platformAuditLog.createdAt} = ${fecha}`, lt(schema.platformAuditLog.id, cursor.id))
+          ) as SQL)
+    );
   }
   const filas = await getDb()
     .select({
@@ -70,12 +101,14 @@ export async function listarAuditoria(
       detail: schema.platformAuditLog.detail,
       ip: schema.platformAuditLog.ip,
       createdAt: schema.platformAuditLog.createdAt,
+      // La fecha exacta (microsegundos) para el cursor.
+      marca: sql<string>`to_char(${schema.platformAuditLog.createdAt}, 'YYYY-MM-DD"T"HH24:MI:SS.US')`,
       actor: schema.user.email,
     })
     .from(schema.platformAuditLog)
     .leftJoin(schema.user, eq(schema.user.id, schema.platformAuditLog.actorUserId))
     .where(filtros.length ? and(...filtros) : undefined)
-    .orderBy(desc(schema.platformAuditLog.createdAt))
+    .orderBy(desc(schema.platformAuditLog.createdAt), desc(schema.platformAuditLog.id))
     .limit(limit + 1);
   const pagina = filas.slice(0, limit);
   return {
@@ -90,6 +123,12 @@ export async function listarAuditoria(
       ip: e.ip ?? null,
       createdAt: e.createdAt.toISOString(),
     })),
-    nextBefore: filas.length > limit ? (pagina[pagina.length - 1]?.createdAt.toISOString() ?? null) : null,
+    nextBefore: filas.length > limit ? cursorDe(pagina[pagina.length - 1]) : null,
   };
+}
+
+/** El cursor de una fila: su fecha exacta y su id. */
+function cursorDe(fila: { id: string; createdAt: Date; marca?: string | null } | undefined): string | null {
+  if (!fila) return null;
+  return `${fila.marca ?? fila.createdAt.toISOString()}|${fila.id}`;
 }

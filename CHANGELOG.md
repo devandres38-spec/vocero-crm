@@ -52,6 +52,11 @@ que `single` no usa.
   rápidas), con «Revisar cambios» y «Guardar» siempre a mano y, al editar,
   solo las secciones que cambiaron; ficha del negocio por pestañas con
   «Pedir soporte» directo; auditoría con filtros, hora local y paginación.
+- Cierre: copiar funciona también por HTTP (y solo dice «Copiado» si copió);
+  un miembro de un negocio suspendido no recibe pase (el soporte sí entra);
+  límites a pases y a tokens rechazados; la auditoría ya no se salta filas
+  del mismo instante al paginar; editar el país no cambia la moneda ni la
+  agenda; tokens y soporte con el diseño nuevo.
 
 ### Nuevo
 

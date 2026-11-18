@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, LifeBuoy } from "lucide-react";
 import { BotonEntrarNegocio } from "@/components/plataforma/boton-entrar-negocio";
 import { requirePlataformaPagina } from "@/server/platform/guardia";
-import { accesoANegocio } from "@/server/platform/pase";
+import { accesoANegocio, accesoPermiteEntrar } from "@/server/platform/pase";
 import { EstadoBadge } from "@/components/plataforma/estado-badge";
 import {
   BotonEstado,
@@ -45,8 +45,9 @@ export default async function DetalleOrganizacionPage({
   const actor = await requirePlataformaPagina();
   const org = await detalleOrganizacion((await params).id);
   if (!org) notFound();
-  // Entrar solo si ya puede (miembro o SU soporte vigente); si no, «Entrar con soporte».
-  const puedeEntrar = (await accesoANegocio(actor.userId, org.id)) !== null;
+  // Entrar solo si ya puede (miembro de un negocio activo, o SU soporte
+  // vigente, también en uno suspendido — F-03); si no, «Entrar con soporte».
+  const puedeEntrar = accesoPermiteEntrar(await accesoANegocio(actor.userId, org.id), org.status);
   const accesos = await accesosDeOrganizacion(org.id, 5);
   const raiz = raizPlataforma();
   const instancia = getRegion();
@@ -176,10 +177,8 @@ export default async function DetalleOrganizacionPage({
           <CopiarDireccion texto={direccion} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {raiz && org.slug && org.status === "activa" && (
-            <BotonEntrarNegocio organizationId={org.id} acceso={puedeEntrar} />
-          )}
-          {(puedeEntrar || org.status !== "activa") && (
+          {raiz && org.slug && <BotonEntrarNegocio organizationId={org.id} acceso={puedeEntrar} />}
+          {puedeEntrar && (
             <Link
               href={`/platform/soporte?org=${org.id}`}
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border-strong px-3 text-xs font-medium hover:border-foreground"

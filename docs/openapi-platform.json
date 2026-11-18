@@ -436,10 +436,9 @@
             "name": "before",
             "in": "query",
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             },
-            "description": "nextBefore de la página anterior"
+            "description": "nextBefore de la página anterior (cursor opaco `<fecha>|<id>`); un ISO simple también sirve"
           }
         ],
         "responses": {
