@@ -20,6 +20,11 @@ export type ResumenOrganizacion = {
   createdAt: string;
   suspendedAt: string | null;
   miembros: number;
+  /** Para el directorio (Fix-D): color de marca, país y moneda guardados, y módulos efectivos. */
+  accent: string;
+  country: string | null;
+  currency: string;
+  modulos: ModulosEfectivos;
 };
 
 export async function listarOrganizaciones(): Promise<ResumenOrganizacion[]> {
@@ -32,6 +37,8 @@ export async function listarOrganizaciones(): Promise<ResumenOrganizacion[]> {
       status: schema.organization.status,
       createdAt: schema.organization.createdAt,
       suspendedAt: schema.organization.suspendedAt,
+      metadata: schema.organization.metadata,
+      modules: schema.organization.modules,
     })
     .from(schema.organization)
     .orderBy(desc(schema.organization.createdAt));
@@ -40,15 +47,24 @@ export async function listarOrganizaciones(): Promise<ResumenOrganizacion[]> {
     .from(schema.member)
     .groupBy(schema.member.organizationId);
   const porOrg = new Map(conteos.map((c) => [c.organizationId, c.n]));
-  return filas.map((f) => ({
-    ...f,
-    createdAt: f.createdAt.toISOString(),
-    suspendedAt: f.suspendedAt?.toISOString() ?? null,
-    miembros: porOrg.get(f.id) ?? 0,
-  }));
+  const techo = techoDeInstancia();
+  return filas.map(({ metadata, modules, ...f }) => {
+    const meta = leerMetadata(metadata);
+    const branding = normalizeBranding((meta.branding as Partial<Branding> | undefined) ?? null);
+    return {
+      ...f,
+      createdAt: f.createdAt.toISOString(),
+      suspendedAt: f.suspendedAt?.toISOString() ?? null,
+      miembros: porOrg.get(f.id) ?? 0,
+      accent: branding.accent,
+      country: regionGuardada(meta).country ?? null,
+      currency: branding.currency,
+      modulos: modulosEfectivos(techo, modules),
+    };
+  });
 }
 
-export type DetalleOrganizacion = ResumenOrganizacion & {
+export type DetalleOrganizacion = Omit<ResumenOrganizacion, "accent" | "country" | "currency" | "modulos"> & {
   region: RegionGuardada;
   branding: Branding;
   modulosGuardados: unknown;

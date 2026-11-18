@@ -226,7 +226,17 @@ Bloque 1 — Fix-A (lógica y seguridad) + Fix-B (Blueprint y MCP):
 - [x] T085 Pruebas: `auditoria-069-logica.test.ts` (Fix-A) y `auditoria-069-blueprint.test.ts` (Fix-B, incluida la equivalencia REST ↔ MCP de lo nuevo)
 - [ ] ~~`labTestCases`~~ — **no se incluye**: `agent_test_case` guarda los RESULTADOS de cada corrida del Laboratorio (FK a `agent_test_run`, conversación, veredicto) y las personas son un catálogo en código; no existen casos de prueba definibles que aprovisionar. Casos por nicho necesitan tabla propia y cambio en el runner → 071 (Vertical Packs).
 
-Bloque 2 — Fix-C + Fix-D (panel `/platform` editable y rediseño): pendiente de aprobación.
+Bloque 2 — Fix-C (panel 100 % editable) + Fix-D (rediseño):
+
+- [x] T086 Layout: `ShellPlataforma` — lateral fijo con isotipo «Aliantis · Plataforma», iconos `lucide-react`, ruta activa, cajón en móvil, tema claro/oscuro (`ThemeToggle`) y salir; `EncabezadoPagina` común
+- [x] T087 Directorio `/platform`: 4 indicadores (total, activos, suspendidos, soportes vigentes), búsqueda en vivo sin acentos, filtro por estado, avatar con el color de la marca, insignias de región/módulos/equipo/soporte y «Abrir negocio» (`listarOrganizaciones` trae color, país, moneda y módulos efectivos)
+- [x] T088 `src/lib/platform/formulario-blueprint.ts` (puro): formulario ⇄ Blueprint; al crear manda lo que tiene contenido, al editar solo las secciones cuyo JSON cambió; `copiarALaborables`
+- [x] T089 `FormularioBlueprint` (9 pestañas, `src/components/plataforma/formulario/`) para `/platform/nuevo` y la ficha: región guiada desde `REGIONES_SUGERIDAS` (elegir país completa idioma, zona y moneda), marca independiente + presets + apariencia con vista previa en vivo + logo (en la ficha), módulos con interruptores y techo bloqueado, pipeline reordenable con anclas fijas, agente completo (rol, herramientas, escalado), conocimiento en tarjetas multi-línea con merge/exact, agenda día por día con varias franjas, «Copiar a lunes–viernes» y lo avanzado, respuestas rápidas, JSON avanzado (vista e importación); barra inferior fija con «Revisar cambios» (dry run con estados y advertencias) y «Guardar / Crear»; los errores 422 marcan su pestaña
+- [x] T090 Logo desde la ficha: `GET/PUT/DELETE /api/platform/organizations/[idOrSlug]/favicon` (auditado `icono_cambiado`) sobre `server/branding-icono.ts`, el mismo servicio que Ajustes → Marca
+- [x] T091 Ficha `/platform/organizaciones/[id]`: encabezado con avatar, estado, copiar dirección, «Abrir negocio», «Pedir soporte» (`/platform/soporte?org=…` preseleccionado) y suspender/reactivar; pestañas Resumen y equipo (con accesos de soporte recientes) · Configurar (carga el Blueprint por la API: lectura auditada) · Invitaciones · JSON
+- [x] T092 `/platform/auditoria` sobre `GET /api/platform/audit`: `<select>` de acciones con nombre legible, vía con color, hora local, detalle plegable y «Cargar más» por cursor
+- [x] T093 Pruebas: `formulario-blueprint.test.ts` (crear válido, ida y vuelta sin cambios, solo lo modificado, slug inmutable) y `auditoria-069-panel.test.ts` (directorio, logo con validación y auditoría, filtro, guardarraíl: toda `/api/platform/*` pasa por `requirePlataforma`)
+- Se retiran `alta-negocio.tsx` y `modulos-organizacion.tsx` (los reemplaza el formulario).
 
 ---
 

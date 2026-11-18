@@ -1,4 +1,5 @@
 import { GestorTokens } from "@/components/plataforma/gestor-tokens";
+import { EncabezadoPagina } from "@/components/plataforma/shell-plataforma";
 import { requirePlataformaPagina } from "@/server/platform/guardia";
 import { listarTokens } from "@/server/platform/tokens";
 
@@ -10,5 +11,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function TokensPage() {
   const actor = await requirePlataformaPagina();
-  return <GestorTokens inicial={await listarTokens(actor.userId)} />;
+  return (
+    <>
+      <EncabezadoPagina titulo="Tokens" descripcion="Para la API REST y el servidor MCP. Cada token se muestra una sola vez." />
+      <GestorTokens inicial={await listarTokens(actor.userId)} />
+    </>
+  );
 }

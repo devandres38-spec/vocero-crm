@@ -27,17 +27,20 @@ const fecha = (iso: string) => new Date(iso).toLocaleString(undefined, { dateSty
 /** 069 (US5) — Pedir y cerrar accesos de soporte. */
 export function GestorSoporte({
   raiz,
+  orgInicial,
   maxHoras,
   organizaciones,
   accesos,
 }: {
   raiz: RaizPlataforma | null;
+  /** Auditoría 069 (Fix-D): preseleccionado desde «Pedir soporte» en la ficha. */
+  orgInicial?: string;
   maxHoras: number;
   organizaciones: { id: string; name: string; slug: string | null }[];
   accesos: Acceso[];
 }) {
   const router = useRouter();
-  const [org, setOrg] = useState(organizaciones[0]?.id ?? "");
+  const [org, setOrg] = useState(orgInicial ?? organizaciones[0]?.id ?? "");
   const [level, setLevel] = useState<"lectura" | "configuracion">("lectura");
   const [reason, setReason] = useState("");
   const [hours, setHours] = useState(2);

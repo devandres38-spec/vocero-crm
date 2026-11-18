@@ -448,6 +448,64 @@
           }
         }
       }
+    },
+    "/api/platform/organizations/{idOrSlug}/favicon": {
+      "get": {
+        "summary": "Vista previa del logo del negocio (read)",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "La imagen (o la generada con la inicial)"
+          }
+        }
+      },
+      "put": {
+        "summary": "Subir el logo (provision). Cuerpo crudo PNG/SVG/ICO/JPEG/WebP ≤ 256 KB; el tipo se detecta por los bytes. Auditado (icono_cambiado).",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "image/*": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ favicon: { mime, version } }"
+          },
+          "413": {
+            "description": "too_large"
+          },
+          "422": {
+            "description": "empty / unsupported"
+          }
+        }
+      },
+      "delete": {
+        "summary": "Quitar el logo (provision). Auditado.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ favicon: null }"
+          }
+        }
+      }
     }
   }
 }

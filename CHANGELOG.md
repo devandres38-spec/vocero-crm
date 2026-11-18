@@ -43,6 +43,15 @@ que `single` no usa.
 - Blueprint con `appearance` y `quickReplies`; MCP con `revoke_invitation` y
   `list_audit_log` (y `GET /api/platform/audit`); `get_catalog` con presets,
   temas, regiones sugeridas y ejemplos.
+- Panel `/platform` rediseñado: lateral fijo (cajón en móvil) con tema claro
+  y oscuro; directorio con indicadores, búsqueda, filtro y el color de cada
+  marca; un solo formulario por pestañas para crear y editar el 100% de un
+  negocio sin JSON (región guiada, marca con presets y vista previa, logo,
+  módulos, pipeline reordenable, agente con herramientas y escalado,
+  conocimiento multi-línea, agenda por día con varias franjas, respuestas
+  rápidas), con «Revisar cambios» y «Guardar» siempre a mano y, al editar,
+  solo las secciones que cambiaron; ficha del negocio por pestañas con
+  «Pedir soporte» directo; auditoría con filtros, hora local y paginación.
 
 ### Nuevo
 
