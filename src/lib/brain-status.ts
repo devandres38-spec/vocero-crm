@@ -68,7 +68,7 @@ export type BrainDispatchDto = {
   host: string | null;
   /** `url`: no es http(s) o lleva usuario y clave. `sin_llave`: falta
    *  `BOT_API_KEY`. Con problema, el despacho NO está activo. */
-  problem: "url" | "sin_llave" | null;
+  problem: "url" | "sin_llave" | "pausado" | "suspendida" | null;
   lastDeliveredAt: string | null;
   /** El último turno que no llegó (caducó) o que se sigue reintentando. */
   lastFailure: { at: string; detail: string } | null;

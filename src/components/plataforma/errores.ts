@@ -25,11 +25,16 @@ const MENSAJES: Record<string, string> = {
   atajo_invalido: "Un atajo de respuesta rápida está vacío o no es válido.",
   atajos_repetidos: "Hay dos respuestas rápidas con el mismo atajo.",
   invitacion_inexistente: "Esa invitación ya no existe.",
-  url_invalida: "La URL debe ser http(s) y no llevar usuario ni clave.",
+  url_invalida: "La URL debe ser http(s), sin usuario ni clave, y no apuntar a localhost ni a direcciones reservadas.",
   secreto_invalido: "El secreto debe tener al menos 32 caracteres y no llevar espacios.",
   cerebro_no_encontrado: "Ese cerebro no existe.",
   cerebro_en_uso: "Ese cerebro atiende negocios: reasígnalos antes de borrarlo.",
   cerebro_pausado: "Ese cerebro está pausado: reactívalo antes de asignarlo.",
+  url_sin_ruta: "La URL de despacho debe incluir la ruta, por ejemplo http://nea:8000/vocero/dispatch.",
+  url_con_query: "La URL de despacho no lleva ?parámetros ni #fragmento.",
+  url_otro_origen: "La URL de salud debe estar en el mismo servidor que la de despacho.",
+  origen_invalido: "La petición no vino del panel de la plataforma. Recarga la página.",
+  demasiados_intentos: "Demasiados intentos seguidos: espera un momento.",
 };
 
 type Issue = { path?: string; message?: string };

@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { destinoDe } from "@/server/brains/destino";
+import { verificarDestino } from "@/server/brains/red";
 import { esPlataforma } from "@/lib/tenancy";
 import {
   construirEvento,
@@ -9,6 +10,7 @@ import {
   sinDespachar,
 } from "@/server/brains/deliver";
 import {
+  anotarDespliegue,
   caducarAHumano,
   descartarDespacho,
   encolarDespacho,
@@ -163,9 +165,20 @@ async function procesar(fila: FilaDespacho): Promise<void> {
   // esta organización (si se reasignó o se pausó en la espera, manda eso).
   const config = await destinoDe(fila.organizationId);
   if (!config) {
-    // Quedó de antes de que se quitara o se rompiera la configuración: ya no
-    // hay a quién entregarlo, y el agente incluido vuelve a ser quien manda.
+    // Ya no hay a quién entregarlo (se quitó la configuración o, en `multi`,
+    // el negocio no tiene cerebro activo): el mensaje queda en la bandeja para
+    // una persona.
     await descartarDespacho(fila, "el despacho ya no está configurado");
+    return;
+  }
+
+  // Auditoría 070 (M-10): en `multi`, un despacho que ya venció (el CRM estuvo
+  // caído o el cerebro no lo aceptó a tiempo) no se le manda a Nea con un
+  // `expiresAt` en el pasado: pasa a una persona aquí mismo.
+  if (esPlataforma() && fila.createdAt.getTime() + VIDA_DESPACHO_MS <= Date.now()) {
+    if (await caducarAHumano(fila, "el despacho venció antes de entregarse")) {
+      await pasarAHumano(fila.organizationId, fila.conversationId);
+    }
     return;
   }
 
@@ -223,13 +236,26 @@ async function procesar(fila: FilaDespacho): Promise<void> {
     return;
   }
 
-  // 070 — Qué cerebro recibió este despacho: `/api/brains/messages` rechaza
-  // (409 `cerebro_reasignado`) la respuesta de cualquier otro.
-  if (config.deploymentId && fila.brainDeploymentId !== config.deploymentId) {
-    await getDb()
-      .update(schema.dispatch)
-      .set({ brainDeploymentId: config.deploymentId })
-      .where(and(eq(schema.dispatch.id, fila.id), eq(schema.dispatch.organizationId, fila.organizationId)));
+  if (config.deploymentId) {
+    // Auditoría 070 (A-2): justo antes de conectar, el host y sus IPs
+    // resueltas (DNS rebinding). Un destino reservado es un error de
+    // configuración: a una persona. Un DNS que no resuelve puede ser pasajero.
+    const bloqueo = await verificarDestino(config.url);
+    if (bloqueo) {
+      const detalle = `destino del cerebro no permitido (${bloqueo})`;
+      const caduco =
+        bloqueo === "no_resuelve"
+          ? await reintentarOCaducar(fila, detalle)
+          : await caducarAHumano(fila, detalle);
+      if (caduco) await pasarAHumano(fila.organizationId, fila.conversationId);
+      return;
+    }
+    // 070 — Qué cerebro recibió este despacho: `/api/brains/messages` rechaza
+    // (409 `cerebro_reasignado`) la respuesta de cualquier otro. Solo con el
+    // lease todavía nuestro (A-12).
+    if (fila.brainDeploymentId !== config.deploymentId && !(await anotarDespliegue(fila, config.deploymentId))) {
+      return;
+    }
   }
   const resultado = await entregar(evento, config);
   // El lease pudo vencer mientras se esperaba al cerebro y otro pudo retomar

@@ -1,3 +1,4 @@
+import { esPlataforma } from "@/lib/tenancy";
 import { z } from "zod";
 import {
   AI_PROVIDERS,
@@ -161,7 +162,9 @@ export function armarVista(
   cred: AiCredentialPublic | null,
   estado: EstadoIa
 ): AiSettingsView {
-  const env = envAiProvider();
+  // Auditoría 070 (A-5): en modo plataforma, ni la URL, ni el modelo, ni los
+  // últimos 4 de la llave de la PLATAFORMA llegan a un negocio.
+  const env = esPlataforma() ? null : envAiProvider();
   return {
     credencial: credencialVista(cred),
     activa: estado.activa,

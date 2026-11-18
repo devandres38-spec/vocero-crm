@@ -21,7 +21,11 @@ export type ProblemaDespacho =
   /** `BRAIN_DISPATCH_URL` no es una URL http(s), o lleva usuario y clave. */
   | "url"
   /** Falta `BOT_API_KEY` (o mide menos de 16): no hay con qué firmar. */
-  | "sin_llave";
+  | "sin_llave"
+  /** 070 (A-10) — `multi`: el cerebro asignado está pausado por la plataforma. */
+  | "pausado"
+  /** 070 (A-10) — `multi`: el negocio está suspendido. */
+  | "suspendida";
 
 export type ConfigDespacho =
   | { active: true; url: string; host: string; secret: string }

@@ -258,6 +258,21 @@ function propietario(fila: FilaDespacho) {
   );
 }
 
+/**
+ * 070 — Anota qué despliegue de cerebro recibe este despacho. Solo si la
+ * fila sigue siendo NUESTRA (auditoría 070, A-12): con el lease vencido, otro
+ * worker pudo retomarla tras una reasignación, y escribir aquí pisaría el
+ * despliegue que anotó él. `false` = ya no es nuestra.
+ */
+export async function anotarDespliegue(fila: FilaDespacho, deploymentId: string): Promise<boolean> {
+  const rows = await getDb()
+    .update(schema.dispatch)
+    .set({ brainDeploymentId: deploymentId })
+    .where(and(propietario(fila), eq(schema.dispatch.organizationId, fila.organizationId)))
+    .returning({ id: schema.dispatch.id });
+  return rows.length === 1;
+}
+
 export async function renovarLease(fila: FilaDespacho): Promise<boolean> {
   const rows = await getDb()
     .update(schema.dispatch)

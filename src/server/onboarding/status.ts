@@ -126,8 +126,11 @@ export async function onboardingStatus(
       key: "calendar",
       label: "Agenda",
       status: "not_applicable",
-      nextAction:
-        "La agenda no está encendida en esta instancia (variable AGENDA).",
+      // Auditoría 070 (M-9): al dueño de un negocio en modo plataforma no se
+      // le habla de variables de entorno.
+      nextAction: esPlataforma()
+        ? "La agenda no está activada para tu negocio: pídesela a la plataforma."
+        : "La agenda no está encendida en esta instancia (variable AGENDA).",
       href: null,
       problem: null,
     });

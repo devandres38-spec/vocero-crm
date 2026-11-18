@@ -15,7 +15,8 @@ import {
   type ResultadoEntrega,
 } from "@/server/brains/contract";
 import { leerConfigDespacho } from "@/server/brains/config";
-import { destinoDe } from "@/server/brains/destino";
+import { destinoDe, tieneCerebroAsignado } from "@/server/brains/destino";
+import { verificarDestino } from "@/server/brains/red";
 import { esPlataforma } from "@/lib/tenancy";
 import type { FilaDespacho } from "@/server/dispatch/outbox";
 import { isWindowOpen, windowExpiresAt } from "@/server/inbox/window";
@@ -366,7 +367,19 @@ export async function avisarOlvido(
           ? { url: config.url, secret: config.secret }
           : null
         : await destinoDe(evento.organization.id);
-  if (!destino) return "no_aplica";
+  if (!destino) {
+    // Auditoría 070 (M-10): con un cerebro asignado pero pausado (o el negocio
+    // suspendido), Nea SÍ guarda memoria de esa conversación y no se le pudo
+    // avisar: eso es «sin confirmar», no «no aplica».
+    if (opts.destino === undefined && !config && (await tieneCerebroAsignado(evento.organization.id))) {
+      return "sin_confirmar";
+    }
+    return "no_aplica";
+  }
+  // Auditoría 070 (A-2): en `multi`, el host y sus IPs resueltas, justo antes.
+  if (opts.destino === undefined && !config && (await verificarDestino(destino.url))) {
+    return "sin_confirmar";
+  }
 
   // Se serializa UNA vez y se firma ese string, igual que un despacho.
   const cuerpo = JSON.stringify(evento);

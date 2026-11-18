@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,14 @@ export function AsignarCerebro({
   const [ocupado, setOcupado] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
+  // Auditoría 070 (B-5): tras `router.refresh()` (o un cambio desde otra
+  // pestaña) el selector refleja lo que de verdad quedó asignado.
+  useEffect(() => {
+    setValor(actual?.id ?? "");
+  }, [actual?.id]);
+
   const visibles = opciones.filter((o) => o.status === "activo" || o.id === actual?.id);
+  const todosPausados = opciones.length > 0 && opciones.every((o) => o.status !== "activo");
 
   async function guardar() {
     setError(null);
@@ -46,6 +53,9 @@ export function AsignarCerebro({
       }
       setGuardado(true);
       router.refresh();
+    } catch {
+      // Auditoría 070 (M-9): sin red `fetch` lanza; antes se perdía en silencio.
+      setError("No se pudo hablar con el servidor. Revisa tu conexión y vuelve a intentar.");
     } finally {
       setOcupado(false);
     }
@@ -88,6 +98,15 @@ export function AsignarCerebro({
         </Button>
         {guardado && <span className="text-xs text-success-text">Guardado</span>}
       </div>
+      {todosPausados && (
+        <p className="text-xs text-warning-text">
+          Todos los cerebros están pausados: reactiva uno en{" "}
+          <Link href="/platform/cerebros" className="underline underline-offset-2">
+            Cerebros
+          </Link>{" "}
+          para poder asignarlo.
+        </p>
+      )}
       <p className="text-xs text-text-3">
         Contesta solo si el negocio además tiene el agente encendido y su llave de IA en Ajustes → IA.
       </p>

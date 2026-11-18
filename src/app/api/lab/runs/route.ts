@@ -9,9 +9,10 @@ import { esPlataforma } from "@/lib/tenancy";
 
 /** 070 — En `multi` el juez solo paga con la llave propia del negocio. */
 async function iaDelNegocio(organizationId: string): Promise<boolean> {
-  return esPlataforma()
-    ? (await resolveAiProviderDeOrganizacion(organizationId)).ok
-    : isAiConfiguredFor(organizationId);
+  if (!esPlataforma()) return isAiConfiguredFor(organizationId);
+  // Auditoría 070 (M-7): además de la llave, un modelo con qué juzgar.
+  const r = await resolveAiProviderDeOrganizacion(organizationId);
+  return r.ok && Boolean(r.provider.model?.trim());
 }
 
 /** 070 — En `multi`, el cerebro asignado a ESTE negocio. */

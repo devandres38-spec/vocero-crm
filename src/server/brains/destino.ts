@@ -73,9 +73,27 @@ export async function destinoDe(organizationId: string): Promise<DestinoCerebro 
   };
 }
 
-/** ¿Se le despacha a un cerebro ESTE negocio? (la ingesta lo pregunta por mensaje) */
+/**
+ * ¿Se le despacha a un cerebro ESTE negocio? La ingesta lo pregunta en cada
+ * mensaje entrante: en `multi` basta con la asignación y los estados, sin
+ * descifrar el secreto (auditoría 070, B-5). El worker sí lo descifra al
+ * entregar (`destinoDe`).
+ */
 export async function despachoActivoPara(organizationId: string): Promise<boolean> {
-  return (await destinoDe(organizationId)) !== null;
+  if (!esPlataforma()) return (await destinoDe(organizationId)) !== null;
+  const a = await asignacionDe(organizationId);
+  return Boolean(a && a.orgStatus === "activa" && a.deploymentId && a.status === "activo" && a.dispatchUrl);
+}
+
+/**
+ * Auditoría 070 (M-10) — ¿El negocio tiene un cerebro asignado aunque ahora
+ * no se le pueda despachar (pausado, negocio suspendido)? Sirve para no
+ * decir «no aplica» cuando en realidad Nea guarda memoria que no se borró.
+ */
+export async function tieneCerebroAsignado(organizationId: string): Promise<boolean> {
+  if (!esPlataforma()) return false;
+  const a = await asignacionDe(organizationId);
+  return Boolean(a?.deploymentId);
 }
 
 /**
@@ -88,7 +106,15 @@ export async function configDespachoPara(organizationId: string): Promise<Config
   const d = await destinoDe(organizationId);
   if (d) return { active: true, url: d.url, host: d.host, secret: d.secret };
   const a = await asignacionDe(organizationId);
-  return { active: false, host: a?.name ?? null, problem: null };
+  // Auditoría 070 (A-10): con un cerebro asignado que no despacha, se dice
+  // por qué (pausado o negocio suspendido) en vez de pintarlo «Activo».
+  const problem =
+    a?.deploymentId && a.orgStatus !== "activa"
+      ? ("suspendida" as const)
+      : a?.deploymentId && a.status !== "activo"
+        ? ("pausado" as const)
+        : null;
+  return { active: false, host: a?.deploymentId ? (a.name ?? null) : null, problem };
 }
 
 /** Por qué no se puede encender el agente (en `multi`), o `null`. */

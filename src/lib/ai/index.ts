@@ -61,10 +61,14 @@ export async function chatJson<T>(
     soloOrganizacion?: boolean;
   }
 ): Promise<ChatJsonResult<T>> {
-  const resolved =
-    opts?.soloOrganizacion && opts.organizationId
-      ? await resolveAiProviderDeOrganizacion(opts.organizationId)
-      : await resolveAiProvider(opts?.organizationId);
+  // Auditoría 070 (M-7): «solo la de la organización» sin organización no
+  // puede caer al entorno: no hay a quién cobrarle, así que no se piensa.
+  if (opts?.soloOrganizacion && !opts.organizationId?.trim()) {
+    return { ok: false, error: "not_configured", detail: "Sin organización: no hay llave propia con qué pensar" };
+  }
+  const resolved = opts?.soloOrganizacion
+    ? await resolveAiProviderDeOrganizacion(opts.organizationId!)
+    : await resolveAiProvider(opts?.organizationId);
   if (!resolved.ok) {
     return {
       ok: false,

@@ -55,7 +55,20 @@ export function BrainStatusCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* 070 — En modo plataforma el agente lo asigna la plataforma: no hay variables que poner. */}
-        {status.warning === "sin_cerebro" && status.plataforma && (
+        {/* Auditoría 070 (A-10): con un cerebro asignado pero pausado (o el
+            negocio suspendido), se dice eso, no «sin agente». */}
+        {status.warning === "sin_cerebro" && status.plataforma && status.dispatch.problem === "pausado" && (
+          <Callout tone="warning" icon={AlertTriangle} title={`Tu agente${status.dispatch.host ? ` (${status.dispatch.host})` : ""} está pausado`}>
+            La plataforma pausó el agente asignado a tu negocio: mientras tanto
+            nadie contesta en automático y los mensajes esperan en la bandeja.
+          </Callout>
+        )}
+        {status.warning === "sin_cerebro" && status.plataforma && status.dispatch.problem === "suspendida" && (
+          <Callout tone="warning" icon={AlertTriangle} title="Tu negocio está suspendido">
+            Mientras el negocio esté suspendido no se le despacha nada al agente.
+          </Callout>
+        )}
+        {status.warning === "sin_cerebro" && status.plataforma && !status.dispatch.problem && (
           <Callout tone="info" icon={Info} title="Sin agente asignado">
             El CRM funciona como bandeja manual: tus clientes reciben lo que
             contestes tú. Para que un agente conteste, pídele a la plataforma
@@ -130,7 +143,9 @@ function switchView(s: BrainStatusDto): RowView {
     return {
       tone: "off",
       headline,
-      detail: "Sin agente conectado no hay a quién despacharle: se enciende cuando lo conectes.",
+      detail: s.plataforma
+        ? "Sin un agente activo asignado no hay a quién despacharle."
+        : "Sin agente conectado no hay a quién despacharle: se enciende cuando lo conectes.",
     };
   }
   if (!s.enabled) {
@@ -144,9 +159,13 @@ function switchView(s: BrainStatusDto): RowView {
 
 function externalView(s: BrainStatusDto, now: number): RowView {
   const { keyConfigured, lastSeenAt, active, health } = s.external;
-  const llamada = lastSeenAt
-    ? `última llamada ${haceCuanto(lastSeenAt, now)}`
-    : "sin llamadas desde el último arranque";
+  // Auditoría 070 (M-9): en modo plataforma no se cuentan llamadas por
+  // negocio (el registro de `/api/bot` es de la instancia): no se promete una.
+  const llamada = s.plataforma
+    ? "lo asignó la plataforma"
+    : lastSeenAt
+      ? `última llamada ${haceCuanto(lastSeenAt, now)}`
+      : "sin llamadas desde el último arranque";
 
   if (health?.reachable) {
     const name = externalBrainName(s);
@@ -192,6 +211,17 @@ function externalView(s: BrainStatusDto, now: number): RowView {
 
 function dispatchView(d: BrainDispatchDto, now: number): RowView {
   const mientras = "Mientras tanto nadie contesta en automático.";
+  // Auditoría 070 (A-10): antes caía al «Activo · {nombre}» verde.
+  if (d.problem === "pausado") {
+    return {
+      tone: "warn",
+      headline: `Pausado · ${d.host ?? "tu agente"}`,
+      detail: `La plataforma pausó el agente asignado. ${mientras}`,
+    };
+  }
+  if (d.problem === "suspendida") {
+    return { tone: "warn", headline: "Negocio suspendido", detail: `No se despacha nada. ${mientras}` };
+  }
   if (d.problem === "url") {
     return {
       tone: "warn",
@@ -205,6 +235,9 @@ function dispatchView(d: BrainDispatchDto, now: number): RowView {
       headline: "No se puede despachar",
       detail: `Falta BOT_API_KEY (mínimo 16 caracteres): con ella se firma cada turno y contesta el cerebro. ${mientras}`,
     };
+  }
+  if (!d.active) {
+    return { tone: "off", headline: "Sin despacho", detail: mientras };
   }
   const espera =
     d.pending > 0

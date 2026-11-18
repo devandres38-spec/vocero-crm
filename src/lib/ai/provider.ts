@@ -1,4 +1,5 @@
 import { isAiConfiguredByEnv } from "@/lib/env";
+import { esPlataforma } from "@/lib/tenancy";
 import { last4, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import {
   getAiCredentialPublic,
@@ -148,7 +149,10 @@ export async function resolveAiProviderDeOrganizacion(organizationId: string): P
 
 export async function estadoIaDe(organizationId: string): Promise<EstadoIa> {
   const cred = await getAiCredentialPublic(organizationId);
-  const env = envAiProvider();
+  // Auditoría 070 (A-5): en modo plataforma el respaldo del entorno NO cuenta
+  // (BYOK estricto): si no, la pantalla Agente, el aviso y el onboarding
+  // decían «IA activa» con `OPENROUTER_*` mientras `/api/brains/llm` daba 402.
+  const env = esPlataforma() ? null : envAiProvider();
   return interpretarCredencial(cred, env ? { last4: last4(env.token) } : null);
 }
 
