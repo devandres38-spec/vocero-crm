@@ -203,9 +203,9 @@ Verificación `[local]` (typecheck, lint, Vitest `--maxWorkers=1
 - [x] T068 [P] `AGENTS.md`, `CLAUDE.md` (modo plataforma, resolvedor, módulos efectivos, Blueprint, soporte, MCP), `INSTALL-IA.md` y README (DNS/TLS comodín en Coolify), `specs/README.md`
 - [x] T069 Versión 2.9.0 (`package.json`, `docker-compose.yml`, `render.yaml`, `fly.toml`, `railway.toml`, `INSTALL-IA.md`); `CHANGELOG.md` con «Actualizar desde 2.8» (nada cambia en `single`; cómo pasar a `multi`; banderas como techo)
 - [x] T070 Gate local completo `[local]`
-- [ ] T071 Build + E2E (`e2e-plataforma` y los existentes con `TENANCY` vacía y con `multi`) `[CI/staging]`
-- [ ] T072 DNS y certificado comodín verificados en Coolify — **verificación humana** `[CI/staging]`
-- [ ] T073 Marcar 069 como hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T071–T072
+- [x] T071 Build + E2E (`e2e-plataforma` y los existentes con `TENANCY` vacía y con `multi`) `[CI/staging]` — build y pruebas manuales en staging (Coolify) en verde, incluidas F-01…F-08 de `AUDITORIA-069-FINAL.md`; entorno de staging limpiado
+- [x] T072 DNS y certificado comodín verificados en Coolify — **verificación humana** `[CI/staging]` — subdominios por negocio verificados en staging. **Nota**: el certificado SSL comodín definitivo se validará al conectar el dominio propio
+- [x] T073 Marcar 069 como hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T071–T072
 
 ---
 
