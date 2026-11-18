@@ -190,8 +190,12 @@ describe("despliegues de cerebro", () => {
   });
 
   it("asignar: no a uno pausado ni inexistente; auditado con antes/después", async () => {
+    // Auditoría 070 (M-2): la organización se lee (y bloquea) primero, dentro
+    // de la transacción; después, el despliegue con FOR SHARE.
+    fake().responder(schema.organization, [{ antes: null }]);
     fake().responder(schema.brainDeployment, [filaCifrada("c".repeat(43), { status: "pausado" })]);
     await expect(asignarCerebro(ACTOR, "org_A", "brn_1")).rejects.toMatchObject({ code: "cerebro_pausado" });
+    fake().responder(schema.organization, [{ antes: null }]);
     fake().responder(schema.brainDeployment, []);
     await expect(asignarCerebro(ACTOR, "org_A", "brn_x")).rejects.toMatchObject({ code: "cerebro_no_encontrado" });
 
@@ -392,9 +396,10 @@ describe("requireBrain — la puerta de /api/brains/*", () => {
     }
   });
 
-  it("20 rechazos desde una IP → 429 antes de tocar la base", async () => {
+  it("20 rechazos desde una IP para UNA organización → 429 antes de tocar la base", async () => {
+    // Auditoría 070 (A-1, C-1): el límite es por (IP, organización).
     for (let i = 0; i < 20; i++) {
-      const r = await requireBrain(peticion({}, "7.7.7.7"));
+      const r = await requireBrain(peticion({ "x-vocero-organization": "clinica" }, "7.7.7.7"));
       if (!r.ok) expect(r.response.status).toBe(401);
     }
     const selectSpy = vi.spyOn(fake().db, "select");
@@ -405,7 +410,7 @@ describe("requireBrain — la puerta de /api/brains/*", () => {
     if (!r.ok) expect(r.response.status).toBe(429);
     expect(selectSpy).not.toHaveBeenCalled();
     // Otra IP sigue pudiendo.
-    const otra = await requireBrain(peticion({}, "8.8.8.8"));
+    const otra = await requireBrain(peticion({ "x-vocero-organization": "clinica" }, "8.8.8.8"));
     if (!otra.ok) expect(otra.response.status).toBe(401);
   });
 });
@@ -432,8 +437,9 @@ describe("guardia estática de /api/brains/*", () => {
   it("toda ruta pasa por requireBrain y nunca por la organización de la instancia", () => {
     for (const ruta of rutasBajo(join(process.cwd(), "src/app/api/brains"))) {
       const src = readFileSync(ruta, "utf8");
-      // `requireBrainAgenda` = `requireBrain` + el módulo agenda del negocio.
-      expect(src, ruta).toMatch(/requireBrain(Agenda)?\(/);
+      // Auditoría 070 (A-7): por `withBrain`/`withBrainAgenda` (que llaman a
+      // `requireBrain`/`requireBrainAgenda` y capturan los errores).
+      expect(src, ruta).toMatch(/export const (GET|POST|PUT|PATCH|DELETE) = withBrain(Agenda)?[<(]/);
       expect(src, ruta).not.toMatch(/resolveInstanceOrg|requireBotKey/);
     }
   });

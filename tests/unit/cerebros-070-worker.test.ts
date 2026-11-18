@@ -15,6 +15,10 @@ const h = vi.hoisted(() => ({
   construirEvento: vi.fn(),
   entregar: vi.fn(),
   descartar: vi.fn(),
+  anotar: vi.fn(),
+  caducar: vi.fn(),
+  pasarAHumano: vi.fn(),
+  verificar: vi.fn(),
 }));
 
 vi.mock("@/lib/db", async (original) => {
@@ -23,6 +27,7 @@ vi.mock("@/lib/db", async (original) => {
   return { ...(await original<typeof import("@/lib/db")>()), getDb: () => h.fake!.db };
 });
 vi.mock("@/server/brains/destino", () => ({ destinoDe: h.destinoDe }));
+vi.mock("@/server/brains/red", () => ({ verificarDestino: h.verificar }));
 vi.mock("@/server/brains/deliver", () => ({
   construirEvento: h.construirEvento,
   entregar: h.entregar,
@@ -35,10 +40,11 @@ vi.mock("@/server/dispatch/outbox", () => ({
   marcarEntregado: vi.fn(async () => true),
   mensajesAnotados: vi.fn(async () => []),
   descartarDespacho: h.descartar,
+  anotarDespliegue: h.anotar,
   encolarDespacho: vi.fn(),
   reintentarOCaducar: vi.fn(async () => false),
-  caducarAHumano: vi.fn(async () => false),
-  pasarAHumano: vi.fn(),
+  caducarAHumano: h.caducar,
+  pasarAHumano: h.pasarAHumano,
 }));
 
 import { tanda, VIDA_DESPACHO_MS } from "@/server/dispatch/worker";
@@ -65,7 +71,12 @@ const DESTINO = {
 beforeEach(() => {
   fake().reiniciar();
   h.pendientes.length = 0;
-  for (const f of [h.destinoDe, h.construirEvento, h.entregar, h.descartar]) f.mockReset();
+  for (const f of [h.destinoDe, h.construirEvento, h.entregar, h.descartar, h.anotar, h.caducar, h.pasarAHumano, h.verificar]) {
+    f.mockReset();
+  }
+  h.anotar.mockResolvedValue(true);
+  h.caducar.mockResolvedValue(true);
+  h.verificar.mockResolvedValue(null);
   vi.unstubAllEnvs();
   h.construirEvento.mockResolvedValue({ dispatchId: "dsp_1", messages: [{ id: "msg_1" }] });
   h.entregar.mockResolvedValue({ ok: true });
@@ -78,11 +89,39 @@ describe("worker en modo plataforma", () => {
     h.destinoDe.mockResolvedValue(DESTINO);
     fake().responder(schema.conversation, [{ aiEnabled: true, handoffAt: null, isTest: false }]);
 
-    expect(await tanda(new Date("2026-11-18T10:00:03Z"))).toBe(1);
+    vi.useFakeTimers({ now: new Date("2026-11-18T10:00:03Z"), toFake: ["Date"] });
+    try {
+      expect(await tanda(new Date("2026-11-18T10:00:03Z"))).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
     expect(h.destinoDe).toHaveBeenCalledWith("org_A");
     expect(h.construirEvento).toHaveBeenCalledWith(FILA, { expiresAt: new Date(CREADO.getTime() + VIDA_DESPACHO_MS) });
-    expect(fake().de(schema.dispatch, "update")[0]!.valores).toEqual({ brainDeploymentId: "brn_1" });
+    // A-12: con el lease (la fila), no con un UPDATE suelto por id.
+    expect(h.anotar).toHaveBeenCalledWith(FILA, "brn_1");
+    expect(h.verificar).toHaveBeenCalledWith(DESTINO.url);
     expect(h.entregar.mock.calls[0]![1]).toBe(DESTINO);
+  });
+
+  it("M-10: un despacho ya vencido no se le manda a Nea: pasa a una persona aquí", async () => {
+    vi.stubEnv("TENANCY", "multi");
+    h.pendientes.push([{ ...FILA, createdAt: new Date(Date.now() - VIDA_DESPACHO_MS - 1000) }]);
+    h.destinoDe.mockResolvedValue(DESTINO);
+    await tanda();
+    expect(h.caducar).toHaveBeenCalledWith(expect.objectContaining({ id: "dsp_1" }), "el despacho venció antes de entregarse");
+    expect(h.pasarAHumano).toHaveBeenCalledWith("org_A", "cv_1");
+    expect(h.entregar).not.toHaveBeenCalled();
+  });
+
+  it("A-2: un destino que resuelve a una IP reservada no recibe el despacho", async () => {
+    vi.stubEnv("TENANCY", "multi");
+    h.pendientes.push([{ ...FILA, createdAt: new Date() }]);
+    h.destinoDe.mockResolvedValue(DESTINO);
+    h.verificar.mockResolvedValue("ip_reservada");
+    fake().responder(schema.conversation, [{ aiEnabled: true, handoffAt: null, isTest: false }]);
+    await tanda();
+    expect(h.entregar).not.toHaveBeenCalled();
+    expect(h.caducar).toHaveBeenCalledWith(expect.anything(), "destino del cerebro no permitido (ip_reservada)");
   });
 
   it("sin cerebro (no asignado, pausado o negocio suspendido): se descarta y queda en la bandeja", async () => {

@@ -261,10 +261,12 @@ describe("POST /api/brains/messages", () => {
     expect(h.responder).not.toHaveBeenCalled();
   });
 
-  it("un despacho de antes de la columna (sin despliegue anotado) se acepta", async () => {
+  it("A-6: un despacho sin despliegue anotado NO se acepta (no se puede probar que fue a este cerebro)", async () => {
     fake().responder(schema.dispatch, [despacho({ brainDeploymentId: null })]);
-    h.responder.mockResolvedValue({ ok: true, messageId: "msg_1", prueba: true });
-    expect((await mensajes(post("messages", CUERPO))).status).toBe(201);
+    const r = await mensajes(post("messages", CUERPO));
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ error: { code: "cerebro_reasignado" } });
+    expect(h.responder).not.toHaveBeenCalled();
   });
 
   it("ventana cerrada → 422 fuera_de_ventana; pausa → 409 ai_paused", async () => {

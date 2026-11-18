@@ -181,8 +181,9 @@ describe("juez del Laboratorio en `multi`: solo la llave del negocio", () => {
 
   it("el juez y la pantalla del Laboratorio lo piden en modo plataforma", () => {
     expect(readFileSync(join(process.cwd(), "src/server/lab/judge.ts"), "utf8")).toMatch(/soloOrganizacion: esPlataforma\(\)/);
-    expect(readFileSync(join(process.cwd(), "src/app/api/lab/runs/route.ts"), "utf8")).toMatch(
-      /esPlataforma\(\)\s*\?\s*\(await resolveAiProviderDeOrganizacion\(organizationId\)\)\.ok/
-    );
+    const lab = readFileSync(join(process.cwd(), "src/app/api/lab/runs/route.ts"), "utf8");
+    expect(lab).toMatch(/if \(!esPlataforma\(\)\) return isAiConfiguredFor\(organizationId\)/);
+    // M-7: además del sí/no de la llave, un modelo con qué juzgar.
+    expect(lab).toMatch(/r\.ok && Boolean\(r\.provider\.model\?\.trim\(\)\)/);
   });
 });

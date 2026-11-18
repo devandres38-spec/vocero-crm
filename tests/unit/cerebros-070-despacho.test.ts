@@ -18,6 +18,11 @@ vi.mock("@/lib/db", async (original) => {
   h.fake = crearFakeDb();
   return { ...(await original<typeof import("@/lib/db")>()), getDb: () => h.fake!.db };
 });
+// La verificación DNS (A-2) tiene su propia prueba; aquí, nombres de Docker.
+vi.mock("@/server/brains/red", async (original) => ({
+  ...(await original<typeof import("@/server/brains/red")>()),
+  verificarDestino: async () => null,
+}));
 vi.mock("@/lib/env", async (original) => ({
   ...(await original<typeof import("@/lib/env")>()),
   getEnv: () => ({ ENCRYPTION_KEY: Buffer.alloc(32, 9).toString("base64") }),
@@ -99,11 +104,11 @@ describe("destinoDe — a qué cerebro va cada negocio", () => {
     }
   });
 
-  it("la tarjeta ve el NOMBRE del despliegue, también si está pausado", async () => {
+  it("la tarjeta ve el NOMBRE del despliegue y, si está pausado, que está pausado (A-10)", async () => {
     vi.stubEnv("TENANCY", "multi");
     fake().responder(schema.organization, [asignacion({ status: "pausado" })]);
     fake().responder(schema.organization, [asignacion({ status: "pausado" })]);
-    expect(await configDespachoPara("org_A")).toEqual({ active: false, host: "Nea Producción", problem: null });
+    expect(await configDespachoPara("org_A")).toEqual({ active: false, host: "Nea Producción", problem: "pausado" });
   });
 });
 
@@ -215,7 +220,8 @@ describe("el cableado de F5", () => {
   it("el worker resuelve el destino por fila, anota el despliegue y pone expiresAt en `multi`", () => {
     const w = fuente("src/server/dispatch/worker.ts");
     expect(w).toMatch(/await destinoDe\(fila\.organizationId\)/);
-    expect(w).toMatch(/brainDeploymentId: config\.deploymentId/);
+    // A-12: solo con el lease todavía nuestro.
+    expect(w).toMatch(/anotarDespliegue\(fila, config\.deploymentId\)/);
     expect(w).toMatch(/esPlataforma\(\) \? \{ expiresAt/);
     expect(w).not.toMatch(/leerConfigDespacho/);
   });

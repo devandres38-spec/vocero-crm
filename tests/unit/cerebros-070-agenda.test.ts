@@ -138,6 +138,8 @@ describe("selección firmada (agenda v2)", () => {
   });
 });
 
+const CONV_ACTIVA = { aiEnabled: true, handoffAt: null };
+
 describe("cancelar", () => {
   const token = () => firmarSeleccion("org_A", { bookingId: "bk_1", conversationId: "cv_1", revision: REVISION }, SECRETO);
   const cuerpo = (extra: Record<string, unknown> = {}) => ({
@@ -156,6 +158,7 @@ describe("cancelar", () => {
   });
 
   it("la cita cambió desde que se listó → 409 stale_selection", async () => {
+    fake().responder(schema.conversation, [CONV_ACTIVA]);
     fake().responder(schema.brainOperation, []);
     fake().responder(schema.booking, [{ id: "bk_1", status: "agendada", updatedAt: new Date(REVISION + 1000) }]);
     const r = await cancelar(post("cancel", cuerpo()));
@@ -171,6 +174,7 @@ describe("cancelar", () => {
   });
 
   it("cancela, y guarda el resultado por idempotencyKey", async () => {
+    fake().responder(schema.conversation, [CONV_ACTIVA]);
     fake().responder(schema.brainOperation, []);
     fake().responder(schema.booking, [{ id: "bk_1", status: "agendada", updatedAt: new Date(REVISION) }]);
     const r = await cancelar(post("cancel", cuerpo()));
@@ -185,7 +189,8 @@ describe("cancelar", () => {
   });
 
   it("repetir la misma idempotencyKey devuelve lo mismo sin volver a cancelar", async () => {
-    fake().responder(schema.brainOperation, [{ response: { ok: true, bookingId: "bk_1" } }]);
+    fake().responder(schema.conversation, [CONV_ACTIVA]);
+    fake().responder(schema.brainOperation, [{ response: { ok: true, bookingId: "bk_1" }, action: "cancel" }]);
     const r = await cancelar(post("cancel", cuerpo()));
     expect(await r.json()).toEqual({ ok: true, bookingId: "bk_1" });
     expect(h.cancelarCita).not.toHaveBeenCalled();
