@@ -187,7 +187,18 @@ describe("la puerta única (upsertFicha) con esquema", () => {
 
     h.fake!.responder(schema.organization, [{ fichaFields: { version: 1, fields: EVENTOS } }]);
     await guardarFichaFields("org_1", []);
-    expect(h.fake!.de(schema.organization, "update")[0]!.valores.fichaFields).toBeNull();
+    // Auditoría 072-A (A-4): quitar todos deja la memoria de sus tipos (sin
+    // campos, sin esquema para nadie) para que no se recreen con otro tipo.
+    expect(h.fake!.de(schema.organization, "update")[0]!.valores.fichaFields).toEqual({
+      version: 1,
+      fields: [],
+      retirados: Object.fromEntries(EVENTOS.map((f) => [f.key, f.type])),
+    });
+
+    h.fake!.reiniciar();
+    h.fake!.responder(schema.organization, [{ fichaFields: null }]);
+    await guardarFichaFields("org_1", []);
+    expect(h.fake!.de(schema.organization, "update")).toHaveLength(0);
   });
 });
 
@@ -222,11 +233,12 @@ describe("la UI de la ficha", () => {
     expect(claveSugerida("Tratamiento de interés")).toBe("tratamiento_de_interes");
     expect(claveSugerida("15 años")).toBe("campo_15_anos");
     const campos = aCampos([
-      { key: "tipo", label: " Tipo ", type: "select", nueva: true, opcionesTexto: "Boda\nCorporativo, Otro\n\n", required: true },
-      { key: "obs", label: "Obs", type: "text", nueva: false, opcionesTexto: "x", description: "  " },
+      { uid: "u1", key: "tipo", label: " Tipo ", type: "select", nueva: true, opcionesTexto: "Boda\nCorporativo, Otro\n\n", required: true },
+      { uid: "u2", key: "obs", label: "Obs", type: "text", nueva: false, opcionesTexto: "x", description: "  " },
     ]);
+    // Auditoría 072-A (B-1): una opción por LÍNEA; la coma es parte de la opción.
     expect(campos).toEqual([
-      { key: "tipo", label: "Tipo", type: "select", options: ["Boda", "Corporativo", "Otro"], required: true },
+      { key: "tipo", label: "Tipo", type: "select", options: ["Boda", "Corporativo, Otro"], required: true },
       { key: "obs", label: "Obs", type: "text" },
     ]);
   });
@@ -243,7 +255,9 @@ describe("la UI de la ficha", () => {
       path.resolve(import.meta.dirname, "..", "..", "src", "app", "api", "settings", "ficha-fields", "route.ts"),
       "utf8"
     );
-    expect(code).toContain("puedeConfigurar(session)");
+    // Auditoría 072-A (M-8): la regla vive en `puedeEditarFicha` (configurar Y
+    // no ser soporte), la misma para el GET y el PUT.
+    expect(code).toContain("if (!puedeEditarFicha(session))");
     expect(code).not.toMatch(/soporte:\s*"configuracion"/);
   });
 });

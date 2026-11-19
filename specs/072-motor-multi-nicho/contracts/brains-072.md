@@ -46,7 +46,10 @@ algo se descartó:
 { "...": "ficha completa", "ignored": [ { "key": "num_invitados", "reason": "no_es_numero" } ] }
 ```
 
-`reason` ∈ `no_es_numero | fecha_invalida | opcion_invalida | no_es_booleano | texto_largo`.
+`reason` ∈ `no_es_numero | fecha_invalida | opcion_invalida | no_es_booleano | texto_largo | no_es_texto`
+(auditoría 072-A: el esquema ve el valor CRUDO, así que un texto de más de 500
+o un objeto en un campo del esquema se reportan en vez de perderse en silencio;
+`PATCH /api/contacts/[id]` también devuelve `ignored`).
 Nunca 422 por un valor; sin esquema la respuesta es idéntica a 2.11.0.
 
 ## 3. `GET /api/brains/context` — `moduleTools` (072-B)

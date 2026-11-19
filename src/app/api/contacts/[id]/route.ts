@@ -1,3 +1,4 @@
+import type { Ignorado } from "@/lib/ficha-campos";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
@@ -75,6 +76,7 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   // La ficha va por su propia puerta —la MISMA que usa el cerebro externo en
   // `PUT /api/bot/ficha`— para heredar el merge y las cotas. Escribirla aquí
   // con un `set` plano sería un segundo camino con otras reglas.
+  let ignored: Ignorado[] | undefined;
   if (body.data.ficha !== undefined) {
     const res = await upsertFicha({
       organizationId: session.organizationId,
@@ -82,6 +84,10 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
       ficha: body.data.ficha,
     });
     if (!res) return apiError(404, "not_found", "Contacto no encontrado");
+    // A-6 (auditoría 072-A) — Lo que el esquema descartó vuelve al panel (que
+    // lo avisa) en vez de perderse en silencio. Sin descartes, la respuesta es
+    // la de siempre.
+    ignored = res.ignored;
   }
 
   const set: Record<string, unknown> = { updatedAt: new Date() };
@@ -117,5 +123,6 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   const anuncio = await anuncioDelContacto(session.organizationId, id);
   return Response.json({
     contact: serializeContact(updated[0], null, null, cuentaComoAnuncio(anuncio)),
+    ...(ignored && ignored.length > 0 ? { ignored } : {}),
   });
 });

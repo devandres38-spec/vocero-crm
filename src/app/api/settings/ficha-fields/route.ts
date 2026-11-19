@@ -1,14 +1,18 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
-import { puedeConfigurar } from "@/lib/auth/roles";
 import { fichaFieldsSchema } from "@/lib/ficha-campos";
-import { fichaFieldsDe, guardarFichaFields } from "@/server/ficha/esquema";
+import { fichaFieldsDe, guardarFichaFields, puedeEditarFicha } from "@/server/ficha/esquema";
 
 export const dynamic = "force-dynamic";
 
 /** 072 (FR-013) — Los campos de la ficha de este negocio (`[]` = sin esquema). */
 export const GET = withAuth(async (session) => {
-  return Response.json({ fields: await fichaFieldsDe(session.organizationId), puedeEditar: puedeConfigurar(session) });
+  // M-8 (auditoría 072-A) — `puedeEditar` dice lo mismo que el PUT: un acceso
+  // de soporte solo lee (esta ruta no está entre las de soporte de configuración).
+  return Response.json({
+    fields: await fichaFieldsDe(session.organizationId),
+    puedeEditar: puedeEditarFicha(session),
+  });
 });
 
 const cuerpo = z.object({ fields: fichaFieldsSchema }).strict();
@@ -23,7 +27,7 @@ const cuerpo = z.object({ fields: fichaFieldsSchema }).strict();
  * la agencia ajusta los campos por el Blueprint (`fichaFields`).
  */
 export const PUT = withAuth(async (session, req: Request) => {
-  if (!puedeConfigurar(session)) {
+  if (!puedeEditarFicha(session)) {
     return apiError(403, "forbidden", "Solo el dueño o un administrador cambia los campos de la ficha");
   }
   const body = await parseBody(req, cuerpo);

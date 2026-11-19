@@ -18,8 +18,12 @@ export type TipoCampo = (typeof TIPOS_CAMPO)[number];
 export const TOPE_CAMPOS = 20;
 export const TOPE_OPCIONES = 30;
 export const CLAVE_CAMPO_RE = /^[a-z][a-z0-9_]{1,39}$/;
-/** `notas` es del bot (siempre existe en `update_ficha`). */
-export const CLAVES_RESERVADAS: readonly string[] = ["notas"];
+/**
+ * `notas` es del bot (siempre existe en `update_ficha`). M-6 (auditoría
+ * 072-A): `constructor` y `prototype` chocan con `Object.prototype` al leer
+ * `ficha[clave]` en un objeto plano.
+ */
+export const CLAVES_RESERVADAS: readonly string[] = ["notas", "constructor", "prototype"];
 
 export type FichaField = {
   key: string;
@@ -47,6 +51,17 @@ export function normalizarOpcion(s: string): string {
     .toLowerCase()
     .replace(/\s+/g, " ")
     .trim();
+}
+
+/**
+ * B-1 (auditoría 072-A) — Las opciones de una lista escritas a mano: UNA POR
+ * LÍNEA. La coma es parte de la opción («Bogotá, D.C.»).
+ */
+export function opcionesDeTexto(texto: string): string[] {
+  return texto
+    .split(/\r?\n/)
+    .map((o) => o.trim())
+    .filter(Boolean);
 }
 
 export const fichaFieldSchema = z
@@ -104,6 +119,7 @@ export const MOTIVOS_IGNORADO = [
   "opcion_invalida",
   "no_es_booleano",
   "texto_largo",
+  "no_es_texto",
 ] as const;
 export type MotivoIgnorado = (typeof MOTIVOS_IGNORADO)[number];
 export type Ignorado = { key: string; reason: MotivoIgnorado };
@@ -118,8 +134,10 @@ export function aNumero(v: unknown): number | null {
   const tokens = v.replace(/[$\s]/g, " ").trim().match(/-?\d[\d.,]*/g);
   if (!tokens || tokens.length !== 1) return null;
   let t = tokens[0]!.replace(/[.,]$/, "");
-  if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
-  else if (/^-?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, "");
+  // M-7 (auditoría 072-A) — Un separador de miles nunca va tras un 0 inicial:
+  // `0.125` es cero coma ciento veinticinco, no 125.
+  if (/^-?[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
+  else if (/^-?[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(t)) t = t.replace(/,/g, "");
   else if (/^-?\d+,\d+$/.test(t)) t = t.replace(",", ".");
   else if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
   const n = Number(t);
@@ -137,7 +155,9 @@ function fechaValida(a: number, m: number, d: number): string | null {
 export function aFecha(v: unknown): string | null {
   if (typeof v !== "string") return null;
   const s = v.trim();
-  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);
+  // M-7 — Anclada: tras el día solo cabe la hora de un ISO (`T…` o espacio);
+  // `2026-05-1099` es basura, no el 10 de mayo.
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:$|T|\s)/.exec(s);
   if (m) return fechaValida(Number(m[1]), Number(m[2]), Number(m[3]));
   m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/.exec(s);
   if (m) return fechaValida(Number(m[3]), Number(m[2]), Number(m[1]));
@@ -184,6 +204,7 @@ export function coaccionar(campo: FichaField, v: unknown): { ok: true; valor: Va
       return o === null ? { ok: false, reason: "opcion_invalida" } : { ok: true, valor: o };
     }
     case "text": {
+      if (typeof v !== "string" && typeof v !== "number" && typeof v !== "boolean") return { ok: false, reason: "no_es_texto" };
       const s = String(v).trim();
       return s.length > TEXTO_MAX ? { ok: false, reason: "texto_largo" } : { ok: true, valor: s };
     }
@@ -191,25 +212,29 @@ export function coaccionar(campo: FichaField, v: unknown): { ok: true; valor: Va
 }
 
 /**
- * Aplica el esquema a un parche YA normalizado (`normalizeFicha`). Las claves
- * del esquema se guardan tipadas; las inválidas se ignoran y se reportan (sin
- * 422: el LLM deriva y tirar un dato bueno cuesta una conversación). Lo que no
- * es del esquema pasa tal cual (las fichas B2B de siempre siguen valiendo).
+ * Aplica el esquema a lo que llega. Las claves del esquema se guardan tipadas
+ * a partir del valor CRUDO (A-6, auditoría 072-A: antes pasaba primero por
+ * `normalizeFicha`, que recortaba a 500 y tiraba objetos en silencio, y el
+ * campo nunca llegaba a reportarse); las inválidas se ignoran y se reportan
+ * (sin 422: el LLM deriva y tirar un dato bueno cuesta una conversación). La
+ * cadena vacía no borra ni se reporta (para borrar está `null`). Lo que no es
+ * del esquema pasa tal cual: el llamador ya lo normalizó (las fichas B2B de
+ * siempre siguen valiendo).
  */
 export function aplicarEsquema(
-  patch: Record<string, ValorFicha>,
+  patch: Record<string, unknown>,
   campos: readonly FichaField[]
 ): { patch: Record<string, ValorFicha>; ignored: Ignorado[] } {
-  if (campos.length === 0) return { patch, ignored: [] };
   const porClave = new Map(campos.map((c) => [c.key, c]));
   const out: Record<string, ValorFicha> = {};
   const ignored: Ignorado[] = [];
   for (const [key, valor] of Object.entries(patch)) {
     const campo = porClave.get(key);
     if (!campo) {
-      out[key] = valor;
+      out[key] = valor as ValorFicha;
       continue;
     }
+    if (valor === undefined || (typeof valor === "string" && valor.trim() === "")) continue;
     const r = coaccionar(campo, valor);
     if (r.ok) out[key] = r.valor;
     else ignored.push({ key, reason: r.reason });
@@ -217,11 +242,16 @@ export function aplicarEsquema(
   return { patch: out, ignored };
 }
 
+/** M-6 — Lee una clave PROPIA de la ficha (nunca algo heredado de `Object.prototype`). */
+export function valorPropio(ficha: Record<string, unknown> | null | undefined, key: string): unknown {
+  return ficha && Object.hasOwn(ficha, key) ? ficha[key] : undefined;
+}
+
 /** Los obligatorios que todavía no tienen valor, en el orden del esquema. */
 export function faltantes(campos: readonly FichaField[], ficha: Record<string, unknown> | null | undefined): FichaField[] {
   return campos.filter((c) => {
     if (!c.required) return false;
-    const v = ficha?.[c.key];
+    const v = valorPropio(ficha, c.key);
     return v === undefined || v === null || v === "";
   });
 }
