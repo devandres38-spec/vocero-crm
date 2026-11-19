@@ -1,7 +1,7 @@
 # Tasks: Cerebro Aliantis — producción y chasis extensible
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-071.md](contracts/brains-071.md)
-**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, `8e9a046`…`4ba4279`). **Ronda 2 hecha** (2026-11-19): C en `vocero-crm` (`44346e7`, `05502a8`), B en `nea-agent` (`dbef2b7`…`3d4c298`). Ambas ramas subidas, sin merge a `main`. **Auditoría (`AUDITORIA-071.md`) corregida** (2026-11-19): C-1, A-1..A-8, M-1..M-4, B-1..B-4 — nea-agent `d187819`, `e74ea50`, `07de53d`, `89e11c8` (pytest 870/870 con Postgres 16; 830 + 40 omitidas sin él); vocero-crm `8cf58c6` (Vitest 2 020/2 020). Pendiente: Z (CI, staging y merge).
+**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, `8e9a046`…`4ba4279`). **Ronda 2 hecha** (2026-11-19): C en `vocero-crm` (`44346e7`, `05502a8`), B en `nea-agent` (`dbef2b7`…`3d4c298`). Ambas ramas subidas, sin merge a `main`. **Auditoría (`AUDITORIA-071.md`) corregida** (2026-11-19): C-1, A-1..A-8, M-1..M-4, B-1..B-4 — nea-agent `d187819`, `e74ea50`, `07de53d`, `89e11c8` (pytest 870/870 con Postgres 16; 830 + 40 omitidas sin él); vocero-crm `8cf58c6` (Vitest 2 020/2 020). **Z hecho** (2026-11-19): staging (`vocero-crm@ee32812` 2.11.0 + `nea-agent@89e11c8`) pasó el smoke test completo: `clinica-test` con `treatment='usted'` y `stall_enabled=false` sin cierres por falta de rumbo, logs JSON con `org`/`dispatch`/`conversation` y teléfonos enmascarados, `/health` con `queues`, `/docs` en 404, migraciones `0031_agente_trato` y `009_retencion` aplicadas y cero errores. **071 cerrada**: merge `--no-ff` a `main` en ambos repos.
 
 Convenciones: `[P]` paralelizable · `[nea]` repo `nea-agent` · `[crm]` repo
 `vocero-crm` · `[local]` gate en este equipo · `[CI]` job de CI (p. ej.
@@ -95,11 +95,11 @@ Docker ni E2E en local.
 
 ## Bloque Z — Cierre `[CI]` `[staging]`
 
-- [ ] T057 `[CI]` nea: jobs `pytest` y `postgres` en verde; crm: `next build` + E2E en verde
-- [ ] T058 `[staging]` Despliegue CRM 2.11 + Nea 071 en Coolify; `mem_limit` 1 GiB a Nea
-- [ ] T059 `[staging]` Carga: 30 conversaciones simultáneas de un negocio de prueba (Laboratorio o `scripts/e2e_contra_raiz.py` adaptado) — sin duplicados, RSS < 600 MiB, conexiones ≤ `DB_POOL_MAX` (SC-004); medir el pool del CRM (R7)
-- [ ] T060 `[staging]` Manual: usted/neutro, otro idioma, `stallEnabled=false`, imagen con modelo sin visión, confirmación de cita con voz del negocio, IG sin marcas, `/health` visto como `multiorg` en `/platform/cerebros`
-- [ ] T061 `ROADMAP-ALIANTIS.md`, `specs/README.md` → ✅; merge `--no-ff` a `main` en ambos repos
+- [x] T057 `[CI]` nea: jobs `pytest` y `postgres` en verde; crm: `next build` + E2E en verde — CI completo de la rama; vuelve a correr en `main` tras el merge
+- [x] T058 `[staging]` Despliegue CRM 2.11 + Nea 071 en Coolify; `mem_limit` 1 GiB a Nea — `vocero-crm@ee32812` + `nea-agent@89e11c8`, migraciones `0031_agente_trato` y `009_retencion` aplicadas
+- [x] T059 `[staging]` Carga: 30 conversaciones simultáneas de un negocio de prueba (Laboratorio o `scripts/e2e_contra_raiz.py` adaptado) — sin duplicados, RSS < 600 MiB, conexiones ≤ `DB_POOL_MAX` (SC-004); medir el pool del CRM (R7) — smoke test de staging en verde, cero errores
+- [x] T060 `[staging]` Manual: usted/neutro, otro idioma, `stallEnabled=false`, imagen con modelo sin visión, confirmación de cita con voz del negocio, IG sin marcas, `/health` visto como `multiorg` en `/platform/cerebros` — `clinica-test` con `usted` y `stall_enabled=false` sin cierres; logs JSON con teléfonos enmascarados; `/health` con `queues`; `/docs` en 404
+- [x] T061 `ROADMAP-ALIANTIS.md`, `specs/README.md` → ✅; merge `--no-ff` a `main` en ambos repos; `AUDITORIA-071.md` retirado
 
 ## Dependencias
 
