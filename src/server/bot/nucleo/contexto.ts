@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { serializeFicha } from "@/server/bot/ficha";
+import { fichaSchemaDe } from "@/server/ficha/esquema";
 import { findContactByIdentity } from "@/server/inbox/identity";
 import { isWindowOpen, windowRemainingMs } from "@/server/inbox/window";
 import { windowMsFor } from "@/server/channels/capabilities";
@@ -63,7 +64,7 @@ export async function contextoDeConversacion(
 
   if (!contact || !conversation) return null;
 
-  const [leadRows, booking, anuncio] = await Promise.all([
+  const [leadRows, booking, anuncio, fichaSchema] = await Promise.all([
     db
       .select({ lead: schema.lead, stage: schema.pipelineStage })
       .from(schema.lead)
@@ -80,6 +81,7 @@ export async function contextoDeConversacion(
       .limit(1),
     citasParaContexto(organizationId, contact.id),
     anuncioDelContacto(organizationId, contact.id),
+    fichaSchemaDe(organizationId),
   ]);
   const nextStages = leadRows[0]
     ? await siguientesDelLead(organizationId, leadRows[0].lead.stageId)
@@ -131,5 +133,11 @@ export async function contextoDeConversacion(
      * y uno que no lo lee no cambia. Aditivo.
      */
     ...(booking ? { booking } : {}),
+    /**
+     * 072 (D12) — Los campos de la ficha que define ESTE negocio: con ellos el
+     * cerebro arma `update_ficha` y sabe qué datos faltan. FALTA sin esquema
+     * (el cuerpo es el de 2.11.0). Aditivo.
+     */
+    ...(fichaSchema ? { fichaSchema } : {}),
   };
 }

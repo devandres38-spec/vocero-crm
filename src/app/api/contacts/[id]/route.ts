@@ -9,6 +9,7 @@ import {
   serializeContact,
 } from "@/server/contacts";
 import { upsertFicha } from "@/server/bot/ficha";
+import { fichaFieldsDe } from "@/server/ficha/esquema";
 import { pauseConversations } from "@/server/contacts-import";
 import { cuentaComoAnuncio } from "@/lib/anuncios";
 import {
@@ -24,9 +25,10 @@ export const GET = withAuth(async (session, _req: Request, ctx: Params) => {
   const { id } = await ctx.params;
   const contact = await getContactById(session.organizationId, id);
   if (!contact) return apiError(404, "not_found", "Contacto no encontrado");
-  const [stageRow, anuncio] = await Promise.all([
+  const [stageRow, anuncio, fichaFields] = await Promise.all([
     getContactStage(session.organizationId, id),
     anuncioDelContacto(session.organizationId, id),
+    fichaFieldsDe(session.organizationId),
   ]);
   // 018 — Sin imagen todavía: se reintenta en segundo plano y llega por SSE.
   if (anuncio && !anuncio.imageAssetId) {
@@ -45,6 +47,8 @@ export const GET = withAuth(async (session, _req: Request, ctx: Params) => {
         }
       : null,
     lead: stageRow ? { id: stageRow.lead.id } : null,
+    // 072 (FR-014) — Los campos de la ficha del negocio (`[]` = sin esquema).
+    fichaFields,
   });
 });
 

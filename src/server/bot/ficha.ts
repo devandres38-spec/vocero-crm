@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { aplicarEsquema, type Ignorado } from "@/lib/ficha-campos";
+import { fichaFieldsDe } from "@/server/ficha/esquema";
 
 /**
  * Ficha de calificación del lead: lo que el cerebro externo va descubriendo
@@ -83,14 +85,19 @@ export function mergeFicha(prev: Ficha | null | undefined, patch: Ficha): Ficha 
  * guardar le borraría el trabajo al otro sin que nadie se entere.
  *
  * Devuelve `null` si el contacto no existe en esa organización.
+ *
+ * 072 (D10) — Si el negocio definió los campos de su ficha, las claves del
+ * esquema se guardan tipadas; un valor que no encaja se ignora y vuelve en
+ * `ignored` (solo si hubo alguno: sin esquema, la respuesta es la de 2.11.0).
  */
 export async function upsertFicha(input: {
   organizationId: string;
   contactId: string;
   ficha: FichaInput;
-}): Promise<{ ficha: Ficha } | null> {
+}): Promise<{ ficha: Ficha; ignored?: Ignorado[] } | null> {
   const db = getDb();
-  const patch = normalizeFicha(input.ficha);
+  const campos = await fichaFieldsDe(input.organizationId, db);
+  const { patch, ignored } = aplicarEsquema(normalizeFicha(input.ficha), campos);
 
   // El acotamiento va aquí y no en cada llamador: una ficha es información de
   // calificación de un cliente ajeno, y confiar en que quien llame se acuerde
@@ -116,7 +123,7 @@ export async function upsertFicha(input: {
     .set({ ficha: merged, updatedAt: new Date() })
     .where(alcance);
 
-  return { ficha: merged };
+  return ignored.length > 0 ? { ficha: merged, ignored } : { ficha: merged };
 }
 
 /**

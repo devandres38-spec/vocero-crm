@@ -192,6 +192,8 @@ export function settingsSections({
   // #85 — el proveedor de IA se configura aquí; el entorno queda de respaldo.
   const agente: SettingsLink[] = [{ href: "/settings/ai", label: "IA" }];
   if (agenda) agente.push({ href: "/settings/calendar", label: "Agenda" });
+  // 072 (FR-013) — Qué datos pide el agente y cómo se ven en la ficha.
+  agente.push({ href: "/settings/ficha", label: "Ficha" });
 
   const negocio: SettingsLink[] = [
     { href: "/settings/branding", label: "Marca" },

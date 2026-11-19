@@ -5,6 +5,8 @@ import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fichaEntries, fichaLabel, fichaValueText, parseFichaValue } from "@/lib/ficha";
+import { coaccionar, type FichaField } from "@/lib/ficha-campos";
+import { useVocabulario } from "@/lib/vocabulario-context";
 import type { FichaDto, FichaValue } from "@/lib/types";
 
 /**
@@ -15,15 +17,24 @@ import type { FichaDto, FichaValue } from "@/lib/types";
  *
  * Se puede corregir a mano. Un dato equivocado que el dueño ve pero no puede
  * arreglar es peor que no tenerlo: enseña a desconfiar de toda la ficha.
+ *
+ * 072 (FR-014) — Si el negocio definió sus campos (Ajustes → Ficha), salen
+ * arriba, en su orden y con su control (fecha, lista, sí/no, número). Debajo,
+ * «Otros datos»: lo que el agente o alguien guardó fuera del esquema, con el
+ * editor libre de siempre. Sin campos, el panel es el de 2.11.0.
  */
 export function FichaPanel({
   ficha,
+  campos = [],
   onSave,
 }: {
   ficha: FichaDto;
+  /** 072 — Los campos del negocio; vacío = ficha libre. */
+  campos?: FichaField[];
   /** Parche: solo lo que cambia. `null` borra la clave. */
   onSave: (patch: Record<string, FichaValue | null>) => Promise<void>;
 }) {
+  const v = useVocabulario();
   const [editando, setEditando] = useState<string | null>(null);
   const [borrador, setBorrador] = useState("");
   const [agregando, setAgregando] = useState(false);
@@ -31,7 +42,9 @@ export function FichaPanel({
   const [valorNuevo, setValorNuevo] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  const entradas = fichaEntries(ficha);
+  const delEsquema = new Set(campos.map((c) => c.key));
+  const entradas = fichaEntries(ficha).filter(([clave]) => !delEsquema.has(clave));
+  const conEsquema = campos.length > 0;
 
   async function guardar(patch: Record<string, FichaValue | null>) {
     setGuardando(true);
@@ -66,7 +79,7 @@ export function FichaPanel({
     <section className="border-b p-4">
       <div className="mb-2 flex items-center justify-between">
         <p className="kicker">
-          Ficha
+          {v("ficha")}
         </p>
         {!agregando && (
           <button
@@ -79,7 +92,25 @@ export function FichaPanel({
         )}
       </div>
 
-      {entradas.length === 0 && !agregando && (
+      {conEsquema && (
+        <dl className="mb-3 space-y-1.5">
+          {campos.map((campo) => (
+            <CampoTipado
+              key={campo.key}
+              campo={campo}
+              valor={ficha[campo.key]}
+              guardando={guardando}
+              onGuardar={(valor) => guardar({ [campo.key]: valor })}
+            />
+          ))}
+        </dl>
+      )}
+
+      {conEsquema && entradas.length > 0 && (
+        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-text-3">Otros datos</p>
+      )}
+
+      {!conEsquema && entradas.length === 0 && !agregando && (
         <p className="text-xs leading-relaxed text-text-3">
           Todavía vacía. Aquí aparece lo que tu agente va averiguando del lead
           mientras conversa — y puedes escribirlo tú.
@@ -204,5 +235,147 @@ export function FichaPanel({
         </div>
       )}
     </section>
+  );
+}
+
+/** Cómo se lee un valor tipado (la fecha en día/mes/año, como se escribe aquí). */
+export function textoDeCampo(campo: FichaField, valor: FichaValue | undefined): string {
+  if (valor === undefined || valor === null || valor === "") return "";
+  if (campo.type === "date" && typeof valor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+    const [a, m, d] = valor.split("-");
+    return `${d}/${m}/${a}`;
+  }
+  return fichaValueText(valor);
+}
+
+const CONTROL = "h-7 w-full rounded-md border border-input bg-card px-2 py-0 text-xs";
+
+/** Un campo del esquema: se edita con el control de su tipo y se guarda al confirmar. */
+function CampoTipado({
+  campo,
+  valor,
+  guardando,
+  onGuardar,
+}: {
+  campo: FichaField;
+  valor: FichaValue | undefined;
+  guardando: boolean;
+  onGuardar: (valor: FichaValue | null) => Promise<void>;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState("");
+  const [error, setError] = useState(false);
+  const vacio = valor === undefined || valor === null || valor === "";
+  const etiqueta = `${campo.label}${campo.required ? " *" : ""}`;
+
+  function abrir() {
+    setError(false);
+    setBorrador(
+      vacio ? "" : campo.type === "boolean" ? (valor ? "si" : "no") : String(valor)
+    );
+    setEditando(true);
+  }
+
+  async function confirmar() {
+    if (borrador.trim() === "") {
+      // Vacío no borra (igual que la ficha libre): para eso está el bote.
+      setEditando(false);
+      return;
+    }
+    const r = coaccionar(campo, borrador);
+    if (!r.ok) {
+      setError(true);
+      return;
+    }
+    setEditando(false);
+    if (r.valor !== valor) await onGuardar(r.valor);
+  }
+
+  const teclas = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") void confirmar();
+    if (e.key === "Escape") setEditando(false);
+  };
+
+  return (
+    <div className="group flex items-start gap-2 text-xs">
+      <dt className="w-[38%] shrink-0 pt-1 text-text-3" title={campo.description}>
+        {etiqueta}
+      </dt>
+      <dd className="flex min-w-0 flex-1 items-start gap-1">
+        {editando ? (
+          <>
+            {campo.type === "select" || campo.type === "boolean" ? (
+              <select
+                autoFocus
+                value={borrador}
+                onChange={(e) => setBorrador(e.target.value)}
+                onKeyDown={teclas}
+                className={CONTROL}
+                aria-label={`Valor de ${campo.label}`}
+              >
+                <option value="">—</option>
+                {(campo.type === "boolean" ? ["Sí", "No"] : campo.options ?? []).map((o) => (
+                  <option key={o} value={campo.type === "boolean" ? (o === "Sí" ? "si" : "no") : o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                autoFocus
+                type={campo.type === "date" ? "date" : "text"}
+                inputMode={campo.type === "number" ? "decimal" : undefined}
+                value={borrador}
+                onChange={(e) => {
+                  setBorrador(e.target.value);
+                  setError(false);
+                }}
+                onKeyDown={teclas}
+                className={`h-7 py-0 text-xs ${error ? "border-danger" : ""}`}
+                aria-invalid={error}
+                title={error ? "Ese valor no encaja con el tipo del campo" : undefined}
+                aria-label={`Valor de ${campo.label}`}
+              />
+            )}
+            <button
+              onClick={() => void confirmar()}
+              aria-label="Guardar"
+              className="rounded p-1 text-text-3 hover:bg-accent hover:text-foreground"
+            >
+              <Check className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setEditando(false)}
+              aria-label="Cancelar"
+              className="rounded p-1 text-text-3 hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              onClick={abrir}
+              className={`min-w-0 flex-1 break-words rounded px-1 py-1 text-left hover:bg-accent ${vacio ? "text-text-4" : ""}`}
+              aria-label={`Editar ${campo.label}`}
+            >
+              {vacio ? "Sin dato" : textoDeCampo(campo, valor)}
+            </button>
+            {!vacio && (
+              <span className="flex opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                <button
+                  disabled={guardando}
+                  onClick={() => void onGuardar(null)}
+                  aria-label={`Quitar ${campo.label}`}
+                  className="rounded p-1 text-text-3 hover:bg-accent hover:text-danger"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+          </>
+        )}
+      </dd>
+    </div>
   );
 }

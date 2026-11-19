@@ -66,7 +66,8 @@ describe("072 A0 — el menú de un negocio sin pack es el de 2.11.0", () => {
       ])
     ).toEqual([
       ["Canales", ["/settings/channels", "/settings/whatsapp", "/settings/instagram", "/settings/messenger", "/settings/tiktok"]],
-      ["Agente", ["/settings/ai", "/settings/calendar"]],
+      // 072 A3 (T027): «Ficha» es la única entrada nueva de Ajustes, a propósito.
+      ["Agente", ["/settings/ai", "/settings/calendar", "/settings/ficha"]],
       [
         "Negocio",
         [
