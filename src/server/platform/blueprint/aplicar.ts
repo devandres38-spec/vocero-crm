@@ -20,6 +20,8 @@ import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { modulosEfectivos, techoDeInstancia } from "@/server/modulos/efectivos";
 import { aplicarOwner } from "@/server/platform/blueprint/secciones/owner";
 import { aplicarCerebro } from "@/server/platform/blueprint/secciones/cerebro";
+import { aplicarVertical } from "@/server/platform/blueprint/secciones/vertical";
+import { aplicarFichaFields } from "@/server/platform/blueprint/secciones/ficha";
 
 /**
  * 069 (D12) — EL servicio de aprovisionamiento. Panel, REST y MCP llaman
@@ -137,6 +139,14 @@ export async function aplicarBlueprint(
         r.sections.quickReplies = estado(q.cambio);
         conteos.quickReplies = q.conteos;
       }
+      // 072 — Nicho y campos de la ficha (la plantilla es una semilla: no se
+      // aplica sola al cambiar de pack).
+      if (bp.vertical) {
+        const v = await aplicarVertical(tx, org.id, bp.vertical);
+        r.sections.vertical = estado(v.cambio);
+        r.warnings.push(...v.advertencias);
+      }
+      if (bp.fichaFields) r.sections.fichaFields = estado(await aplicarFichaFields(tx, org.id, bp.fichaFields));
       if (bp.brain !== undefined) {
         const cambio = await aplicarCerebro(tx, actor, org.id, bp.brain);
         // Auditoría 070 (B-5): crear con `brain: null` no asigna nada: «sin cambios».

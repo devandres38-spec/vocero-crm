@@ -8,6 +8,9 @@ import { LIMITS } from "@/server/agenda/settings";
 import { modulosOrganizacionSchema } from "@/server/modulos/efectivos";
 import { aparienciaSchema, temaPropio } from "@/lib/temas";
 import { ATAJO_RE, normalizarAtajo, TEXTO_MAX, TOPE_RESPUESTAS } from "@/lib/respuestas-rapidas";
+import { fichaFieldsSchema } from "@/lib/ficha-campos";
+import { esPackId } from "@/verticals/registro";
+import { verticalOverridesSchema } from "@/verticals/resolver";
 
 /**
  * 069 (D12, FR-016) — `OrganizationBlueprint` v1: un negocio completo descrito
@@ -200,6 +203,25 @@ const quickRepliesSchema = z
   })
   .strict();
 
+/**
+ * 072 (D20) — El Vertical Pack del negocio y sus ajustes (solo datos).
+ * Cambiar `pack` NO aplica su plantilla: eso es mandar su semilla
+ * (`get_vertical_pack`). `overrides: null` los quita; ausente, no se tocan.
+ */
+const verticalSchema = z
+  .object({
+    pack: z.string().refine(esPackId, { message: "pack_desconocido" }),
+    overrides: verticalOverridesSchema.nullable().optional(),
+  })
+  .strict();
+
+/**
+ * 072 (D9) — Los campos de la ficha: reemplaza el esquema completo (`[]` =
+ * quitarlo). La clave y el tipo de un campo existente no cambian (422
+ * `tipo_inmutable`); quitar un campo no borra los valores guardados.
+ */
+const fichaFieldsSeccionSchema = z.object({ fields: fichaFieldsSchema }).strict();
+
 const ownerSchema = z
   .object({
     email: z
@@ -249,6 +271,10 @@ export const blueprintSchema = z
       .strict()
       .nullable()
       .optional(),
+    /** 072 — Vertical Pack y ajustes por negocio. */
+    vertical: verticalSchema.optional(),
+    /** 072 — Los campos de la ficha del negocio. */
+    fichaFields: fichaFieldsSeccionSchema.optional(),
     owner: ownerSchema.optional(),
   })
   .strict()
@@ -269,6 +295,8 @@ export const SECCIONES_BLUEPRINT = [
   "appearance",
   "quickReplies",
   "brain",
+  "vertical",
+  "fichaFields",
   "owner",
 ] as const;
 export type SeccionBlueprint = (typeof SECCIONES_BLUEPRINT)[number];

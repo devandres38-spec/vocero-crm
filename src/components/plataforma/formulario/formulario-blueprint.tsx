@@ -14,6 +14,7 @@ import {
   KanbanSquare,
   Palette,
   Save,
+  Sparkles,
   ToggleRight,
   X,
   Zap,
@@ -26,8 +27,10 @@ import { leerErrorPlataforma } from "@/components/plataforma/errores";
 import type { OrganizationBlueprint, SeccionBlueprint } from "@/lib/platform/blueprint";
 import {
   PESTANA_DE_SECCION,
+  aplicarPlantillaAlFormulario,
   blueprintParaEnviar,
   formularioDesdeBlueprint,
+  formularioDesdePlantilla,
   formularioInicial,
   seccionesDelFormulario,
   tarjetasIncompletas,
@@ -45,6 +48,7 @@ import { PestanaModulos, PestanaPipeline } from "./pestana-modulos";
 import { PestanaAgente, PestanaConocimiento, type OpcionCerebro } from "./pestana-agente";
 import { PestanaAgenda } from "./pestana-agenda";
 import { PestanaJson, PestanaRespuestas } from "./pestana-respuestas";
+import { PestanaNicho } from "./pestana-nicho";
 
 /**
  * Auditoría 069 (Fix-C/D) — EL formulario de un negocio en `/platform`, el
@@ -56,6 +60,8 @@ import { PestanaJson, PestanaRespuestas } from "./pestana-respuestas";
 
 const PESTANAS: { id: string; titulo: string; icono: LucideIcon }[] = [
   { id: "negocio", titulo: "Negocio y región", icono: Building2 },
+  // 072 — Plantilla de nicho, Vertical Pack y campos de la ficha.
+  { id: "nicho", titulo: "Nicho y ficha", icono: Sparkles },
   { id: "marca", titulo: "Marca y apariencia", icono: Palette },
   { id: "modulos", titulo: "Módulos", icono: ToggleRight },
   { id: "pipeline", titulo: "Pipeline", icono: KanbanSquare },
@@ -78,6 +84,8 @@ const NOMBRE_SECCION: Record<SeccionBlueprint, string> = {
   agenda: "Agenda",
   quickReplies: "Respuestas rápidas",
   brain: "Cerebro",
+  vertical: "Nicho",
+  fichaFields: "Campos de la ficha",
   owner: "Dueño",
 };
 
@@ -92,6 +100,8 @@ function advertencia(w: string): string {
   const [codigo, dato] = w.split(":");
   if (codigo === "modulo_apagado") return `El módulo ${dato} está apagado: su configuración se guarda pero no se usa.`;
   if (codigo === "etapa_con_leads_conservada") return `La etapa «${dato}» tiene leads: se conserva aunque no esté en la lista.`;
+  if (codigo === "href_desconocido") return `«${dato}» no está en el menú: el ajuste se guarda pero no se ve.`;
+  if (codigo === "widget_sin_modulo") return `El widget «${dato}» es de un módulo que este negocio no tiene: no se pinta.`;
   return w;
 }
 
@@ -246,6 +256,21 @@ export function FormularioBlueprint(p: PropsFormulario) {
 
       <div role="tabpanel" className="min-h-[300px]">
         {pestana === "negocio" && <PestanaNegocio f={f} upd={upd} modo={p.modo} dominio={p.dominio} />}
+        {pestana === "nicho" && (
+          <PestanaNicho
+            f={f}
+            upd={upd}
+            modo={p.modo}
+            onCargarPlantilla={(packId) =>
+              setF((x) => {
+                if (p.modo === "editar") return aplicarPlantillaAlFormulario(x, packId, p.defaults, p.techo);
+                // Al crear, lo que ya se escribió del negocio se queda.
+                const nuevo = formularioDesdePlantilla(packId, p.defaults, p.techo);
+                return { ...nuevo, organization: x.organization, region: x.region, modules: x.modules, brain: x.brain, owner: x.owner, brand: { ...nuevo.brand, name: x.brand.name, nameTocado: x.brand.nameTocado } };
+              })
+            }
+          />
+        )}
         {pestana === "marca" && <PestanaMarca f={f} upd={upd} organizationId={p.organizationId} />}
         {pestana === "modulos" && <PestanaModulos f={f} upd={upd} techo={p.techo} />}
         {pestana === "pipeline" && <PestanaPipeline f={f} upd={upd} />}

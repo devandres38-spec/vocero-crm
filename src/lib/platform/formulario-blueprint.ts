@@ -3,6 +3,8 @@ import { esTrato } from "@/lib/agent-roles";
 import { APARIENCIA_POR_DEFECTO, type Apariencia } from "@/lib/temas";
 import { normalizarAtajo } from "@/lib/respuestas-rapidas";
 import { REGIONES_SUGERIDAS } from "@/lib/region";
+import type { FichaField } from "@/lib/ficha-campos";
+import { semillaDe } from "@/verticals/semilla";
 
 /**
  * Auditoría 069 (Fix-C) — El estado del `FormularioBlueprint` de `/platform`
@@ -97,6 +99,10 @@ export type FormBlueprint = {
   quickReplies: { mode: "merge" | "exact"; entries: RespuestaRapidaForm[] };
   /** 070 — El despliegue de cerebro asignado (`""` = ninguno, bandeja manual). */
   brain: { deployment: string };
+  /** 072 — El Vertical Pack (la plantilla se carga aparte, a pedido). */
+  vertical: { pack: string };
+  /** 072 — Los campos de la ficha del negocio. */
+  fichaFields: { fields: FichaField[] };
   owner: { email: string };
 };
 
@@ -154,6 +160,8 @@ export function formularioInicial(d: DefaultsForm, techo: TechoForm): FormBluepr
     },
     quickReplies: { mode: "merge", entries: [] },
     brain: { deployment: "" },
+    vertical: { pack: "default" },
+    fichaFields: { fields: [] },
     owner: { email: "" },
   };
 }
@@ -226,7 +234,50 @@ export function formularioDesdeBlueprint(
     f.quickReplies = { mode: bp.quickReplies.mode ?? "merge", entries: bp.quickReplies.entries.map((e) => conUid({ ...e })) };
   }
   f.brain = { deployment: bp.brain?.deployment ?? "" };
+  f.vertical = { pack: bp.vertical?.pack ?? "default" };
+  f.fichaFields = { fields: bp.fichaFields?.fields ? bp.fichaFields.fields.map((c) => ({ ...c })) : [] };
   return f;
+}
+
+/**
+ * 072 (US1) — «Empezar desde plantilla»: un formulario NUEVO con la semilla
+ * del pack (etapas, agente, ficha, conocimiento, respuestas, apariencia y
+ * acento). El nombre, la dirección, la región y los módulos son del negocio.
+ */
+export function formularioDesdePlantilla(packId: string, d: DefaultsForm, techo: TechoForm): FormBlueprint {
+  const f = formularioDesdeBlueprint({ version: 1, ...semillaDe(packId) } as OrganizationBlueprint, d, techo);
+  f.organization = { name: "", slug: "", slugTocado: false };
+  f.brand = { ...f.brand, name: "", nameTocado: false };
+  f.appearance = { ...f.appearance, guardada: false };
+  return f;
+}
+
+/**
+ * 072 (US1.4) — «Aplicar plantilla» a un negocio que ya existe: carga la
+ * semilla EN el formulario (las pestañas que cambian se marcan) y se revisa
+ * con «Revisar cambios» antes de guardar. Conocimiento y respuestas rápidas
+ * se suman (`merge`): no se borra lo que el negocio ya escribió. Negocio,
+ * región, nombre de marca, módulos, agenda y cerebro no se tocan.
+ */
+export function aplicarPlantillaAlFormulario(f: FormBlueprint, packId: string, d: DefaultsForm, techo: TechoForm): FormBlueprint {
+  const p = formularioDesdePlantilla(packId, d, techo);
+  return {
+    ...f,
+    brand: { ...f.brand, accent: p.brand.accent },
+    appearance: { usar: true, guardada: f.appearance.guardada, valor: p.appearance.valor },
+    pipeline: p.pipeline.stages.length > 0 ? p.pipeline : f.pipeline,
+    agent: p.agent.name ? p.agent : f.agent,
+    knowledge: { mode: "merge", entries: [...f.knowledge.entries, ...p.knowledge.entries.filter((e) => !f.knowledge.entries.some((x) => igual(sinUid(x), sinUid(e))))] },
+    quickReplies: { mode: "merge", entries: [...f.quickReplies.entries, ...p.quickReplies.entries.filter((e) => !f.quickReplies.entries.some((x) => x.shortcut === e.shortcut))] },
+    vertical: { pack: p.vertical.pack },
+    fichaFields: p.fichaFields.fields.length > 0 ? p.fichaFields : f.fichaFields,
+  };
+}
+
+function sinUid<T extends { uid?: string }>(x: T): Omit<T, "uid"> {
+  const { uid: _uid, ...resto } = x;
+  void _uid;
+  return resto;
 }
 
 const t = (s: string) => s.trim();
@@ -317,6 +368,11 @@ export function seccionesDelFormulario(
   if (cerebro) s.brain = { deployment: cerebro };
   else if (modo === "editar") s.brain = null;
 
+  // 072 — Al crear, solo si se eligió un nicho o hay campos; al editar,
+  // siempre (y viaja solo si cambió respecto de lo cargado).
+  if (modo === "editar" || f.vertical.pack !== "default") s.vertical = { pack: f.vertical.pack };
+  if (modo === "editar" || f.fichaFields.fields.length > 0) s.fichaFields = { fields: f.fichaFields.fields.map((c) => ({ ...c })) };
+
   if (modo === "crear" && t(f.owner.email)) s.owner = { email: t(f.owner.email) };
   return s;
 }
@@ -371,6 +427,8 @@ export const PESTANA_DE_SECCION: Record<SeccionBlueprint, string> = {
   agenda: "agenda",
   quickReplies: "respuestas",
   brain: "agente",
+  vertical: "nicho",
+  fichaFields: "nicho",
 };
 
 /** Pura: copiar el horario de un día a lunes–viernes (con ids nuevos). */
