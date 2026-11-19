@@ -46,6 +46,8 @@ const prefixes = {
   supportGrant: "sop",
   platformApiToken: "pat",
   platformAudit: "aud",
+  // 070 — despliegues de cerebro
+  brainDeployment: "brn",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

@@ -51,8 +51,10 @@ describe("rate limit por IP (FR-062: 10 / 10 min → 429)", () => {
 describe("clientIp: a quién frenar (jamás a quién autorizar)", () => {
   const h = (init: Record<string, string>) => new Headers(init);
 
-  it("el primer salto de x-forwarded-for es el cliente", () => {
-    expect(clientIp(h({ "x-forwarded-for": " 203.0.113.9 , 10.0.0.2" }))).toBe("203.0.113.9");
+  it("x-forwarded-for se lee desde la derecha (el salto del proxy de confianza)", () => {
+    // Auditoría 070 (A-1): desde la DERECHA (lo de la izquierda lo escribe el
+    // cliente). Con un proxy de confianza, el último salto.
+    expect(clientIp(h({ "x-forwarded-for": " 203.0.113.9 , 10.0.0.2" }))).toBe("10.0.0.2");
   });
 
   it("sin x-forwarded-for, x-real-ip; sin ninguno, 'local'", () => {

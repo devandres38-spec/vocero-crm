@@ -68,7 +68,7 @@ export type BrainDispatchDto = {
   host: string | null;
   /** `url`: no es http(s) o lleva usuario y clave. `sin_llave`: falta
    *  `BOT_API_KEY`. Con problema, el despacho NO está activo. */
-  problem: "url" | "sin_llave" | null;
+  problem: "url" | "sin_llave" | "pausado" | "suspendida" | null;
   lastDeliveredAt: string | null;
   /** El último turno que no llegó (caducó) o que se sigue reintentando. */
   lastFailure: { at: string; detail: string } | null;
@@ -87,6 +87,11 @@ export const SIN_DESPACHO: BrainDispatchDto = {
 };
 
 export type BrainStatusDto = {
+  /**
+   * 070 — Modo plataforma: el cerebro lo asigna la plataforma (no hay
+   * variables que poner) y `host` es el NOMBRE del despliegue, no su URL.
+   */
+  plataforma?: true;
   /** 036 — El interruptor del Agente: el CRM le despacha al cerebro. */
   enabled: boolean;
   /** Hay con qué pensar: la llave de Ajustes → IA (o `OPENROUTER_API_TOKEN`

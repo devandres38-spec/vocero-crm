@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth";
-import { checkRateLimit, clientIp, rateLimitExcedido, TOKEN_FALLIDO_RATE_LIMIT } from "@/lib/rate-limit";
+import { checkRateLimit, clientIp, llaveFalloPlataforma, rateLimitExcedido, TOKEN_FALLIDO_RATE_LIMIT } from "@/lib/rate-limit";
 import { dominioBase, esPlataforma, raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
 import { hostDeHeaders, slugDelHost } from "@/server/tenant/host";
 import type { Actor } from "@/server/platform/invitaciones";
@@ -40,7 +40,30 @@ export type OpcionesGuardia = {
   soloSesion?: boolean;
   /** Cómo se anota la vía de un token (`api` por defecto; el MCP pasa `mcp`). */
   via?: "api" | "mcp";
+  /**
+   * Auditoría 070 (M-8) — Con SESIÓN y un método que muta, exigir que
+   * `Origin` sea el del panel (el dominio raíz). Los subdominios de los
+   * negocios son *same-site* respecto a la raíz: sin esto, una página de un
+   * negocio podía hacer que el navegador de un Super-Admin rotara o borrara
+   * un cerebro. Con token no aplica (no hay cookie que robar).
+   */
+  exigirOrigen?: boolean;
 };
+
+const METODOS_SEGUROS = new Set(["GET", "HEAD", "OPTIONS"]);
+
+/** Pura: ¿el `Origin` de esta petición es el del panel? */
+export function origenDelPanel(req: Request, raiz: { protocolo: string; host: string } | null = raizPlataforma()): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return false;
+  let esperado: string;
+  try {
+    esperado = raiz ? `${raiz.protocolo}//${raiz.host}` : new URL(req.url).origin;
+    return new URL(origin).origin === new URL(esperado).origin;
+  } catch {
+    return false;
+  }
+}
 
 /** Para route handlers. */
 export async function requirePlataforma(
@@ -55,7 +78,7 @@ export async function requirePlataforma(
   if (token) {
     if (opciones.soloSesion) return { ok: false, response: noEncontrado() };
     // F-04 — La misma cuenta de rechazos por IP que el MCP.
-    const llave = `token-fallido:${ip}`;
+    const llave = llaveFalloPlataforma(ip);
     if (rateLimitExcedido(llave, TOKEN_FALLIDO_RATE_LIMIT)) {
       return { ok: false, response: json(429, "demasiados_intentos", "Demasiados tokens rechazados; espera unos minutos") };
     }
@@ -68,6 +91,9 @@ export async function requirePlataforma(
   } else {
     actor = await actorDeSesion(req.headers);
     if (!actor) return { ok: false, response: noEncontrado() };
+    if (opciones.exigirOrigen && !METODOS_SEGUROS.has(req.method.toUpperCase()) && !origenDelPanel(req)) {
+      return { ok: false, response: json(403, "origen_invalido", "La petición no viene del panel de la plataforma") };
+    }
   }
 
   if (opciones.scope && !actor.alcances.has(opciones.scope)) {

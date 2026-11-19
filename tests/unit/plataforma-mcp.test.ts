@@ -131,6 +131,7 @@ describe("069 — protocolo", () => {
         "get_catalog",
         "get_organization",
         "list_audit_log",
+        "list_brain_deployments",
         "list_organizations",
         "plan_blueprint",
         "reactivate_organization",

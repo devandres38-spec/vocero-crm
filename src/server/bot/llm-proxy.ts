@@ -1,5 +1,5 @@
 import { apiRoot } from "@/lib/ai/presets";
-import { resolveAiProvider } from "@/lib/ai/provider";
+import { resolveAiProvider, resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
 
 /**
@@ -35,8 +35,15 @@ export async function pensarPorElCerebro(input: {
   ruta: string;
   cuerpoCrudo: string;
   contentType: string | null;
+  /**
+   * 070 (D6) — `/api/brains/llm`: solo la llave PROPIA del negocio, nunca el
+   * respaldo `OPENROUTER_*` del entorno.
+   */
+  soloOrganizacion?: boolean;
 }): Promise<ResultadoProxy> {
-  const r = await resolveAiProvider(input.organizationId);
+  const r = input.soloOrganizacion
+    ? await resolveAiProviderDeOrganizacion(input.organizationId)
+    : await resolveAiProvider(input.organizationId);
   if (!r.ok) {
     return {
       ok: false,

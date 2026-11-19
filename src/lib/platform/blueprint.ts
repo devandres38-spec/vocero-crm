@@ -235,6 +235,16 @@ export const blueprintSchema = z
     agenda: agendaSchema.optional(),
     appearance: appearanceSchema.optional(),
     quickReplies: quickRepliesSchema.optional(),
+    /**
+     * 070 — El cerebro que atiende al negocio: solo el id de un despliegue
+     * (`brn_…`) de `/platform/cerebros`, o `null` para quitarlo. Nunca URLs
+     * ni secretos.
+     */
+    brain: z
+      .object({ deployment: z.string().trim().min(1).max(64) })
+      .strict()
+      .nullable()
+      .optional(),
     owner: ownerSchema.optional(),
   })
   .strict()
@@ -254,6 +264,7 @@ export const SECCIONES_BLUEPRINT = [
   "agenda",
   "appearance",
   "quickReplies",
+  "brain",
   "owner",
 ] as const;
 export type SeccionBlueprint = (typeof SECCIONES_BLUEPRINT)[number];

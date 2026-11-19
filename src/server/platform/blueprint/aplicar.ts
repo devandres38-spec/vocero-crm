@@ -19,6 +19,7 @@ import { aplicarRespuestas } from "@/server/platform/blueprint/secciones/respues
 import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { modulosEfectivos, techoDeInstancia } from "@/server/modulos/efectivos";
 import { aplicarOwner } from "@/server/platform/blueprint/secciones/owner";
+import { aplicarCerebro } from "@/server/platform/blueprint/secciones/cerebro";
 
 /**
  * 069 (D12) — EL servicio de aprovisionamiento. Panel, REST y MCP llaman
@@ -58,14 +59,18 @@ export function validarBlueprint(entrada: unknown): OrganizationBlueprint {
   return r.data;
 }
 
-/** Busca por id o por slug. */
+/**
+ * Busca por id o por slug. Auditoría 070 (B-3): con `limit(2)` se detecta la
+ * ambigüedad (un slug igual al id de OTRA organización): manda el id exacto.
+ */
 export async function buscarOrganizacion(idOrSlug: string): Promise<{ id: string; slug: string | null } | null> {
   const rows = await getDb()
     .select({ id: schema.organization.id, slug: schema.organization.slug })
     .from(schema.organization)
     .where(or(eq(schema.organization.id, idOrSlug), eq(schema.organization.slug, idOrSlug)))
-    .limit(1);
-  return rows[0] ?? null;
+    .limit(2);
+  if (rows.length <= 1) return rows[0] ?? null;
+  return rows.find((r) => r.id === idOrSlug) ?? null;
 }
 
 const columnasOrg = {
@@ -131,6 +136,11 @@ export async function aplicarBlueprint(
         const q = await aplicarRespuestas(tx, org.id, bp.quickReplies);
         r.sections.quickReplies = estado(q.cambio);
         conteos.quickReplies = q.conteos;
+      }
+      if (bp.brain !== undefined) {
+        const cambio = await aplicarCerebro(tx, actor, org.id, bp.brain);
+        // Auditoría 070 (B-5): crear con `brain: null` no asigna nada: «sin cambios».
+        r.sections.brain = created && !cambio ? "sin_cambios" : estado(cambio);
       }
       if (bp.owner) {
         const o = await aplicarOwner(tx, actor, org, bp.owner, dryRun);

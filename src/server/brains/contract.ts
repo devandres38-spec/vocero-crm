@@ -76,6 +76,12 @@ export type EventoDespacho = {
   messages: MensajeDelEvento[];
   firstMessageAt: string;
   lastMessageAt: string;
+  /**
+   * 070 — Solo en `multi`, y siempre la ÚLTIMA llave (el cuerpo gemelo de
+   * `single` no cambia). Pasada esa hora el cerebro no contesta: pasa la
+   * conversación a una persona (`app/dispatch_worker.py` de Nea).
+   */
+  expiresAt?: string;
 };
 
 /** Lo que hace falta saber de un mensaje para meterlo al evento. */
@@ -117,6 +123,8 @@ export function armarEvento(datos: {
   messages: MensajeParaEvento[];
   firstMessageAt: Date;
   lastMessageAt: Date;
+  /** 070 — Solo en `multi`. */
+  expiresAt?: Date | null;
 }): EventoDespacho {
   return {
     dispatchId: datos.dispatchId,
@@ -141,6 +149,7 @@ export function armarEvento(datos: {
     messages: datos.messages.map(mensajeDelEvento),
     firstMessageAt: datos.firstMessageAt.toISOString(),
     lastMessageAt: datos.lastMessageAt.toISOString(),
+    ...(datos.expiresAt ? { expiresAt: datos.expiresAt.toISOString() } : {}),
   };
 }
 

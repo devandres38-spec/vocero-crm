@@ -156,7 +156,8 @@ async function prepareSend(
       schema.contact,
       eq(schema.conversation.contactId, schema.contact.id)
     )
-    .where(eq(schema.conversation.id, conversationId))
+    // Auditoría 070 (B-4): la organización también en el WHERE.
+    .where(and(eq(schema.conversation.id, conversationId), eq(schema.conversation.organizationId, organizationId)))
     .limit(1);
   const row = rows[0];
   if (!row || row.conversation.organizationId !== organizationId) {
@@ -452,7 +453,7 @@ async function persistOutbound(input: {
   await db
     .update(schema.conversation)
     .set({ lastMessageAt: new Date(), updatedAt: new Date() })
-    .where(eq(schema.conversation.id, input.conversationId));
+    .where(and(eq(schema.conversation.id, input.conversationId), eq(schema.conversation.organizationId, input.organizationId)));
 
   publish(input.organizationId, {
     type: "message.new",

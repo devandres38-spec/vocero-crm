@@ -34,9 +34,10 @@ export function dispatchDto(config: ConfigDespacho, hechos: Hechos): BrainDispat
 const SIN_HECHOS: Hechos = { lastDeliveredAt: null, lastFailure: null, pending: 0 };
 
 export async function estadoDelDespacho(
-  organizationId: string
+  organizationId: string,
+  /** 070 — En `multi`, la del cerebro asignado (`configDespachoPara`). */
+  config: ConfigDespacho = leerConfigDespacho()
 ): Promise<BrainDispatchDto> {
-  const config = leerConfigDespacho();
   // Sin variable no se le pregunta nada a la base: una instancia que no
   // despacha no paga tres consultas cada vez que se pinta la tarjeta.
   if (!config.active && config.host === null && config.problem === null) {

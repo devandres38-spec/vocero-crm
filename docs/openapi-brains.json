@@ -1,0 +1,339 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Aliantis — API de cerebros (/api/brains/*)",
+    "version": "2.10.0",
+    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre."
+  },
+  "components": {
+    "securitySchemes": {
+      "credencialDerivada": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "organizacion": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Vocero-Organization"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "credencialDerivada": [],
+      "organizacion": []
+    }
+  ],
+  "paths": {
+    "/api/brains/context": {
+      "get": {
+        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil, coordinationFollowupEnabled:false), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null).",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "contextVersion",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "2"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contexto"
+          },
+          "404": {
+            "description": "not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Falta conversationId"
+          }
+        }
+      }
+    },
+    "/api/brains/messages": {
+      "post": {
+        "summary": "Responder. dispatchId obligatorio (de esta organización y conversación, < 24 h). Reintento del mismo texto en el mismo despacho: 200 con el mismo messageId, sin reenviar.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "dispatchId",
+                  "conversationId",
+                  "text"
+                ],
+                "properties": {
+                  "dispatchId": {
+                    "type": "string"
+                  },
+                  "conversationId": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "{ ok: true, messageId }"
+          },
+          "200": {
+            "description": "{ ok: true, messageId, replayed: true }"
+          },
+          "404": {
+            "description": "not_found"
+          },
+          "409": {
+            "description": "ai_paused | sandbox_violation | message_limit | cerebro_reasignado (también si el despacho no anotó despliegue)"
+          },
+          "422": {
+            "description": "invalid_body | despacho_desconocido (no existe, otra conversación, no en_vuelo/entregado, > 24 h) | fuera_de_ventana"
+          },
+          "403": {
+            "description": "organizacion_suspendida"
+          }
+        }
+      }
+    },
+    "/api/brains/ficha": {
+      "put": {
+        "summary": "Igual que PUT /api/bot/ficha.",
+        "responses": {
+          "200": {
+            "description": "Ficha completa"
+          },
+          "409": {
+            "description": "ai_paused"
+          }
+        }
+      }
+    },
+    "/api/brains/stage": {
+      "post": {
+        "summary": "Igual que POST /api/bot/stage (D3: nea-agent ≥ rama 070 la llama).",
+        "responses": {
+          "200": {
+            "description": "{ ok, changed, lead }"
+          },
+          "409": {
+            "description": "etapa_no_permitida | herramienta_apagada | ai_paused"
+          },
+          "422": {
+            "description": "etapa_desconocida"
+          }
+        }
+      }
+    },
+    "/api/brains/handoff": {
+      "post": {
+        "summary": "Igual que POST /api/bot/handoff.",
+        "responses": {
+          "200": {
+            "description": "{ ok: true }"
+          }
+        }
+      }
+    },
+    "/api/brains/typing": {
+      "post": {
+        "summary": "Igual que POST /api/bot/typing (best-effort).",
+        "responses": {
+          "200": {
+            "description": "{ ok, reason? }"
+          }
+        }
+      }
+    },
+    "/api/brains/media/{mediaId}": {
+      "get": {
+        "summary": "Adjunto de un mensaje que llegó a ESTA organización (otro → 404).",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binario"
+          },
+          "404": {
+            "description": "not_found"
+          }
+        }
+      }
+    },
+    "/api/brains/llm/chat/completions": {
+      "post": {
+        "summary": "Compatible con OpenAI. El CRM reenvía con la llave PROPIA del negocio (nunca la del entorno). Solo chat/completions.",
+        "responses": {
+          "200": {
+            "description": "Respuesta del proveedor tal cual"
+          },
+          "402": {
+            "description": "sin_credencial"
+          },
+          "504": {
+            "description": "proveedor_sin_respuesta"
+          },
+          "400": {
+            "description": "stream_no_soportado"
+          },
+          "413": {
+            "description": "payload_too_large (> 25 MB)"
+          },
+          "415": {
+            "description": "content_type (debe ser application/json)"
+          }
+        }
+      }
+    },
+    "/api/brains/agenda/slots": {
+      "get": {
+        "summary": "Huecos que se ofrecen (registra la oferta). Agenda apagada en el negocio → 404 VACÍO; conversación inexistente → 404 con sobre.",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ slots, diasConAgenda, query }"
+          }
+        }
+      }
+    },
+    "/api/brains/agenda/book": {
+      "post": {
+        "summary": "Reservar lo ofrecido.",
+        "responses": {
+          "201": {
+            "description": "{ ok: true, booking: { id, bookingId, label, meetingLink, linkPending } }"
+          },
+          "409": {
+            "description": "slot_taken | slot_not_offered (con slots) | ai_paused"
+          }
+        }
+      },
+      "patch": {
+        "summary": "Mover la cita de la conversación.",
+        "responses": {
+          "200": {
+            "description": "{ ok: true, booking }"
+          },
+          "404": {
+            "description": "not_found (sin cita que mover)"
+          }
+        }
+      }
+    },
+    "/api/brains/agenda/bookings": {
+      "get": {
+        "summary": "Agenda v2 (no anunciada en 070): citas vigentes con selectionToken.",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ bookings: [{ selectionToken, label, startUtc, revision }] }"
+          }
+        }
+      }
+    },
+    "/api/brains/agenda/cancel": {
+      "post": {
+        "summary": "Agenda v2 (no anunciada en 070): cancelar con confirmación explícita e idempotencyKey.",
+        "responses": {
+          "200": {
+            "description": "{ ok: true, bookingId }"
+          },
+          "404": {
+            "description": "not_found"
+          },
+          "409": {
+            "description": "confirmation_required | stale_selection | ai_paused | idempotency_key_reused"
+          }
+        }
+      }
+    },
+    "/api/brains/agenda/followup": {
+      "post": {
+        "summary": "Dormido en 070.",
+        "responses": {
+          "409": {
+            "description": "followup_not_allowed"
+          }
+        }
+      }
+    }
+  }
+}

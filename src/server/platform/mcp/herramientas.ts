@@ -1,4 +1,5 @@
 import { blueprintJsonSchema } from "@/lib/platform/blueprint";
+import { cerebroDeOrganizacion, listarDespliegues } from "@/server/brains/deployment";
 import { aplicarBlueprint, buscarOrganizacion } from "@/server/platform/blueprint/aplicar";
 import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { leerBlueprint } from "@/server/platform/blueprint/exportar";
@@ -112,11 +113,37 @@ export function herramientas(): Herramienta[] {
     {
       name: "get_organization",
       title: "Detalle de un negocio",
-      description: "Configuración de un negocio (región, marca, módulos, equipo e invitaciones pendientes). Nunca conversaciones ni contactos.",
+      description:
+        "Configuración de un negocio (región, marca, módulos, equipo, invitaciones pendientes y el cerebro asignado). Nunca conversaciones ni contactos.",
       inputSchema: conOrganizacion(),
       scope: "read",
       annotations: { readOnlyHint: true },
-      run: async (_a, args) => ({ organization: await detalleOrganizacion((await organizacion(args)).id) }),
+      run: async (_a, args) => {
+        const id = (await organizacion(args)).id;
+        const [detalle, brain] = await Promise.all([detalleOrganizacion(id), cerebroDeOrganizacion(id)]);
+        return { organization: detalle ? { ...detalle, brain } : detalle };
+      },
+    },
+    {
+      name: "list_brain_deployments",
+      title: "Cerebros de la plataforma",
+      description:
+        "Los cerebros (Nea multiorg) que pueden atender negocios: id, nombre, host, estado, última salud y cuántos negocios atiende. Para asignar uno, apply_blueprint con brain: { deployment: \"<id>\" } (o null para quitarlo). Crear o rotar un cerebro solo se hace en el panel: nunca hay secretos ni URLs completas aquí.",
+      inputSchema: { type: "object", properties: {}, additionalProperties: false },
+      scope: "read",
+      annotations: { readOnlyHint: true },
+      run: async () => ({
+        deployments: (await listarDespliegues()).map((d) => ({
+          id: d.id,
+          name: d.name,
+          host: d.host,
+          status: d.status,
+          lastHealthOk: d.lastHealthOk,
+          lastHealthAt: d.lastHealthAt,
+          mode: typeof d.lastHealthDetail?.mode === "string" ? d.lastHealthDetail.mode : null,
+          organizations: d.organizations,
+        })),
+      }),
     },
     {
       name: "get_blueprint",

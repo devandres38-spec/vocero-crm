@@ -90,6 +90,8 @@ export type FormBlueprint = {
     meetingLink: string;
   };
   quickReplies: { mode: "merge" | "exact"; entries: RespuestaRapidaForm[] };
+  /** 070 — El despliegue de cerebro asignado (`""` = ninguno, bandeja manual). */
+  brain: { deployment: string };
   owner: { email: string };
 };
 
@@ -144,6 +146,7 @@ export function formularioInicial(d: DefaultsForm, techo: TechoForm): FormBluepr
       meetingLink: "",
     },
     quickReplies: { mode: "merge", entries: [] },
+    brain: { deployment: "" },
     owner: { email: "" },
   };
 }
@@ -213,6 +216,7 @@ export function formularioDesdeBlueprint(
   if (bp.quickReplies) {
     f.quickReplies = { mode: bp.quickReplies.mode ?? "merge", entries: bp.quickReplies.entries.map((e) => conUid({ ...e })) };
   }
+  f.brain = { deployment: bp.brain?.deployment ?? "" };
   return f;
 }
 
@@ -297,6 +301,11 @@ export function seccionesDelFormulario(
     .filter((r) => r.shortcut && r.text);
   if (!(modo === "crear" && respuestas.length === 0)) s.quickReplies = { mode: f.quickReplies.mode, entries: respuestas };
 
+  // 070 — Al crear, solo si se eligió uno; al editar, también `null` (quitarlo).
+  const cerebro = t(f.brain.deployment);
+  if (cerebro) s.brain = { deployment: cerebro };
+  else if (modo === "editar") s.brain = null;
+
   if (modo === "crear" && t(f.owner.email)) s.owner = { email: t(f.owner.email) };
   return s;
 }
@@ -350,6 +359,7 @@ export const PESTANA_DE_SECCION: Record<SeccionBlueprint, string> = {
   knowledge: "conocimiento",
   agenda: "agenda",
   quickReplies: "respuestas",
+  brain: "agente",
 };
 
 /** Pura: copiar el horario de un día a lunes–viernes (con ids nuevos). */

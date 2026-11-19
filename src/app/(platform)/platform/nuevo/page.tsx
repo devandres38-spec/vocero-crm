@@ -1,3 +1,4 @@
+import { listarDespliegues } from "@/server/brains/deployment";
 import { getRegion } from "@/lib/region";
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { dominioBase } from "@/lib/tenancy";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
  * `OrganizationBlueprint` y lo manda a `POST /api/platform/organizations`:
  * el mismo contrato que usan la API y el MCP (auditoría 069, Fix-C).
  */
-export default function NuevoNegocioPage() {
+export default async function NuevoNegocioPage() {
   const region = getRegion();
   const techo = techoDeInstancia();
   return (
@@ -34,6 +35,7 @@ export default function NuevoNegocioPage() {
           etapas: [...ETAPAS_POR_DEFECTO.open],
         }}
         techo={{ agenda: techo.agenda, atribucion: techo.atribucion, channels: [...techo.channels] }}
+        cerebros={(await listarDespliegues()).map((c) => ({ id: c.id, name: c.name, status: c.status }))}
       />
     </>
   );

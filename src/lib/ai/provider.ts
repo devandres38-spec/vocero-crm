@@ -1,4 +1,5 @@
 import { isAiConfiguredByEnv } from "@/lib/env";
+import { esPlataforma } from "@/lib/tenancy";
 import { last4, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import {
   getAiCredentialPublic,
@@ -136,9 +137,22 @@ export async function resolveAiProvider(
   return resolver(cred, envAiProvider());
 }
 
+/**
+ * 070 (D6) — Solo la credencial PROPIA de la organización (BYOK), nunca el
+ * respaldo `OPENROUTER_*` del entorno. Lo usa todo lo que piensa por un
+ * negocio en modo plataforma (`/api/brains/llm`, `context.llm`): con el
+ * respaldo, el dueño de la plataforma pagaría el consumo de todos.
+ */
+export async function resolveAiProviderDeOrganizacion(organizationId: string): Promise<AiResolution> {
+  return resolver(await getAiCredentialSecret(organizationId), null);
+}
+
 export async function estadoIaDe(organizationId: string): Promise<EstadoIa> {
   const cred = await getAiCredentialPublic(organizationId);
-  const env = envAiProvider();
+  // Auditoría 070 (A-5): en modo plataforma el respaldo del entorno NO cuenta
+  // (BYOK estricto): si no, la pantalla Agente, el aviso y el onboarding
+  // decían «IA activa» con `OPENROUTER_*` mientras `/api/brains/llm` daba 402.
+  const env = esPlataforma() ? null : envAiProvider();
   return interpretarCredencial(cred, env ? { last4: last4(env.token) } : null);
 }
 

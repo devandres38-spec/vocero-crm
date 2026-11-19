@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, KeyRound, LifeBuoy, LogOut, Menu, PlusCircle, ShieldCheck, X, type LucideIcon } from "lucide-react";
+import { BrainCircuit, Building2, KeyRound, LifeBuoy, LogOut, Menu, PlusCircle, ShieldCheck, X, type LucideIcon } from "lucide-react";
 import { signOut } from "@/lib/auth/client";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { Apariencia } from "@/lib/temas";
@@ -23,6 +23,7 @@ const NAV: { href: string; titulo: string; icono: LucideIcon; activa: (p: string
     activa: (p) => p === "/platform" || p.startsWith("/platform/organizaciones"),
   },
   { href: "/platform/nuevo", titulo: "Nuevo negocio", icono: PlusCircle, activa: (p) => p.startsWith("/platform/nuevo") },
+  { href: "/platform/cerebros", titulo: "Cerebros", icono: BrainCircuit, activa: (p) => p.startsWith("/platform/cerebros") },
   { href: "/platform/soporte", titulo: "Soporte", icono: LifeBuoy, activa: (p) => p.startsWith("/platform/soporte") },
   { href: "/platform/auditoria", titulo: "Auditoría", icono: ShieldCheck, activa: (p) => p.startsWith("/platform/auditoria") },
   { href: "/platform/tokens", titulo: "Tokens", icono: KeyRound, activa: (p) => p.startsWith("/platform/tokens") },

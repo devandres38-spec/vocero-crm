@@ -10,6 +10,8 @@ import {
   type ClaveHerramienta,
 } from "@/lib/agent-roles";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
+import { mensajeProblemaPlataforma, problemaDeCerebroEnPlataforma } from "@/server/brains/destino";
+import { esPlataforma } from "@/lib/tenancy";
 import { getBrainHealth } from "@/server/bot/status";
 import { agendaActiva } from "@/server/modulos/consulta";
 
@@ -71,7 +73,7 @@ export const PUT = withAuth(async (session, req: Request) => {
   // sin un cerebro que conteste dejaría a los clientes sin respuesta creyendo
   // que la tienen; apagarlo siempre se puede.
   if (body.data.enabled === true) {
-    const problema = await problemaDelCerebro();
+    const problema = await problemaDelCerebro(session.organizationId);
     if (problema) return apiError(409, "sin_cerebro", problema);
   }
 
@@ -91,7 +93,13 @@ export const PUT = withAuth(async (session, req: Request) => {
 }, SOPORTE_CONFIGURACION);
 
 /** Por qué no se puede encender el agente, o `null` si hay cerebro sano. */
-async function problemaDelCerebro(): Promise<string | null> {
+async function problemaDelCerebro(organizationId: string): Promise<string | null> {
+  // 070 (D11) — En `multi`: un cerebro asignado a ESTE negocio, activo y que
+  // conteste su /health. El mensaje no lleva URLs (el dueño no las ve).
+  if (esPlataforma()) {
+    const p = await problemaDeCerebroEnPlataforma(organizationId, (url) => getBrainHealth(url));
+    return p ? mensajeProblemaPlataforma(p) : null;
+  }
   const despacho = leerConfigDespacho();
   if (!despacho.active) {
     return despacho.problem === "sin_llave"

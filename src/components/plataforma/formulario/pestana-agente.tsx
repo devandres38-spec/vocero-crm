@@ -9,13 +9,46 @@ import { entradaKbCompleta, nuevoUid, type EntradaKb, type FormBlueprint } from 
 import { cn } from "@/lib/utils";
 import { BotonIcono, Campo, FilaInterruptor, Pastillas, SELECT, Seccion, mover, type Actualizar } from "./controles";
 
-/** Pestaña «Agente»: identidad, rol, herramientas e instrucciones. */
-export function PestanaAgente({ f, upd, agendaActiva }: { f: FormBlueprint; upd: Actualizar; agendaActiva: boolean }) {
+/** 070 — Un despliegue de cerebro asignable (solo id, nombre y estado). */
+export type OpcionCerebro = { id: string; name: string; status: "activo" | "pausado" };
+
+/** Pestaña «Agente»: cerebro, identidad, rol, herramientas e instrucciones. */
+export function PestanaAgente({
+  f,
+  upd,
+  agendaActiva,
+  cerebros,
+}: {
+  f: FormBlueprint;
+  upd: Actualizar;
+  agendaActiva: boolean;
+  cerebros: OpcionCerebro[];
+}) {
   const a = f.agent;
   const herramienta = (clave: string, v: boolean) =>
     upd("agent", { tools: v ? [...a.tools.filter((x) => x !== clave), clave] : a.tools.filter((x) => x !== clave) });
+  // Solo los activos se pueden elegir; el actual se muestra aunque esté pausado.
+  const visibles = cerebros.filter((c) => c.status === "activo" || c.id === f.brain.deployment);
   return (
     <div className="space-y-4">
+      <Seccion
+        titulo="Cerebro"
+        descripcion="El agente que contesta por este negocio (una Nea multiorg de Cerebros). Contesta solo si el agente está encendido y el negocio tiene su llave de IA."
+      >
+        <Campo etiqueta="Cerebro asignado">
+          {(id) => (
+            <select id={id} className={SELECT} value={f.brain.deployment} onChange={(e) => upd("brain", { deployment: e.target.value })}>
+              <option value="">Sin cerebro (bandeja manual)</option>
+              {visibles.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                  {c.status === "pausado" ? " (pausado)" : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </Campo>
+      </Seccion>
       <Seccion titulo="Identidad">
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo etiqueta="Nombre del agente">

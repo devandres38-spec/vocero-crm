@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Aliantis — API de plataforma",
-    "version": "2.9.0",
+    "version": "2.10.0",
     "description": "Solo con TENANCY=multi. Autenticación: sesión de Super-Admin (panel) o token personal alp_… (Authorization: Bearer). Sin credenciales válidas la superficie responde 404; un token presentado e inválido, 401; sin el alcance, 403. El JSON Schema completo del OrganizationBlueprint lo devuelve GET /api/platform/catalog (campo `schema`). Errores: { error: { code, message, issues?: [{ path, message }] } }."
   },
   "components": {
@@ -502,6 +502,93 @@
         "responses": {
           "200": {
             "description": "{ favicon: null }"
+          }
+        }
+      }
+    },
+    "/api/platform/brains": {
+      "get": {
+        "summary": "070 — Cerebros (despliegues de Nea multiorg), sin secretos (read). Crear, rotar, pausar y borrar: solo con sesión en el panel /platform/cerebros (la respuesta lleva el secreto).",
+        "responses": {
+          "200": {
+            "description": "{ deployments: [{ id, name, dispatchUrl, healthUrl, host, secretLast4, status: activo|pausado, lastHealthAt, lastHealthOk, lastHealthDetail: { status, version, mode, llm, error }, organizations, createdAt }] }"
+          }
+        }
+      }
+    },
+    "/api/platform/brains/{id}": {
+      "get": {
+        "summary": "070 — Un cerebro, sin secreto (read).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ deployment }"
+          },
+          "404": {
+            "description": "cerebro_no_encontrado"
+          }
+        }
+      }
+    },
+    "/api/platform/organizations/{idOrSlug}/brain": {
+      "get": {
+        "summary": "070 — El cerebro asignado al negocio (read): { brain: { id, name, status, lastHealthOk } | null }.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ brain }"
+          }
+        }
+      },
+      "put": {
+        "summary": "070 — Asignar (provision) un cerebro activo, o quitarlo con null. Auditado cerebro_asignado. Equivale a aplicar un Blueprint con brain.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/idOrSlug"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "deployment"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "deployment": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "Id brn_… de un cerebro activo, o null (bandeja manual)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ brain }"
+          },
+          "422": {
+            "description": "cerebro_no_encontrado | cerebro_pausado"
           }
         }
       }

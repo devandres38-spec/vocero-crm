@@ -21,9 +21,13 @@ function getKey(): Buffer {
   return key;
 }
 
+/** Auditoría 070 (B-1): tamaños de GCM fijos y comprobados. */
+const IV_BYTES = 12;
+const TAG_BYTES = 16;
+
 export function encryptSecret(plain: string): EncryptedValue {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", getKey(), iv);
+  const iv = randomBytes(IV_BYTES);
+  const cipher = createCipheriv("aes-256-gcm", getKey(), iv, { authTagLength: TAG_BYTES });
   const encrypted = Buffer.concat([
     cipher.update(plain, "utf8"),
     cipher.final(),
@@ -36,12 +40,14 @@ export function encryptSecret(plain: string): EncryptedValue {
 }
 
 export function decryptSecret(value: EncryptedValue): string {
-  const decipher = createDecipheriv(
-    "aes-256-gcm",
-    getKey(),
-    Buffer.from(value.iv, "base64")
-  );
-  decipher.setAuthTag(Buffer.from(value.tag, "base64"));
+  const iv = Buffer.from(value.iv, "base64");
+  const tag = Buffer.from(value.tag, "base64");
+  // Auditoría 070 (B-1): un tag GCM truncado debilita la integridad; un IV de
+  // otro tamaño no lo produjo este módulo. Se rechazan antes de descifrar.
+  if (iv.length !== IV_BYTES) throw new Error("IV inválido");
+  if (tag.length !== TAG_BYTES) throw new Error("Tag de autenticación inválido");
+  const decipher = createDecipheriv("aes-256-gcm", getKey(), iv, { authTagLength: TAG_BYTES });
+  decipher.setAuthTag(tag);
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(value.cipher, "base64")),
     decipher.final(),

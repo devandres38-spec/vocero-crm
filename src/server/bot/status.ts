@@ -40,8 +40,21 @@ type HealthCacheEntry = {
 // dev) y la última llamada la anota `requireBotKey`, en otra ruta.
 const globalForBrain = globalThis as unknown as {
   __voceroBotLastSeen?: number;
-  __voceroBrainHealth?: HealthCacheEntry;
+  /**
+   * Auditoría 070 (A-11): una entrada POR URL. Con un solo hueco, en modo
+   * plataforma los negocios de cerebros distintos se pisaban la caché y cada
+   * pintada de la tarjeta volvía a golpear su `/health`.
+   */
+  __voceroBrainHealth?: Map<string, HealthCacheEntry>;
 };
+
+/** Tope de URLs distintas en la caché (una por despliegue de cerebro). */
+const MAX_HEALTH_URLS = 500;
+
+function cacheDeSalud(): Map<string, HealthCacheEntry> {
+  if (!globalForBrain.__voceroBrainHealth) globalForBrain.__voceroBrainHealth = new Map();
+  return globalForBrain.__voceroBrainHealth;
+}
 
 /** La anota `requireBotKey` en cada llamada autenticada. Solo memoria: se
  *  pierde al reiniciar, y la UI lo dice («desde el último arranque»). */
@@ -208,8 +221,9 @@ export async function getBrainHealth(
 ): Promise<BrainHealthDto | null> {
   if (!rawUrl) return null;
   const clock = opts.clock ?? Date.now;
-  const cached = globalForBrain.__voceroBrainHealth;
-  if (cached && cached.url === rawUrl && clock() < cached.expiresAt) {
+  const cache = cacheDeSalud();
+  const cached = cache.get(rawUrl);
+  if (cached && clock() < cached.expiresAt) {
     return cached.pending;
   }
   const entry: HealthCacheEntry = {
@@ -218,7 +232,11 @@ export async function getBrainHealth(
     expiresAt: Number.POSITIVE_INFINITY,
     pending: fetchBrainHealth(rawUrl, opts),
   };
-  globalForBrain.__voceroBrainHealth = entry;
+  if (!cache.has(rawUrl) && cache.size >= MAX_HEALTH_URLS) {
+    const masVieja = cache.keys().next().value;
+    if (masVieja !== undefined) cache.delete(masVieja);
+  }
+  cache.set(rawUrl, entry);
   const result = await entry.pending;
   entry.expiresAt = clock() + (opts.ttlMs ?? BRAIN_HEALTH_TTL_MS);
   return result;

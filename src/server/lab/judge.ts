@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { chatJson } from "@/lib/ai";
+import { esPlataforma } from "@/lib/tenancy";
 import { buildJudgePrompt } from "@/server/ai/prompts";
 
 /** Veredicto estructurado del juez (FR-032, contrato ai.md). */
@@ -47,7 +48,9 @@ export async function judgeCase(input: {
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-    { judge: true, organizationId: input.organizationId }
+    // 070 — En modo plataforma el juez paga con la llave del NEGOCIO, nunca
+    // con la del entorno.
+    { judge: true, organizationId: input.organizationId, soloOrganizacion: esPlataforma() }
   );
   if (!result.ok) {
     // Diagnóstico operativo: el caso queda visible como judge_failed y aquí
