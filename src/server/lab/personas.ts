@@ -7,15 +7,11 @@
  * ningún número de Colombia empieza por 0 tras el 57, así que nunca son reales.
  */
 
-export type Persona = {
-  key: string;
-  label: string;
-  description: string;
-  /** Teléfono sintético estable (jamás un número real). */
-  phone: string;
-  contactName: string;
-  script: string[];
-};
+import { PACK_IDS, packDe, PACKS } from "@/verticals/registro";
+import type { PersonaDePack } from "@/verticals/tipos";
+
+/** La misma forma que declara un Vertical Pack (072). */
+export type Persona = PersonaDePack;
 
 export const PERSONAS: Persona[] = [
   {
@@ -123,6 +119,34 @@ export const PERSONAS: Persona[] = [
   },
 ];
 
+/**
+ * 072 (D19) — Las que sirven a cualquier nicho: prueban los frenos del agente
+ * (hostilidad, pedir una persona, lo que el conocimiento no cubre, la
+ * conversación sin rumbo), no el negocio.
+ */
+export const UNIVERSALES = ["hostil", "pide_humano", "fuera_de_kb", "sin_rumbo"] as const;
+
+/** Todas: las de siempre + las de cada pack (buscar por clave y etiquetas). */
+export const TODAS_LAS_PERSONAS: Persona[] = [
+  ...PERSONAS,
+  ...PACK_IDS.flatMap((id) => PACKS[id].personas),
+];
+
+export function personaPorClave(key: string): Persona | undefined {
+  return TODAS_LAS_PERSONAS.find((p) => p.key === key);
+}
+
+/**
+ * Las personas de una corrida: las del nicho + las universales. Un pack sin
+ * personas propias (`default`) usa las del rol: las 8 de siempre.
+ */
+export function personasDelPack(packId: unknown, delRol: Persona[]): Persona[] {
+  const propias = packDe(packId).personas;
+  if (propias.length === 0) return delRol;
+  const universales = UNIVERSALES.map((k) => PERSONAS.find((p) => p.key === k)).filter((p): p is Persona => Boolean(p));
+  return [...propias, ...universales];
+}
+
 export const PERSONA_LABELS: Record<string, string> = Object.fromEntries(
-  PERSONAS.map((p) => [p.key, p.label])
+  TODAS_LAS_PERSONAS.map((p) => [p.key, p.label])
 );

@@ -9,7 +9,8 @@ import { avisarOlvido } from "@/server/brains/deliver";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 import { computeScore, judgeCase } from "@/server/lab/judge";
-import { PERSONAS, type Persona } from "@/server/lab/personas";
+import { PERSONAS, personaPorClave, personasDelPack, type Persona } from "@/server/lab/personas";
+import { experienciaDe } from "@/server/verticals/experiencia";
 import { rolDe } from "@/lib/agent-roles";
 
 /**
@@ -66,7 +67,9 @@ export async function startRun(organizationId: string): Promise<string> {
     .from(schema.agentProfile)
     .where(eq(schema.agentProfile.organizationId, organizationId))
     .limit(1);
-  const delRol = personasDelRol(perfil?.role);
+  // 072 (D19) — Y del nicho: una clínica se prueba con pacientes, no con
+  // quien busca un taladro. `default` (y `single`) conserva las del rol.
+  const delRol = personasDelPack((await experienciaDe(organizationId)).pack, personasDelRol(perfil?.role));
 
   await db.insert(schema.agentTestCase).values(
     delRol.map((p) => ({
@@ -151,7 +154,7 @@ async function runAllCases(
   const fallas: string[] = [];
 
   for (const testCase of cases) {
-    const persona = PERSONAS.find((p) => p.key === testCase.persona);
+    const persona = personaPorClave(testCase.persona);
     if (!persona) continue;
 
     await db
