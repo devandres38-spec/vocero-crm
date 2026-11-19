@@ -12,6 +12,7 @@ import { requireBrainAgenda } from "@/server/brains/agenda";
  */
 
 type Manejador<C> = (req: Request, ambito: AmbitoCerebro, ctx: C) => Promise<Response>;
+type ManejadorSinContexto = (req: Request, ambito: AmbitoCerebro) => Promise<Response>;
 
 async function seguro(ruta: string, fn: () => Promise<Response>): Promise<Response> {
   try {
@@ -30,19 +31,28 @@ function nombreDe(req: Request): string {
   }
 }
 
-export function withBrain<C = unknown>(handler: Manejador<C>) {
-  return async (req: Request, ctx?: C): Promise<Response> => {
+/*
+ * Sobrecargas: el validador de rutas de Next.js 15 exige que el segundo
+ * parámetro de una ruta dinámica sea `ctx: C` (NO opcional). Sin contexto,
+ * el manejador es `(req) => …`; con `<C>`, `(req, ctx: C) => …`.
+ */
+export function withBrain(handler: ManejadorSinContexto): (req: Request) => Promise<Response>;
+export function withBrain<C>(handler: Manejador<C>): (req: Request, ctx: C) => Promise<Response>;
+export function withBrain<C>(handler: Manejador<C>) {
+  return async (req: Request, ctx: C): Promise<Response> => {
     const g = await requireBrain(req);
     if (!g.ok) return g.response;
-    return seguro(nombreDe(req), () => handler(req, g.ambito, ctx as C));
+    return seguro(nombreDe(req), () => handler(req, g.ambito, ctx));
   };
 }
 
-export function withBrainAgenda<C = unknown>(handler: Manejador<C>) {
-  return async (req: Request, ctx?: C): Promise<Response> => {
+export function withBrainAgenda(handler: ManejadorSinContexto): (req: Request) => Promise<Response>;
+export function withBrainAgenda<C>(handler: Manejador<C>): (req: Request, ctx: C) => Promise<Response>;
+export function withBrainAgenda<C>(handler: Manejador<C>) {
+  return async (req: Request, ctx: C): Promise<Response> => {
     const g = await requireBrainAgenda(req);
     if (!g.ok) return g.response;
-    return seguro(nombreDe(req), () => handler(req, g.ambito, ctx as C));
+    return seguro(nombreDe(req), () => handler(req, g.ambito, ctx));
   };
 }
 
