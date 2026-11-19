@@ -28,8 +28,10 @@ import { PriorityBadge } from "@/components/pipeline/priority-picker";
 import { ImportContactsDialog } from "./import-contacts-dialog";
 import { NewContactDialog } from "./new-contact-dialog";
 import { StartConversation } from "./start-conversation";
+import { useVocabulario } from "@/lib/vocabulario-context";
 
 export function ContactsClient() {
+  const v = useVocabulario();
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactDto[]>([]);
   const [query, setQuery] = useState("");
@@ -94,7 +96,7 @@ export function ContactsClient() {
     <div className="flex h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 sm:gap-4 sm:px-6 sm:py-4">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-[17px] font-bold tracking-tight">Contactos</h2>
+          <h2 className="text-[17px] font-bold tracking-tight">{v("contacto", "varios")}</h2>
           <Button size="sm" onClick={() => setCreando(true)}>
             <UserPlus className="mr-1.5 h-4 w-4" strokeWidth={1.8} />
             Nuevo contacto
@@ -163,7 +165,7 @@ export function ContactsClient() {
             <EmptyState
               icon={Users}
               className="h-full"
-              title="Sin contactos"
+              title={`Sin ${v("contacto", "varios").toLowerCase()}`}
               description="Cada persona que escriba a tu WhatsApp quedará registrada aquí automáticamente."
             />
           )

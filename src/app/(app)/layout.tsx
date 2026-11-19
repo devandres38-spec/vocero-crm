@@ -14,6 +14,7 @@ import { agendaActiva, modulosDe } from "@/server/modulos/consulta";
 import { esPlataforma, raizPlataforma, urlDeRaiz } from "@/lib/tenancy";
 import { getRegionDeOrganizacion } from "@/server/region";
 import { esSuperAdmin } from "@/server/tenant/consultas";
+import { experienciaDe } from "@/server/verticals/experiencia";
 
 export default async function AppLayout({
   children,
@@ -30,6 +31,8 @@ export default async function AppLayout({
   // bot roto. Se resuelve en el servidor y en el layout para que se vea desde
   // CUALQUIER pantalla, no solo desde el panel de un contacto (#85).
   const aviso = await avisoIaDe(session.organizationId);
+  // 072 (FR-003) — El Vertical Pack del negocio: baja resuelto y serializable.
+  const experiencia = await experienciaDe(session.organizationId);
 
   return (
     <AppShell
@@ -48,6 +51,7 @@ export default async function AppLayout({
       kicker={navKicker(modulosDe(session).channels)}
       empresasUrl={empresasUrl()}
       plataformaUrl={await plataformaUrl(session.userId)}
+      experiencia={experiencia}
       aviso={
         <>
           {session.via === "soporte" && session.grant && (

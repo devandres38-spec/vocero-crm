@@ -42,7 +42,8 @@ describe("071 — migración 0031_agente_trato", () => {
     const journal = JSON.parse(readFileSync(path.join(RAIZ, "drizzle", "meta", "_journal.json"), "utf8")) as {
       entries: { tag: string }[];
     };
-    expect(journal.entries.at(-1)?.tag).toBe("0031_agente_trato");
+    // 072: ya no es la última; lo que importa es que esté (y una sola vez).
+    expect(journal.entries.filter((e) => e.tag === "0031_agente_trato")).toHaveLength(1);
   });
 });
 

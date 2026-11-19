@@ -133,6 +133,9 @@ describe("069 — protocolo", () => {
         "list_audit_log",
         "list_brain_deployments",
         "list_organizations",
+        // 072 — Nichos (solo lectura).
+        "get_vertical_pack",
+        "list_vertical_packs",
         "plan_blueprint",
         "reactivate_organization",
         "revoke_invitation",

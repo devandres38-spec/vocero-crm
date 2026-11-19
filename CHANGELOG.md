@@ -5,6 +5,59 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.12.0 — 2026-11-19
+
+Motor Multi-Nicho, ronda A (spec 072). **Aditiva**: la migración
+`0032_motor_nicho` agrega tres columnas a `organization` (con default o
+nulas, solo metadatos en PostgreSQL 16) y se aplica sola al arrancar. **Un
+negocio sin nicho ni campos de ficha —todos los de `single` y todos los que ya
+existían— ve exactamente lo de 2.11.0.**
+
+- **Vertical Packs** (`src/verticals/`): `default`, **Clínica / Salud** y
+  **Eventos y mobiliario**. Cada uno trae vocabulario (p. ej. «Pacientes»,
+  «Valoraciones»), orden e íconos del menú, un **Inicio** (`/inicio`) con
+  widgets (sin responder, leads por etapa, citas de hoy, próximos por fecha de
+  la ficha, accesos rápidos), campos de ficha sugeridos, una plantilla de
+  Blueprint y personas del Laboratorio. Ajustes por negocio solo como datos.
+- **Ficha flexible**: Ajustes → **Ficha** define hasta 20 campos (texto,
+  número, fecha, lista, sí/no) con obligatorios e indicación para el agente.
+  La ficha de la Bandeja los muestra con su control; lo demás queda en «Otros
+  datos». Los valores siguen en la misma ficha de siempre.
+- **Plantillas en `/platform`**: pestaña «Nicho y ficha» con «Empezar desde
+  esta plantilla» y «Cargar plantilla» (se revisa antes de guardar). Blueprint
+  v1 con secciones opcionales `vertical` y `fichaFields`; MCP
+  `list_vertical_packs` y `get_vertical_pack`.
+- **Contrato del cerebro** (aditivo): `fichaSchema` en `GET /api/bot/context`
+  y `GET /api/brains/context` (solo si el negocio definió campos) e `ignored`
+  en la respuesta de `PUT …/ficha` (solo si se descartó algún valor por su
+  tipo). Delta: [specs/072…/contracts/brains-072.md](specs/072-motor-multi-nicho/contracts/brains-072.md).
+
+### Auditoría 072-A (antes de publicar)
+
+- **Laboratorio**: las personas de los nichos usan teléfonos `5700000011xx`
+  (clínica) y `5700000012xx` (eventos), que ya no chocan con la demo; con el
+  cierre sin rumbo apagado, el nicho no corre «Sin rumbo»; el progreso de una
+  corrida fallida cuenta sus casos reales.
+- **Ficha**: el tipo de un campo tampoco cambia quitándolo y recreándolo (se
+  recuerdan los tipos retirados; guardar va en una transacción con la fila
+  bloqueada). La ficha resultante respeta el tope de 40 claves. El esquema ve
+  el valor crudo (nuevo motivo `no_es_texto`) y `PATCH /api/contacts/[id]`
+  devuelve `ignored`. `constructor` y `prototype` quedan reservadas. `0.125`
+  es 0,125 y una fecha con basura al final no es fecha.
+- **Formularios**: escribir el nombre de un campo ya no pierde el foco; las
+  opciones de una lista van una por línea (admiten comas); la ficha lateral
+  avisa si no se guardó y abre la edición con su valor; Ajustes → Ficha dice si
+  no cargó y deja ajustar la clave de un campo nuevo. `/platform` conserva los
+  `overrides` del nicho y traduce los errores de la 072.
+- **Nicho**: `nav.ocultas` no acepta `/inbox`, `inicio.widgets` no puede ir
+  vacío y el tope de 4 KB se mide en bytes; «Eventos próximos» omite
+  archivados.
+
+### Actualizar desde 2.11
+
+Redesplegar, en cualquier orden respecto de Nea: una Nea 071 ignora los campos
+nuevos; una Nea con la 072 usa la ficha del negocio cuando existe.
+
 ## 2.11.0 — 2026-11-19
 
 Trato del agente y cierre sin rumbo (spec 071, bloque C). **Aditiva**: la

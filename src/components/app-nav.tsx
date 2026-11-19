@@ -20,6 +20,7 @@ import type { Branding } from "@/lib/branding";
 import type { Apariencia } from "@/lib/temas";
 import { cn, initials } from "@/lib/utils";
 import { appNavGroups, isNavActive, SETTINGS_ITEM, type NavItem } from "@/lib/nav";
+import type { ExperienciaResuelta } from "@/verticals/resolver";
 import { signOut } from "@/lib/auth/client";
 import { useEvents } from "@/components/use-events";
 import {
@@ -77,6 +78,7 @@ export function AppNav({
   kicker = "CRM · WhatsApp",
   empresasUrl,
   plataformaUrl,
+  experiencia = null,
   open = false,
   onClose,
 }: {
@@ -102,6 +104,8 @@ export function AppNav({
   empresasUrl?: string;
   /** 069 (H-02) — Solo Super-Admin en modo plataforma: volver a `/platform`. */
   plataformaUrl?: string;
+  /** 072 — El Vertical Pack del negocio (vocabulario, orden, Inicio). */
+  experiencia?: ExperienciaResuelta | null;
   /** Solo aplica por debajo de `lg`: en escritorio el lateral es fijo. */
   open?: boolean;
   onClose?: () => void;
@@ -197,7 +201,7 @@ export function AppNav({
   const version = commit ?? { commit: BUILD_COMMIT, verified: BUILD_COMMIT !== "" };
   // #87 — Qué hay en el menú y en qué grupo lo decide `appNavGroups`; aquí
   // solo se pinta.
-  const groups = appNavGroups({ agenda, role });
+  const groups = appNavGroups({ agenda, role, experiencia });
 
   function renderItem(item: NavItem) {
     const active = isNavActive(pathname, item.href);
@@ -277,6 +281,7 @@ export function AppNav({
       version={versionTexto}
       versionTitulo={versionTitulo}
       onSalir={() => void salir()}
+      inicio={Boolean(experiencia?.inicio)}
     />
     <aside
       // Móvil: cajón que se desliza desde la izquierda (siempre montado, así
@@ -423,6 +428,7 @@ function Riel({
   version,
   versionTitulo,
   onSalir,
+  inicio = false,
 }: {
   branding: Branding;
   groups: ReturnType<typeof appNavGroups>;
@@ -435,6 +441,8 @@ function Riel({
   version: React.ReactNode;
   versionTitulo: string;
   onSalir: () => void;
+  /** B-2 (auditoría 072-A) — Con Inicio, el logo lleva al Inicio. */
+  inicio?: boolean;
 }) {
   const [cuenta, setCuenta] = useState(false);
   const cuentaRef = useRef<HTMLDivElement>(null);
@@ -486,7 +494,7 @@ function Riel({
       aria-label="Secciones"
       className="tarjeta hidden w-[76px] shrink-0 flex-col items-center py-4 lg:flex"
     >
-      <Link href="/inbox" aria-label={branding.name} title={branding.name} className="rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Link href={inicio ? "/inicio" : "/inbox"} aria-label={branding.name} title={branding.name} className="rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <BrandTile branding={branding} className="h-11 w-11 rounded-[14px] text-[18px]" />
       </Link>
       <div className="mt-7 flex min-h-0 flex-1 flex-col items-center gap-2.5 overflow-y-auto">

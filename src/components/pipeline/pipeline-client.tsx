@@ -26,6 +26,7 @@ import { LossReasonDialog } from "./loss-reason-dialog";
 import { AmountDialog } from "./amount-dialog";
 import { PriorityBadge } from "./priority-picker";
 import { LeadDrawer } from "./lead-drawer";
+import { useVocabulario } from "@/lib/vocabulario-context";
 
 export type BoardLead = {
   id: string;
@@ -40,6 +41,7 @@ export type BoardLead = {
 };
 
 export function PipelineClient() {
+  const v = useVocabulario();
   const [stages, setStages] = useState<StageDto[]>([]);
   // 068 — Hasta que el tablero diga la del negocio, la de la región.
   const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
@@ -175,7 +177,7 @@ export function PipelineClient() {
   return (
     <div className="flex h-full flex-col">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-6 sm:py-4">
-        <h2 className="text-[17px] font-bold tracking-tight">Pipeline</h2>
+        <h2 className="text-[17px] font-bold tracking-tight">{v("pipeline")}</h2>
         <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
           <Settings2 className="h-4 w-4" /> Gestionar etapas
         </Button>

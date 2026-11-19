@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionOrNull } from "@/lib/auth/session";
 import { guideFirst } from "@/server/onboarding/guide";
 import { esPlataforma } from "@/lib/tenancy";
+import { experienciaDe } from "@/server/verticals/experiencia";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export const dynamic = "force-dynamic";
  * guía de inicio o el agente siga apagado, a `/onboarding`; con todo listo,
  * a la Bandeja como siempre. Sin sesión, `/inbox` manda al login.
  *
+ * 072 (D7) — Con un Vertical Pack que tiene Inicio, a `/inicio` en vez de
+ * la Bandeja.
+ *
  * 069 (H-02) — En modo plataforma, el Super-Admin en el dominio raíz va
  * directo a `/platform` (sin rebotar por `/inbox`).
  */
@@ -17,6 +21,9 @@ export default async function Home() {
   if (esPlataforma() && (await superAdminEnLaRaiz())) redirect("/platform");
   const session = await getSessionOrNull();
   if (session && (await guideFirst(session))) redirect("/onboarding");
+  // 072 (D7) — Con un Vertical Pack que define Inicio, se entra por ahí; sin
+  // él (todos los negocios `default`), a la Bandeja como siempre.
+  if (session && (await experienciaDe(session.organizationId)).inicio) redirect("/inicio");
   redirect("/inbox");
 }
 

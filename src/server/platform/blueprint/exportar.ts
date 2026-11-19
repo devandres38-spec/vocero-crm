@@ -7,6 +7,9 @@ import { getSettings } from "@/server/agenda/settings";
 import { auditar } from "@/server/platform/auditoria";
 import type { Actor } from "@/server/platform/invitaciones";
 import { aparienciaGuardada, leerMetadata, regionGuardada } from "./secciones/metadata";
+import { leerFichaFields } from "@/lib/ficha-campos";
+import { leerOverrides } from "@/verticals/resolver";
+import { esPackId } from "@/verticals/registro";
 
 type Entrada = NonNullable<OrganizationBlueprint["knowledge"]>["entries"][number];
 
@@ -116,6 +119,15 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
       meetingLink: s.meetingLink,
     };
   }
+  // 072 — El nicho solo si no es el de todos (o tiene ajustes), y los campos
+  // de la ficha solo si existen: un negocio de 2.11.0 exporta lo de siempre.
+  const overrides = leerOverrides(org.verticalOverrides);
+  const pack = esPackId(org.verticalPack) ? org.verticalPack : "default";
+  if (pack !== "default" || overrides) {
+    bp.vertical = { pack, ...(overrides ? { overrides } : {}) };
+  }
+  const campos = leerFichaFields(org.fichaFields);
+  if (campos.length > 0) bp.fichaFields = { fields: campos };
   // 070 — Solo el id del despliegue asignado (nunca su URL ni su secreto).
   if (org.brainDeploymentId) bp.brain = { deployment: org.brainDeploymentId };
   return bp;

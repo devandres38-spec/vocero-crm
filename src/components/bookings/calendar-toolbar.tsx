@@ -5,6 +5,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { MAX_RANGE_DAYS, type CalendarView } from "@/lib/time/calendar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useVocabulario } from "@/lib/vocabulario-context";
 
 /**
  * 215 — La barra del calendario, como la de Google Calendar: Hoy, ‹ ›, el
@@ -52,11 +53,12 @@ export function CalendarToolbar({
   onListRange: (from: string, to: string) => void;
   onBlock: () => void;
 }) {
+  const v = useVocabulario();
   const picker = useRef<HTMLInputElement>(null);
 
   return (
     <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b px-4 py-3 sm:px-6">
-      <h2 className="mr-1 text-[17px] font-bold tracking-tight">Citas</h2>
+      <h2 className="mr-1 text-[17px] font-bold tracking-tight">{v("cita", "varios")}</h2>
 
       <div className="flex items-center gap-1">
         <Button variant="outline" size="sm" onClick={onToday}>

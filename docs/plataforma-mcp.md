@@ -58,6 +58,8 @@ Los conectores que exigen OAuth (p. ej. ChatGPT) aún no están soportados.
 | Herramienta | Alcance | Qué hace |
 |---|---|---|
 | `get_catalog` | read | Valores válidos y JSON Schema del Blueprint. Llámala primero. |
+| `list_vertical_packs` | read | 072 — Los nichos: id, nombre, módulos recomendados, campos de ficha e Inicio. |
+| `get_vertical_pack` | read | 072 — Vocabulario, menú, Inicio y la `seed` (Blueprint parcial) de un nicho. |
 | `list_organizations` | read | Negocios: slug, nombre, estado. |
 | `get_organization` | read | Configuración de un negocio (nunca conversaciones). |
 | `get_blueprint` | read | Blueprint vigente; aplicarlo tal cual no cambia nada. |
@@ -82,6 +84,13 @@ contactos, borrar negocios ni gestionar tokens.
 El asistente llama `get_catalog`, arma el Blueprint, lo revisa con
 `plan_blueprint` y lo aplica con `apply_blueprint`; te devuelve el enlace de
 invitación para que se lo pases a la dueña.
+
+**Desde una plantilla de nicho (072).** `list_vertical_packs` → elegir →
+`get_vertical_pack(id)` → combinar su `seed` con `organization`, `owner` y
+`region` → `plan_blueprint` → `apply_blueprint`. La `seed` trae `vertical`
+(el nicho) y `fichaFields` (los campos de la ficha); aplicarla dos veces no
+cambia nada. Cambiar `vertical.pack` de un negocio existente NO reaplica su
+plantilla: para eso se manda la `seed`.
 
 El Blueprint cubre también la **apariencia** (`appearance`: tema, letra,
 tamaño, densidad) y las **respuestas rápidas** (`quickReplies`: `/atajo` →

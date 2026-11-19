@@ -16,6 +16,7 @@ import { cn, formatPhone } from "@/lib/utils";
 import { AnuncioOrigen } from "@/components/anuncio-origen";
 import { ContactAvatar } from "@/components/avatar";
 import { FichaPanel } from "@/components/ficha-panel";
+import { guardarParcheFicha } from "@/components/ficha-guardar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PriorityPicker } from "./priority-picker";
@@ -98,12 +99,12 @@ export function LeadDrawer({
       }
       return next;
     });
-    await fetch(`/api/contacts/${contactId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ficha: patch }),
-    }).catch(() => null);
-    void cargarFicha();
+    try {
+      await guardarParcheFicha(contactId, patch);
+    } finally {
+      // Con o sin error, la ficha vuelve a lo que de verdad quedó guardado.
+      void cargarFicha();
+    }
   }
 
   const montoParseado = monto.trim() ? parseMoneyToCents(monto) : null;

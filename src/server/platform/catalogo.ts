@@ -8,6 +8,48 @@ import { DENSIDADES, LETRAS, TAMANOS, TEMAS } from "@/lib/temas";
 import { dominioBase, SLUG_REGEX, SLUGS_RESERVADOS } from "@/lib/tenancy";
 import { LIMITS } from "@/server/agenda/settings";
 import { CATALOGO_VERTICAL, techoDeInstancia } from "@/server/modulos/efectivos";
+import { CLAVE_CAMPO_RE, CLAVES_RESERVADAS, TIPOS_CAMPO, TOPE_CAMPOS, TOPE_OPCIONES } from "@/lib/ficha-campos";
+import { esPackId, PACK_IDS, PACKS } from "@/verticals/registro";
+import { semillaDe } from "@/verticals/semilla";
+import { VOCABULARIO_BASE } from "@/verticals/vocabulario";
+
+/**
+ * 072 (FR-023) — Los Vertical Packs para una IA o un script: qué nichos hay y
+ * qué trae cada plantilla. `list_vertical_packs` y `get_catalog`.
+ */
+export function listaDePacks() {
+  return PACK_IDS.map((id) => {
+    const p = PACKS[id];
+    return {
+      id,
+      label: p.label,
+      description: p.description,
+      recommendedModules: [...p.modulosRecomendados],
+      fichaFieldsCount: p.fichaFields.length,
+      hasHome: p.inicio !== null,
+    };
+  });
+}
+
+/**
+ * `get_vertical_pack`: vocabulario, menú, Inicio y la `semilla` (un Blueprint
+ * parcial para `plan_blueprint`/`apply_blueprint`: sin organización, dueño,
+ * región ni cerebro). `null` si no existe.
+ */
+export function detalleDePack(id: string) {
+  if (!esPackId(id)) return null;
+  const p = PACKS[id];
+  return {
+    id,
+    label: p.label,
+    description: p.description,
+    vocabulary: { ...VOCABULARIO_BASE, ...p.vocabulario },
+    nav: p.nav,
+    home: p.inicio,
+    recommendedModules: [...p.modulosRecomendados],
+    seed: semillaDe(id),
+  };
+}
 
 /**
  * 069 (D13) — Los valores válidos para armar un Blueprint, para que una IA (o
@@ -125,6 +167,16 @@ export function catalogoPlataforma() {
       shortcut: { pattern: "^[a-z0-9_-]{1,32}$", maxLength: ATAJO_MAX, normalized: "sin /, acentos ni espacios" },
       textMaxLength: TEXTO_MAX,
       variables: ["{nombre}"],
+    },
+    // 072 — Nichos y campos de la ficha (secciones `vertical` y `fichaFields`).
+    verticalPacks: listaDePacks(),
+    fichaFields: {
+      types: [...TIPOS_CAMPO],
+      maxFields: TOPE_CAMPOS,
+      maxOptions: TOPE_OPCIONES,
+      keyPattern: CLAVE_CAMPO_RE.source,
+      reservedKeys: [...CLAVES_RESERVADAS],
+      immutable: "la clave y el tipo de un campo guardado no cambian; quitar un campo no borra los valores",
     },
     examples: { minimal: EJEMPLO_MINIMO, complete: EJEMPLO_COMPLETO },
     schema: blueprintJsonSchema(),

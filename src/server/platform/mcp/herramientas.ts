@@ -3,7 +3,7 @@ import { cerebroDeOrganizacion, listarDespliegues } from "@/server/brains/deploy
 import { aplicarBlueprint, buscarOrganizacion } from "@/server/platform/blueprint/aplicar";
 import { BlueprintError } from "@/server/platform/blueprint/errores";
 import { leerBlueprint } from "@/server/platform/blueprint/exportar";
-import { catalogoPlataforma } from "@/server/platform/catalogo";
+import { catalogoPlataforma, detalleDePack, listaDePacks } from "@/server/platform/catalogo";
 import type { ActorPlataforma } from "@/server/platform/guardia";
 import { invitarAOrganizacion, revocarInvitacion } from "@/server/platform/invitaciones";
 import { ACCIONES_AUDITORIA } from "@/server/platform/auditoria";
@@ -100,6 +100,35 @@ export function herramientas(): Herramienta[] {
       scope: "read",
       annotations: { readOnlyHint: true },
       run: async () => catalogoPlataforma(),
+    },
+    {
+      name: "list_vertical_packs",
+      title: "Nichos (Vertical Packs)",
+      description:
+        "Los nichos disponibles: id, nombre, descripción, módulos recomendados, cuántos campos de ficha trae y si tiene Inicio. Para crear un negocio desde una plantilla, pide su detalle con get_vertical_pack.",
+      inputSchema: { type: "object", properties: {}, additionalProperties: false },
+      scope: "read",
+      annotations: { readOnlyHint: true },
+      run: async () => ({ packs: listaDePacks() }),
+    },
+    {
+      name: "get_vertical_pack",
+      title: "Detalle de un nicho",
+      description:
+        "Vocabulario, menú, Inicio y la semilla de un nicho. `seed` es un Blueprint parcial (etapas, agente, campos de la ficha, conocimiento, respuestas rápidas, apariencia y vertical): combínalo con `version: 1`, organization, owner y region (la semilla no trae `version`) y mándalo a plan_blueprint / apply_blueprint. Aplicarlo dos veces no cambia nada.",
+      inputSchema: {
+        type: "object",
+        properties: { id: { type: "string", description: "Id del nicho (de list_vertical_packs), p. ej. clinica-salud" } },
+        required: ["id"],
+        additionalProperties: false,
+      },
+      scope: "read",
+      annotations: { readOnlyHint: true },
+      run: async (_a, args) => {
+        const pack = detalleDePack(texto(args, "id"));
+        if (!pack) throw new ErrorHerramienta("pack_desconocido");
+        return { pack };
+      },
     },
     {
       name: "list_organizations",

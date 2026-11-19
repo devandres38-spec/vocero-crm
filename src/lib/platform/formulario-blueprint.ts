@@ -3,6 +3,9 @@ import { esTrato } from "@/lib/agent-roles";
 import { APARIENCIA_POR_DEFECTO, type Apariencia } from "@/lib/temas";
 import { normalizarAtajo } from "@/lib/respuestas-rapidas";
 import { REGIONES_SUGERIDAS } from "@/lib/region";
+import { opcionesDeTexto, type FichaField } from "@/lib/ficha-campos";
+import type { VerticalOverrides } from "@/verticals/resolver";
+import { semillaDe } from "@/verticals/semilla";
 
 /**
  * Auditoría 069 (Fix-C) — El estado del `FormularioBlueprint` de `/platform`
@@ -34,6 +37,13 @@ type ConUid = { uid?: string };
 export type Franja = { start: string; end: string } & ConUid;
 export type EntradaKb = ({ kind: "qa"; question: string; answer: string } | { kind: "block"; content: string }) & ConUid;
 export type RespuestaRapidaForm = { shortcut: string; text: string } & ConUid;
+/**
+ * 072 (auditoría 072-A, A-2/A-3/B-3) — Un campo de la ficha en el formulario:
+ * `uid` estable (la `key` cambia con el nombre), `opcionesTexto` crudo (una
+ * opción por línea; se parsea al serializar, no en cada tecla) y `guardado`
+ * (ya existe en el negocio: su tipo no se puede cambiar). Nada de esto viaja.
+ */
+export type CampoFichaForm = FichaField & ConUid & { opcionesTexto?: string; guardado?: boolean };
 
 let contadorUid = 0;
 /** Un id local único en esta pestaña del navegador (sin `crypto.randomUUID`: no existe por HTTP). */
@@ -97,6 +107,15 @@ export type FormBlueprint = {
   quickReplies: { mode: "merge" | "exact"; entries: RespuestaRapidaForm[] };
   /** 070 — El despliegue de cerebro asignado (`""` = ninguno, bandeja manual). */
   brain: { deployment: string };
+  /** 072 — El Vertical Pack (la plantilla se carga aparte, a pedido). */
+  /**
+   * M-1 (auditoría 072-A) — `overrides` viaja de pasada (se editan en la
+   * pestaña JSON o por MCP): ausente = no tocarlos; `null` = quitarlos.
+   * Antes el formulario los perdía al importar o editar.
+   */
+  vertical: { pack: string; overrides?: VerticalOverrides | null };
+  /** 072 — Los campos de la ficha del negocio. */
+  fichaFields: { fields: CampoFichaForm[] };
   owner: { email: string };
 };
 
@@ -154,6 +173,8 @@ export function formularioInicial(d: DefaultsForm, techo: TechoForm): FormBluepr
     },
     quickReplies: { mode: "merge", entries: [] },
     brain: { deployment: "" },
+    vertical: { pack: "default" },
+    fichaFields: { fields: [] },
     owner: { email: "" },
   };
 }
@@ -226,7 +247,57 @@ export function formularioDesdeBlueprint(
     f.quickReplies = { mode: bp.quickReplies.mode ?? "merge", entries: bp.quickReplies.entries.map((e) => conUid({ ...e })) };
   }
   f.brain = { deployment: bp.brain?.deployment ?? "" };
+  f.vertical = {
+    pack: bp.vertical?.pack ?? "default",
+    ...(bp.vertical && bp.vertical.overrides !== undefined ? { overrides: bp.vertical.overrides } : {}),
+  };
+  f.fichaFields = {
+    fields: bp.fichaFields?.fields ? bp.fichaFields.fields.map((c) => conUid({ ...c, guardado: true })) : [],
+  };
   return f;
+}
+
+/**
+ * 072 (US1) — «Empezar desde plantilla»: un formulario NUEVO con la semilla
+ * del pack (etapas, agente, ficha, conocimiento, respuestas, apariencia y
+ * acento). El nombre, la dirección, la región y los módulos son del negocio.
+ */
+export function formularioDesdePlantilla(packId: string, d: DefaultsForm, techo: TechoForm): FormBlueprint {
+  const f = formularioDesdeBlueprint({ version: 1, ...semillaDe(packId) } as OrganizationBlueprint, d, techo);
+  f.organization = { name: "", slug: "", slugTocado: false };
+  f.brand = { ...f.brand, name: "", nameTocado: false };
+  f.appearance = { ...f.appearance, guardada: false };
+  // Los campos de una plantilla todavía no existen en ningún negocio.
+  f.fichaFields = { fields: f.fichaFields.fields.map((c) => ({ ...c, guardado: false })) };
+  return f;
+}
+
+/**
+ * 072 (US1.4) — «Aplicar plantilla» a un negocio que ya existe: carga la
+ * semilla EN el formulario (las pestañas que cambian se marcan) y se revisa
+ * con «Revisar cambios» antes de guardar. Conocimiento y respuestas rápidas
+ * se suman (`merge`): no se borra lo que el negocio ya escribió. Negocio,
+ * región, nombre de marca, módulos, agenda y cerebro no se tocan.
+ */
+export function aplicarPlantillaAlFormulario(f: FormBlueprint, packId: string, d: DefaultsForm, techo: TechoForm): FormBlueprint {
+  const p = formularioDesdePlantilla(packId, d, techo);
+  return {
+    ...f,
+    brand: { ...f.brand, accent: p.brand.accent },
+    appearance: { usar: true, guardada: f.appearance.guardada, valor: p.appearance.valor },
+    pipeline: p.pipeline.stages.length > 0 ? p.pipeline : f.pipeline,
+    agent: p.agent.name ? p.agent : f.agent,
+    knowledge: { mode: "merge", entries: [...f.knowledge.entries, ...p.knowledge.entries.filter((e) => !f.knowledge.entries.some((x) => igual(sinUid(x), sinUid(e))))] },
+    quickReplies: { mode: "merge", entries: [...f.quickReplies.entries, ...p.quickReplies.entries.filter((e) => !f.quickReplies.entries.some((x) => x.shortcut === e.shortcut))] },
+    vertical: { ...f.vertical, pack: p.vertical.pack },
+    fichaFields: p.fichaFields.fields.length > 0 ? p.fichaFields : f.fichaFields,
+  };
+}
+
+function sinUid<T extends { uid?: string }>(x: T): Omit<T, "uid"> {
+  const { uid: _uid, ...resto } = x;
+  void _uid;
+  return resto;
 }
 
 const t = (s: string) => s.trim();
@@ -317,8 +388,25 @@ export function seccionesDelFormulario(
   if (cerebro) s.brain = { deployment: cerebro };
   else if (modo === "editar") s.brain = null;
 
+  // 072 — Al crear, solo si se eligió un nicho o hay campos; al editar,
+  // siempre (y viaja solo si cambió respecto de lo cargado).
+  const hayOverrides = f.vertical.overrides !== undefined;
+  if (modo === "editar" || f.vertical.pack !== "default" || hayOverrides) {
+    s.vertical = { pack: f.vertical.pack, ...(hayOverrides ? { overrides: f.vertical.overrides } : {}) };
+  }
+  if (modo === "editar" || f.fichaFields.fields.length > 0) s.fichaFields = { fields: f.fichaFields.fields.map(campoParaEnviar) };
+
   if (modo === "crear" && t(f.owner.email)) s.owner = { email: t(f.owner.email) };
   return s;
+}
+
+/** Pura: el campo tal como viaja (sin `uid`, `guardado` ni el texto crudo de opciones). */
+export function campoParaEnviar(c: CampoFichaForm): FichaField {
+  const { uid: _u, guardado: _g, opcionesTexto, options, ...resto } = c;
+  void _u;
+  void _g;
+  const opciones = c.type === "select" ? (opcionesTexto !== undefined ? opcionesDeTexto(opcionesTexto) : options) : undefined;
+  return { ...resto, ...(opciones !== undefined ? { options: opciones } : {}) };
 }
 
 /** Pura: igualdad por JSON con claves ordenadas. */
@@ -371,6 +459,8 @@ export const PESTANA_DE_SECCION: Record<SeccionBlueprint, string> = {
   agenda: "agenda",
   quickReplies: "respuestas",
   brain: "agente",
+  vertical: "nicho",
+  fichaFields: "nicho",
 };
 
 /** Pura: copiar el horario de un día a lunes–viernes (con ids nuevos). */

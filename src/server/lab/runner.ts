@@ -9,7 +9,8 @@ import { avisarOlvido } from "@/server/brains/deliver";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
 import { computeScore, judgeCase } from "@/server/lab/judge";
-import { PERSONAS, type Persona } from "@/server/lab/personas";
+import { PERSONAS, personaPorClave, personasDelPack, type Persona } from "@/server/lab/personas";
+import { experienciaDe } from "@/server/verticals/experiencia";
 import { rolDe } from "@/lib/agent-roles";
 
 /**
@@ -62,11 +63,15 @@ export async function startRun(organizationId: string): Promise<string> {
 
   // 034 — Las personas son del rol del perfil, no una lista suelta.
   const [perfil] = await db
-    .select({ role: schema.agentProfile.role })
+    .select({ role: schema.agentProfile.role, stallEnabled: schema.agentProfile.stallEnabled })
     .from(schema.agentProfile)
     .where(eq(schema.agentProfile.organizationId, organizationId))
     .limit(1);
-  const delRol = personasDelRol(perfil?.role);
+  // 072 (D19) — Y del nicho: una clínica se prueba con pacientes, no con
+  // quien busca un taladro. `default` (y `single`) conserva las del rol.
+  const delRol = personasDelPack((await experienciaDe(organizationId)).pack, personasDelRol(perfil?.role), {
+    stallEnabled: perfil?.stallEnabled,
+  });
 
   await db.insert(schema.agentTestCase).values(
     delRol.map((p) => ({
@@ -151,7 +156,7 @@ async function runAllCases(
   const fallas: string[] = [];
 
   for (const testCase of cases) {
-    const persona = PERSONAS.find((p) => p.key === testCase.persona);
+    const persona = personaPorClave(testCase.persona);
     if (!persona) continue;
 
     await db
@@ -488,7 +493,13 @@ async function failRun(
     .update(schema.agentTestRun)
     .set({ status: "failed", error, finishedAt: new Date() })
     .where(eq(schema.agentTestRun.id, runId));
-  publishProgress(organizationId, runId, "failed", 0, PERSONAS.length);
+  // M-5 (auditoría 072-A) — El total real de la corrida: con la 072 ya no
+  // son siempre las 8 de siempre (un nicho corre 6 o 7).
+  const casos = await db
+    .select({ id: schema.agentTestCase.id })
+    .from(schema.agentTestCase)
+    .where(eq(schema.agentTestCase.runId, runId));
+  publishProgress(organizationId, runId, "failed", 0, casos.length);
 }
 
 function publishProgress(

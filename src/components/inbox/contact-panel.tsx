@@ -32,6 +32,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FichaPanel } from "@/components/ficha-panel";
+import { guardarParcheFicha } from "@/components/ficha-guardar";
+import type { FichaField } from "@/lib/ficha-campos";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 
 
@@ -56,6 +58,8 @@ export function ContactPanel({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [notes, setNotes] = useState("");
   const [ficha, setFicha] = useState<FichaDto>({});
+  // 072 — Los campos que define el negocio; `[]` = la ficha libre de siempre.
+  const [fichaFields, setFichaFields] = useState<FichaField[]>([]);
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [stages, setStages] = useState<StageDto[]>([]);
@@ -97,6 +101,7 @@ export function ContactPanel({
     if (detail) {
       setNotes(detail.contact?.notes ?? "");
       setFicha(detail.contact?.ficha ?? {});
+      setFichaFields(Array.isArray(detail.fichaFields) ? detail.fichaFields : []);
       setCurrentStageId(detail.stage?.id ?? null);
       setLeadId(detail.lead?.id ?? null);
       setAnuncio(detail.anuncio ?? null);
@@ -117,6 +122,7 @@ export function ContactPanel({
       // conversación ocurre, y verla aparecer sola es justo para lo que sirve.
       // No pisa una edición a medias — el borrador vive dentro del panel.
       setFicha(detail.contact?.ficha ?? {});
+      setFichaFields(Array.isArray(detail.fichaFields) ? detail.fichaFields : []);
       setCurrentStageId(detail.stage?.id ?? null);
       setLeadId(detail.lead?.id ?? null);
       // La imagen del creativo se copia después de que entra el mensaje: este
@@ -158,12 +164,12 @@ export function ContactPanel({
       }
       return next; // optimista: el refetch de abajo confirma
     });
-    await fetch(`/api/contacts/${contactId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ficha: patch }),
-    }).catch(() => null);
-    void refreshLive();
+    try {
+      await guardarParcheFicha(contactId, patch);
+    } finally {
+      // Con o sin error, la ficha vuelve a lo que de verdad quedó guardado.
+      void refreshLive();
+    }
   }
 
   async function saveNotes() {
@@ -367,7 +373,7 @@ export function ContactPanel({
 
         {/* Ficha: lo que se SABE del lead. Va antes de Notas —lo que alguien
             OPINA— porque es lo que se consulta a mitad de una conversación. */}
-        <FichaPanel ficha={ficha} onSave={saveFicha} />
+        <FichaPanel ficha={ficha} campos={fichaFields} onSave={saveFicha} />
 
         {/* Notas */}
         <section className={cn("p-4", onDeleteConversation && "border-b")}>

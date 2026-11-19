@@ -6,6 +6,7 @@ import { MessageCircle, Search } from "lucide-react";
 import { ATAJOS, esAyuda, esBarraDeComandos, esCampoDeTexto } from "@/lib/atajos";
 import { urlDeConversacion } from "@/lib/avisos-sistema";
 import { appNavGroups, SETTINGS_ITEM, type NavItem } from "@/lib/nav";
+import type { ExperienciaResuelta } from "@/verticals/resolver";
 import { matchesQuery } from "@/lib/search";
 import { listaVigente } from "@/lib/lista-compartida";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,16 @@ type Resultado =
 
 const MAX_CONVERSACIONES = 8;
 
-export function AtajosGlobales({ agenda, role }: { agenda: boolean; role: string }) {
+export function AtajosGlobales({
+  agenda,
+  role,
+  experiencia = null,
+}: {
+  agenda: boolean;
+  role: string;
+  /** 072 — Las pantallas con el vocabulario del negocio. */
+  experiencia?: ExperienciaResuelta | null;
+}) {
   const [abierto, setAbierto] = useState<"barra" | "ayuda" | null>(null);
 
   useEffect(() => {
@@ -48,7 +58,7 @@ export function AtajosGlobales({ agenda, role }: { agenda: boolean; role: string
   }, []);
 
   if (abierto === "barra") {
-    return <BarraDeComandos agenda={agenda} role={role} onClose={() => setAbierto(null)} />;
+    return <BarraDeComandos agenda={agenda} role={role} experiencia={experiencia} onClose={() => setAbierto(null)} />;
   }
   if (abierto === "ayuda") return <AyudaAtajos onClose={() => setAbierto(null)} />;
   return null;
@@ -70,10 +80,12 @@ function Velo({ onClose, children }: { onClose: () => void; children: React.Reac
 function BarraDeComandos({
   agenda,
   role,
+  experiencia,
   onClose,
 }: {
   agenda: boolean;
   role: string;
+  experiencia: ExperienciaResuelta | null;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -102,7 +114,7 @@ function BarraDeComandos({
   }, []);
 
   const resultados = useMemo<Resultado[]>(() => {
-    const pantallas = [...appNavGroups({ agenda, role }).flatMap((g) => g.items), SETTINGS_ITEM]
+    const pantallas = [...appNavGroups({ agenda, role, experiencia }).flatMap((g) => g.items), SETTINGS_ITEM]
       .filter((item) => matchesQuery(q, { text: [item.label] }))
       .map((item) => ({ clase: "pantalla" as const, item }));
     const convs = conversaciones
@@ -110,7 +122,7 @@ function BarraDeComandos({
       .slice(0, MAX_CONVERSACIONES)
       .map((conv) => ({ clase: "conversacion" as const, conv }));
     return [...pantallas, ...convs];
-  }, [q, conversaciones, agenda, role]);
+  }, [q, conversaciones, agenda, role, experiencia]);
 
   useEffect(() => setActivo(0), [q]);
   useEffect(() => {

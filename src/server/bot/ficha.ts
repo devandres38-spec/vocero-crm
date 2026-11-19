@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { aplicarEsquema, type FichaField, type Ignorado } from "@/lib/ficha-campos";
+import { fichaFieldsDe } from "@/server/ficha/esquema";
 
 /**
  * Ficha de calificación del lead: lo que el cerebro externo va descubriendo
@@ -20,7 +22,7 @@ import { scoped } from "@/lib/db/tenant";
  */
 
 /** Tope de claves por ficha: contiene un bot en bucle sin estorbar a nadie. */
-const MAX_KEYS = 40;
+export const MAX_KEYS = 40;
 const MAX_KEY_LEN = 60;
 const MAX_VALUE_LEN = 500;
 
@@ -63,14 +65,55 @@ export function normalizeFicha(raw: FichaInput): Ficha {
   return out;
 }
 
-/** Merge campo a campo: lo ausente se conserva, `null` explícito borra. */
-export function mergeFicha(prev: Ficha | null | undefined, patch: Ficha): Ficha {
+/**
+ * Merge campo a campo: lo ausente se conserva, `null` explícito borra.
+ *
+ * A-5 (auditoría 072-A) — `MAX_KEYS` acota también la ficha RESULTANTE, no
+ * solo cada parche: un bot que manda claves distintas en cada turno ya no
+ * la infla sin fin. Borrar y actualizar una clave que ya está siempre pasan,
+ * y las del esquema del negocio (`siempre`) también; una clave libre NUEVA
+ * con la ficha llena se ignora sin error (la misma regla floja de siempre).
+ */
+export function mergeFicha(
+  prev: Ficha | null | undefined,
+  patch: Ficha,
+  siempre: ReadonlySet<string> = new Set()
+): Ficha {
   const out: Ficha = { ...(prev ?? {}) };
   for (const [key, value] of Object.entries(patch)) {
-    if (value === null) delete out[key];
-    else out[key] = value;
+    if (value === null) {
+      delete out[key];
+      continue;
+    }
+    const nueva = !Object.hasOwn(out, key);
+    if (nueva && !siempre.has(key) && Object.keys(out).length >= MAX_KEYS) continue;
+    out[key] = value;
   }
   return out;
+}
+
+/**
+ * A-6 (auditoría 072-A) — El parche listo para el merge. Las claves del
+ * esquema se coaccionan desde el valor CRUDO (antes `normalizeFicha` las
+ * recortaba o tiraba en silencio y nunca llegaban a `ignored`); el resto pasa
+ * por `normalizeFicha` como siempre. Sin esquema, es exactamente
+ * `normalizeFicha` (respuesta de 2.11.0).
+ */
+export function parcheDeFicha(
+  raw: FichaInput,
+  campos: readonly FichaField[]
+): { patch: Ficha; ignored: Ignorado[] } {
+  if (campos.length === 0 || !raw || typeof raw !== "object") return { patch: normalizeFicha(raw), ignored: [] };
+  const delEsquema = new Set(campos.map((c) => c.key));
+  const crudos: Record<string, unknown> = {};
+  const libres: FichaInput = {};
+  for (const [rawKey, value] of Object.entries(raw)) {
+    const key = rawKey.trim();
+    if (delEsquema.has(key)) crudos[key] = value;
+    else libres[rawKey] = value;
+  }
+  const { patch: tipado, ignored } = aplicarEsquema(crudos, campos);
+  return { patch: { ...normalizeFicha(libres), ...tipado }, ignored };
 }
 
 /**
@@ -83,14 +126,19 @@ export function mergeFicha(prev: Ficha | null | undefined, patch: Ficha): Ficha 
  * guardar le borraría el trabajo al otro sin que nadie se entere.
  *
  * Devuelve `null` si el contacto no existe en esa organización.
+ *
+ * 072 (D10) — Si el negocio definió los campos de su ficha, las claves del
+ * esquema se guardan tipadas; un valor que no encaja se ignora y vuelve en
+ * `ignored` (solo si hubo alguno: sin esquema, la respuesta es la de 2.11.0).
  */
 export async function upsertFicha(input: {
   organizationId: string;
   contactId: string;
   ficha: FichaInput;
-}): Promise<{ ficha: Ficha } | null> {
+}): Promise<{ ficha: Ficha; ignored?: Ignorado[] } | null> {
   const db = getDb();
-  const patch = normalizeFicha(input.ficha);
+  const campos = await fichaFieldsDe(input.organizationId, db);
+  const { patch, ignored } = parcheDeFicha(input.ficha, campos);
 
   // El acotamiento va aquí y no en cada llamador: una ficha es información de
   // calificación de un cliente ajeno, y confiar en que quien llame se acuerde
@@ -109,14 +157,14 @@ export async function upsertFicha(input: {
     .limit(1);
   if (!rows[0]) return null;
 
-  const merged = mergeFicha(rows[0].ficha as Ficha | null, patch);
+  const merged = mergeFicha(rows[0].ficha as Ficha | null, patch, new Set(campos.map((c) => c.key)));
 
   await db
     .update(schema.contact)
     .set({ ficha: merged, updatedAt: new Date() })
     .where(alcance);
 
-  return { ficha: merged };
+  return ignored.length > 0 ? { ficha: merged, ignored } : { ficha: merged };
 }
 
 /**

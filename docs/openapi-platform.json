@@ -50,7 +50,7 @@
       },
       "OrganizationBlueprint": {
         "type": "object",
-        "description": "Ver GET /api/platform/catalog → schema (y examples). Secciones opcionales: organization, region, brand, appearance, modules, pipeline, agent, knowledge, agenda, quickReplies, owner.",
+        "description": "Ver GET /api/platform/catalog → schema (y examples). Secciones opcionales: organization, region, brand, appearance, modules, pipeline, agent, knowledge, agenda, quickReplies, brain, vertical, fichaFields, owner. 072: vertical { pack, overrides? } (el nicho; cambiarlo no aplica su plantilla) y fichaFields { fields } (los campos de la ficha; clave y tipo inmutables, 422 tipo_inmutable). Las plantillas: catalog → verticalPacks y el MCP get_vertical_pack (seed).",
         "required": [
           "version"
         ],

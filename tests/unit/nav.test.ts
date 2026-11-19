@@ -75,7 +75,7 @@ describe("ajustes en tres secciones", () => {
     expect(sections.map((s) => s.title)).toEqual(["Canales", "Agente", "Negocio"]);
     expect(links(sections)).toEqual({
       Canales: ["WhatsApp"],
-      Agente: ["IA"],
+      Agente: ["IA", "Ficha"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo"],
     });
   });
@@ -84,7 +84,7 @@ describe("ajustes en tres secciones", () => {
     // 023: con un canal social, "Estado" abre la sección.
     expect(links(settingsSections({ messenger: true }))).toEqual({
       Canales: ["Estado", "WhatsApp", "Messenger"],
-      Agente: ["IA"],
+      Agente: ["IA", "Ficha"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo"],
     });
     expect(links(settingsSections({ instagram: true })).Canales).toEqual([
@@ -97,12 +97,12 @@ describe("ajustes en tres secciones", () => {
     ).toEqual(["Estado", "WhatsApp", "Instagram", "Messenger", "TikTok"]);
     expect(links(settingsSections({ agenda: true }))).toEqual({
       Canales: ["WhatsApp"],
-      Agente: ["IA", "Agenda"],
+      Agente: ["IA", "Agenda", "Ficha"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo"],
     });
     expect(links(settingsSections({ atribucion: true }))).toEqual({
       Canales: ["WhatsApp"],
-      Agente: ["IA"],
+      Agente: ["IA", "Ficha"],
       Negocio: ["Marca", "Apariencia", "Plantillas", "Respuestas rápidas", "Equipo", "Anuncios"],
     });
   });
@@ -127,6 +127,8 @@ describe("ajustes en tres secciones", () => {
         "/settings/tiktok",
         "/settings/ai",
         "/settings/calendar",
+        // 072 A3 — Ajustes → Ficha.
+        "/settings/ficha",
         "/settings/branding",
         "/settings/appearance",
         "/settings/templates",

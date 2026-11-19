@@ -114,11 +114,33 @@ export const organization = pgTable("organization", {
     (): AnyPgColumn => brainDeployment.id,
     { onDelete: "restrict" }
   ),
+  /**
+   * 072 (D2, D3) — El Vertical Pack de ESTE negocio (`src/verticals/`): cómo
+   * se ve y qué plantilla sugiere. Uno desconocido se resuelve como
+   * `default`. Solo la agencia lo cambia (Blueprint, `/platform`, MCP).
+   */
+  verticalPack: text("vertical_pack").notNull().default("default"),
+  /** 072 (D5) — Ajustes por negocio, SOLO datos (vocabulario, menú, inicio). */
+  verticalOverrides: jsonb("vertical_overrides").$type<Record<string, unknown>>(),
+  /**
+   * 072 (D9) — Los campos de la ficha de este negocio (`src/lib/ficha-campos.ts`).
+   * Es el esquema; los valores siguen en `contact.ficha`. `null` = sin esquema.
+   */
+  fichaFields: jsonb("ficha_fields").$type<{ version: 1; fields: unknown[] }>(),
 }, (t) => [
   // Auditoría 070 (M-3): la FK RESTRICT y los conteos de /platform/cerebros.
   index("organization_brain_deployment_idx")
     .on(t.brainDeploymentId)
     .where(sql`${t.brainDeploymentId} is not null`),
+  check("organization_vertical_pack_ck", sql`${t.verticalPack} ~ '^[a-z][a-z0-9-]{1,39}$'`),
+  check(
+    "organization_vertical_overrides_tam_ck",
+    sql`${t.verticalOverrides} is null or pg_column_size(${t.verticalOverrides}) < 8192`
+  ),
+  check(
+    "organization_ficha_fields_tam_ck",
+    sql`${t.fichaFields} is null or pg_column_size(${t.fichaFields}) < 16384`
+  ),
 ]);
 
 export const member = pgTable("member", {

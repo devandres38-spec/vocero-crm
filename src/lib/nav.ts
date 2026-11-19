@@ -2,15 +2,21 @@ import {
   CalendarDays,
   ChartColumn,
   FlaskConical,
+  HeartPulse,
   Inbox,
   Kanban,
+  LayoutDashboard,
   ListChecks,
+  PartyPopper,
   Settings,
   Sparkles,
   Users,
   type LucideIcon,
 } from "lucide-react";
 import { canConfigure } from "@/lib/auth/roles";
+import type { ExperienciaResuelta } from "@/verticals/resolver";
+import type { IconoNav } from "@/verticals/tipos";
+import { t } from "@/verticals/vocabulario";
 
 /**
  * #87 — El modelo del menú, separado del componente que lo pinta.
@@ -47,23 +53,48 @@ export const SETTINGS_ITEM: NavItem = {
  * Grupos de la barra lateral, en el orden en que se leen: lo que se atiende
  * cada día, lo que configura al agente y, al final, cómo va el negocio.
  */
+/** 072 — Los íconos que un Vertical Pack puede nombrar (lista cerrada). */
+export const ICONOS_NAV: Record<IconoNav, LucideIcon> = {
+  inicio: LayoutDashboard,
+  bandeja: Inbox,
+  pipeline: Kanban,
+  contactos: Users,
+  citas: CalendarDays,
+  agente: Sparkles,
+  laboratorio: FlaskConical,
+  resultados: ChartColumn,
+  guia: ListChecks,
+  salud: HeartPulse,
+  evento: PartyPopper,
+};
+
 export function appNavGroups({
   agenda = false,
   role,
+  experiencia,
 }: {
   /** 015 — "Citas" solo existe si esta instancia encendió la agenda. */
   agenda?: boolean;
   /** #86 — La guía de inicio solo para quien puede configurar. */
   role?: string | null;
+  /**
+   * 072 (D4) — El Vertical Pack del negocio ya resuelto: vocabulario, orden,
+   * entradas ocultas, íconos e Inicio. Sin él (o con `default`), el menú de
+   * 2.11.0 (red de seguridad en `tests/unit/red-072.test.ts`).
+   */
+  experiencia?: ExperienciaResuelta | null;
 }): NavGroup[] {
+  const voc = experiencia?.vocabulario;
   const trabajo: NavItem[] = [
-    { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
-    { href: "/pipeline", label: "Pipeline", icon: Kanban },
-    { href: "/contacts", label: "Contactos", icon: Users },
+    { href: "/inbox", label: t(voc, "bandeja"), icon: Inbox, badge: true },
+    { href: "/pipeline", label: t(voc, "pipeline"), icon: Kanban },
+    { href: "/contacts", label: t(voc, "contacto", "varios"), icon: Users },
   ];
   // Citas va después de Contactos: es el paso siguiente de un trato, no una
   // sección aparte.
-  if (agenda) trabajo.push({ href: "/bookings", label: "Citas", icon: CalendarDays });
+  if (agenda) trabajo.push({ href: "/bookings", label: t(voc, "cita", "varios"), icon: CalendarDays });
+  // 072 (D7) — Inicio solo existe si el pack (o el negocio) lo define.
+  if (experiencia?.inicio) trabajo.unshift({ href: "/inicio", label: t(voc, "inicio"), icon: LayoutDashboard });
 
   const agente: NavItem[] = [];
   // Un miembro del equipo no puede hacer ninguno de los pasos de la guía.
@@ -71,16 +102,47 @@ export function appNavGroups({
     agente.push({ href: "/onboarding", label: "Guía de inicio", icon: ListChecks });
   }
   agente.push(
-    { href: "/agent", label: "Agente", icon: Sparkles },
+    { href: "/agent", label: t(voc, "agente"), icon: Sparkles },
     { href: "/lab", label: "Laboratorio", icon: FlaskConical }
   );
 
-  return [
+  const grupos: NavGroup[] = [
     { title: "Trabajo", items: trabajo },
     { title: "Agente", items: agente },
     // 019 — Se mide al final: primero se atiende y se organiza.
-    { items: [{ href: "/results", label: "Resultados", icon: ChartColumn }] },
+    { items: [{ href: "/results", label: t(voc, "resultados"), icon: ChartColumn }] },
   ];
+  return experiencia ? aplicarExperiencia(grupos, experiencia) : grupos;
+}
+
+/**
+ * 072 — Orden, ocultas e íconos del pack, DENTRO de cada grupo. La Bandeja
+ * no se oculta (es por donde existe el producto); un grupo que queda vacío
+ * desaparece. Un `href` que no esté en el menú se ignora.
+ */
+function aplicarExperiencia(grupos: NavGroup[], exp: ExperienciaResuelta): NavGroup[] {
+  const ocultas = new Set(exp.nav.ocultas.filter((h) => h !== "/inbox"));
+  const pos = new Map(exp.nav.orden.map((h, i) => [h, i]));
+  return grupos
+    .map((g) => {
+      const items = g.items
+        .filter((i) => !ocultas.has(i.href))
+        .map((i, original) => ({ i, original }))
+        .sort((a, b) => {
+          const pa = pos.get(a.i.href);
+          const pb = pos.get(b.i.href);
+          if (pa !== undefined && pb !== undefined) return pa - pb;
+          if (pa !== undefined) return -1;
+          if (pb !== undefined) return 1;
+          return a.original - b.original;
+        })
+        .map(({ i }) => {
+          const icono = exp.nav.iconos[i.href];
+          return icono ? { ...i, icon: ICONOS_NAV[icono] } : i;
+        });
+      return { ...g, items };
+    })
+    .filter((g) => g.items.length > 0);
 }
 
 export type SettingsLink = { href: string; label: string };
@@ -130,6 +192,8 @@ export function settingsSections({
   // #85 — el proveedor de IA se configura aquí; el entorno queda de respaldo.
   const agente: SettingsLink[] = [{ href: "/settings/ai", label: "IA" }];
   if (agenda) agente.push({ href: "/settings/calendar", label: "Agenda" });
+  // 072 (FR-013) — Qué datos pide el agente y cómo se ven en la ficha.
+  agente.push({ href: "/settings/ficha", label: "Ficha" });
 
   const negocio: SettingsLink[] = [
     { href: "/settings/branding", label: "Marca" },

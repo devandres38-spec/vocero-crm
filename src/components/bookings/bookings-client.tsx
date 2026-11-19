@@ -34,6 +34,7 @@ import type { Booking } from "./booking-look";
 import { CalendarToolbar } from "./calendar-toolbar";
 import { MonthGrid } from "./month-grid";
 import { TimeGrid } from "./time-grid";
+import { useVocabulario } from "@/lib/vocabulario-context";
 
 /**
  * 015 → 215 — Citas: lo agendado por el operador y por la IA, en un
@@ -86,6 +87,7 @@ export function BookingsClient({
   timezone: string;
   weeklyHours: WeeklyHours;
 }) {
+  const v = useVocabulario();
   // La vista se resuelve al montar (URL › última usada › tamaño de pantalla):
   // el servidor no sabe si esto es un celular.
   const [view, setView] = useState<CalendarView | null>(null);
@@ -309,7 +311,7 @@ export function BookingsClient({
     return (
       <div className="flex h-full flex-col">
         <header className="border-b px-4 py-3 sm:px-6 sm:py-4">
-          <h2 className="text-[17px] font-bold tracking-tight">Citas</h2>
+          <h2 className="text-[17px] font-bold tracking-tight">{v("cita", "varios")}</h2>
         </header>
         <p className="p-6 text-sm text-text-3">Cargando…</p>
       </div>
