@@ -132,6 +132,9 @@ describe("GET /api/brains/context", () => {
   it("cuerpo de /api/bot/context + agent, knowledge y llm (sin llave propia: llm null)", async () => {
     vi.stubEnv("OPENROUTER_API_TOKEN", "sk-or-de-la-plataforma");
     vi.stubEnv("OPENROUTER_MODEL", "modelo/plataforma");
+    // La agenda de la instancia apagada a propósito: la matriz `completo` del
+    // CI corre con AGENDA=on y este caso espera el valor por defecto.
+    vi.stubEnv("AGENDA", "");
     h.contexto.mockResolvedValue({ contact: { id: "ct_1" }, conversation: { id: "cv_1" }, lead: null, adOrigen: null });
     fake().responder(schema.agentProfile, [
       { name: "Ana", tone: "cálido", instructions: "x", escalationRules: null, greeting: null, role: "calificador", tools: null },
