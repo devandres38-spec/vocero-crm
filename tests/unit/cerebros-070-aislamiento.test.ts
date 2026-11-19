@@ -147,7 +147,9 @@ vi.mock("@/server/agenda/service", async (original) => ({
 }));
 vi.mock("@/server/modulos/consulta", async (original) => ({
   ...(await original<typeof import("@/server/modulos/consulta")>()),
-  modulosDeOrganizacion: async () => ({ agenda: true, atribucion: false, channels: ["whatsapp"], modules: [] }),
+  // 072-B — Con `diagnostico` encendido, `POST tools/*` llega hasta buscar la
+  // conversación (y la busca en A), en vez de cortar antes con 404.
+  modulosDeOrganizacion: async () => ({ agenda: true, atribucion: false, channels: ["whatsapp"], modules: ["diagnostico"] }),
 }));
 
 import { encryptSecret } from "@/lib/crypto";
@@ -168,6 +170,7 @@ import { PATCH as moverCitaRuta, POST as reservar } from "@/app/api/brains/agend
 import { GET as citas } from "@/app/api/brains/agenda/bookings/route";
 import { POST as cancelar } from "@/app/api/brains/agenda/cancel/route";
 import { POST as followup } from "@/app/api/brains/agenda/followup/route";
+import { POST as herramienta } from "@/app/api/brains/tools/[name]/route";
 
 const BASE = "http://plataforma.test/api/brains";
 const CRED_A = credencialDerivada(SECRETO, "org_A");
@@ -213,6 +216,13 @@ const CASOS: Caso[] = [
       cancelar(req("POST", "agenda/cancel", o, { conversationId: "cv_B", selectionToken: SELECCION_B(), confirmation: true, idempotencyKey: "k".repeat(64) })),
   },
   { nombre: "POST agenda/followup", llamar: (o) => followup(req("POST", "agenda/followup", o, { conversationId: "cv_B", consent: true })) },
+  {
+    nombre: "POST tools/[name]",
+    llamar: (o) =>
+      herramienta(req("POST", "tools/diagnostico_marca", o, { conversationId: "cv_B", dispatchId: "dsp_B", args: { motivo: "x" } }), {
+        params: Promise.resolve({ name: "diagnostico_marca" }),
+      }),
+  },
 ];
 
 /**
@@ -315,6 +325,7 @@ describe("cobertura: la matriz incluye cada ruta de /api/brains", () => {
         "media/[mediaId]",
         "messages",
         "stage",
+        "tools/[name]",
         "typing",
       ].sort()
     );

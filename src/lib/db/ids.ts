@@ -48,6 +48,8 @@ const prefixes = {
   platformAudit: "aud",
   // 070 — despliegues de cerebro
   brainDeployment: "brn",
+  // 072-B — Llamadas a herramientas de módulo (idempotencia del puente).
+  brainToolCall: "btc",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

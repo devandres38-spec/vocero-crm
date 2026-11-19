@@ -66,6 +66,33 @@ Cualquiera de estos caminos (todos auditados como `cerebro_asignado`):
   otro proveedor no se transcriben todavía (elegir el modelo por negocio queda
   para después de la 070).
 
+## 5. Herramientas de módulo (072-B)
+
+Un **módulo** (`src/modulos/<clave>/`) puede darle herramientas al cerebro.
+Solo las define código revisado del CRM; un negocio no puede inventarlas.
+
+- **Encender un módulo** es cosa de la agencia: `modules.modules` en el
+  Blueprint del negocio (o por el MCP). El módulo de prueba es `diagnostico`
+  (oculto a los dueños): `{"modules": {"modules": ["diagnostico"]}}`.
+- Con el módulo encendido, `GET /api/brains/context` trae `moduleTools`
+  (nombre, módulo, efecto, descripción y JSON Schema de los argumentos) y el
+  cerebro las ejecuta con `POST /api/brains/tools/{name}`
+  `{conversationId, dispatchId, args}`. Sin módulos, el contexto no cambia.
+- El CRM recalcula los módulos en CADA llamada: una herramienta de un módulo
+  apagado responde `404 tool_not_found`, igual que una que no existe.
+- Las de **escritura** son idempotentes por despacho, nombre y argumentos
+  (tabla `brain_tool_call`, 30 días): repetir la llamada devuelve la respuesta
+  guardada sin volver a ejecutar.
+- Topes: 8 herramientas por negocio, esquema ≤4 KB (≤12 KB entre todas),
+  cuerpo ≤16 KB, 8 s por ejecución (`504 tool_timeout`), resultado ≤4 KB.
+- La IA en pausa (`handoff` o el interruptor) responde `409 ai_paused` antes de
+  ejecutar nada.
+
+Para probarlo en staging: encender `diagnostico` en un negocio de prueba,
+escribirle al agente «prueba el diagnóstico» y ver la marca en la nota interna
+de la conversación y en `/m/diagnostico`. En otro negocio sin el módulo,
+`/m/diagnostico`, `/api/m/diagnostico/*` y `/api/brains/tools/*` dan 404.
+
 ## Cómo se protege
 
 - `/api/brains/*` autentica con `Authorization: Bearer <credencial>` +
@@ -77,6 +104,9 @@ Cualquiera de estos caminos (todos auditados como `cerebro_asignado`):
   un cerebro al que ya se le quitó el negocio.
 - La matriz `tests/unit/cerebros-070-aislamiento.test.ts` prueba cada ruta
   con la credencial de A contra recursos de B.
+- `POST /api/brains/tools/{name}` busca módulos y conversación SIEMPRE en la
+  organización de la credencial (`tests/unit/brains-tools.test.ts`).
 
 Contrato completo: [specs/070-cerebro-multiorg/contracts/brains.md](../specs/070-cerebro-multiorg/contracts/brains.md)
+· delta 072: [brains-072.md](../specs/072-motor-multi-nicho/contracts/brains-072.md)
 · OpenAPI: [openapi-brains.json](openapi-brains.json).

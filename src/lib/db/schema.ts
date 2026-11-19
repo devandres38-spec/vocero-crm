@@ -1627,3 +1627,40 @@ export const conversationNote = pgTable(
     index("conversation_note_conv_idx").on(t.organizationId, t.conversationId, t.createdAt),
   ]
 );
+
+/* ============================================================
+ * 072-B — Llamadas del cerebro a herramientas de módulo
+ * ============================================================ */
+
+/**
+ * Idempotencia del puente (`POST /api/brains/tools/{name}`, D14): una
+ * herramienta de `efecto: "escritura"` repetida con el mismo `dispatchId`,
+ * nombre y argumentos devuelve la respuesta guardada sin volver a ejecutar.
+ * `idempotency_key` = sha256(dispatchId · nombre · args canónicos). Las de
+ * lectura no se anotan. Se purgan a los 30 días (`webhooks/worker.ts`).
+ */
+export const brainToolCall = pgTable(
+  "brain_tool_call",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    conversationId: text("conversation_id")
+      .notNull()
+      .references(() => conversation.id, { onDelete: "cascade" }),
+    dispatchId: text("dispatch_id").notNull(),
+    tool: text("tool").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    estado: text("estado", { enum: ["en_curso", "hecha", "fallida"] }).notNull(),
+    /** El cuerpo 200 que se devolvió (solo con `estado = 'hecha'`). */
+    response: jsonb("response"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("brain_tool_call_idem_uq").on(t.organizationId, t.idempotencyKey),
+    index("brain_tool_call_created_idx").on(t.createdAt),
+    check("brain_tool_call_estado_ck", sql`${t.estado} in ('en_curso', 'hecha', 'fallida')`),
+  ]
+);
