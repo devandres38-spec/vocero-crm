@@ -11,6 +11,7 @@ import {
   UNIVERSALES,
 } from "@/server/lab/personas";
 import { personasDelRol } from "@/server/lab/runner";
+import { DEMO_PHONES } from "@/server/seed/demo";
 import { PACK_IDS, PACKS } from "@/verticals/registro";
 
 /**
@@ -52,25 +53,32 @@ describe("personas por nicho", () => {
 });
 
 describe("guardarraíles de las personas", () => {
-  it("claves y teléfonos únicos entre TODOS los packs, y sintéticos (570000000…)", () => {
+  it("claves y teléfonos únicos entre TODOS los packs, y sintéticos (5700000…)", () => {
     expect(new Set(keys(TODAS_LAS_PERSONAS)).size).toBe(TODAS_LAS_PERSONAS.length);
     const telefonos = TODAS_LAS_PERSONAS.map((p) => p.phone);
     expect(new Set(telefonos).size).toBe(telefonos.length);
     for (const p of TODAS_LAS_PERSONAS) {
-      expect(p.phone, p.key).toMatch(/^570000000\d{3}$/);
+      expect(p.phone, p.key).toMatch(/^57000000\d{4}$/);
       expect(p.contactName.startsWith("[Prueba]"), p.key).toBe(true);
       expect(p.script.length, p.key).toBeGreaterThanOrEqual(3);
     }
   });
 
-  it("los rangos de teléfono son por pack (01xx clínica, 02xx eventos)", () => {
-    for (const p of PACKS["clinica-salud"].personas) expect(p.phone).toMatch(/^5700000001\d\d$/);
-    for (const p of PACKS["eventos-mobiliario"].personas) expect(p.phone).toMatch(/^5700000002\d\d$/);
+  it("los rangos de teléfono son por pack (11xx clínica, 12xx eventos)", () => {
+    for (const p of PACKS["clinica-salud"].personas) expect(p.phone).toMatch(/^5700000011\d\d$/);
+    for (const p of PACKS["eventos-mobiliario"].personas) expect(p.phone).toMatch(/^5700000012\d\d$/);
+  });
+
+  it("A-1: ningún teléfono de persona choca con los contactos de la demo", () => {
+    // Si chocaran, `upsertTestContact` reutilizaría un contacto demo real y
+    // le ensuciaría la ficha; re-sembrar la demo rompería el historial del Lab.
+    const demo = new Set(DEMO_PHONES);
+    for (const p of TODAS_LAS_PERSONAS) expect(demo.has(p.phone), `${p.key} ${p.phone}`).toBe(false);
   });
 
   it("toda persona tiene etiqueta y se encuentra por su clave (también las del pack)", () => {
     expect(PERSONA_LABELS.paciente_valoracion).toBe("Paciente que pide valoración");
-    expect(personaPorClave("novios_boda")?.phone).toBe("570000000201");
+    expect(personaPorClave("novios_boda")?.phone).toBe("570000001201");
     expect(personaPorClave("hostil")).toBe(PERSONAS.find((p) => p.key === "hostil"));
     expect(personaPorClave("nadie")).toBeUndefined();
   });

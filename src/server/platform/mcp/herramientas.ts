@@ -115,7 +115,7 @@ export function herramientas(): Herramienta[] {
       name: "get_vertical_pack",
       title: "Detalle de un nicho",
       description:
-        "Vocabulario, menú, Inicio y la semilla de un nicho. `seed` es un Blueprint parcial (etapas, agente, campos de la ficha, conocimiento, respuestas rápidas, apariencia y vertical): combínalo con organization, owner y region y mándalo a plan_blueprint / apply_blueprint. Aplicarlo dos veces no cambia nada.",
+        "Vocabulario, menú, Inicio y la semilla de un nicho. `seed` es un Blueprint parcial (etapas, agente, campos de la ficha, conocimiento, respuestas rápidas, apariencia y vertical): combínalo con `version: 1`, organization, owner y region (la semilla no trae `version`) y mándalo a plan_blueprint / apply_blueprint. Aplicarlo dos veces no cambia nada.",
       inputSchema: {
         type: "object",
         properties: { id: { type: "string", description: "Id del nicho (de list_vertical_packs), p. ej. clinica-salud" } },

@@ -266,7 +266,7 @@ sin rumbo).
 **Aceptación**
 1. `default` conserva exactamente las 8 personas de hoy.
 2. Cada pack aporta ≥3 personas propias con teléfonos sintéticos en un rango
-   propio (`5700000001xx` clínica, `5700000002xx` eventos) que nunca chocan.
+   propio (`5700000011xx` clínica, `5700000012xx` eventos) que nunca chocan con las personas base (`57000000000N`) ni con la demo (`5700000001xx`).
 
 ### US6 — El cerebro usa herramientas del módulo encendido (P1) · 072-B
 Como agencia, enciendo el módulo `diagnostico` en un negocio de staging y el

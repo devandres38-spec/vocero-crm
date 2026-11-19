@@ -281,6 +281,7 @@ export function AppNav({
       version={versionTexto}
       versionTitulo={versionTitulo}
       onSalir={() => void salir()}
+      inicio={Boolean(experiencia?.inicio)}
     />
     <aside
       // Móvil: cajón que se desliza desde la izquierda (siempre montado, así
@@ -427,6 +428,7 @@ function Riel({
   version,
   versionTitulo,
   onSalir,
+  inicio = false,
 }: {
   branding: Branding;
   groups: ReturnType<typeof appNavGroups>;
@@ -439,6 +441,8 @@ function Riel({
   version: React.ReactNode;
   versionTitulo: string;
   onSalir: () => void;
+  /** B-2 (auditoría 072-A) — Con Inicio, el logo lleva al Inicio. */
+  inicio?: boolean;
 }) {
   const [cuenta, setCuenta] = useState(false);
   const cuentaRef = useRef<HTMLDivElement>(null);
@@ -490,7 +494,7 @@ function Riel({
       aria-label="Secciones"
       className="tarjeta hidden w-[76px] shrink-0 flex-col items-center py-4 lg:flex"
     >
-      <Link href="/inbox" aria-label={branding.name} title={branding.name} className="rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <Link href={inicio ? "/inicio" : "/inbox"} aria-label={branding.name} title={branding.name} className="rounded-[14px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <BrandTile branding={branding} className="h-11 w-11 rounded-[14px] text-[18px]" />
       </Link>
       <div className="mt-7 flex min-h-0 flex-1 flex-col items-center gap-2.5 overflow-y-auto">

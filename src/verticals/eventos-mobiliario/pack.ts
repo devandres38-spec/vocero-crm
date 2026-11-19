@@ -111,7 +111,7 @@ export const PACK_EVENTOS_MOBILIARIO: PackParcial = {
       key: "novios_boda",
       label: "Novios preparando su boda",
       description: "Pareja que cotiza mobiliario para una boda de 120 personas.",
-      phone: "570000000201",
+      phone: "570000001201",
       contactName: "[Prueba] Novios boda",
       script: [
         "Hola! nos vamos a casar y estamos cotizando",
@@ -124,7 +124,7 @@ export const PACK_EVENTOS_MOBILIARIO: PackParcial = {
       key: "evento_corporativo",
       label: "Evento corporativo",
       description: "Empresa que necesita mobiliario para un lanzamiento; da los datos de a poco.",
-      phone: "570000000202",
+      phone: "570000001202",
       contactName: "[Prueba] Evento corporativo",
       script: [
         "Buenas, les escribo de una empresa",
@@ -138,7 +138,7 @@ export const PACK_EVENTOS_MOBILIARIO: PackParcial = {
       key: "cumpleanos_ultimo_minuto",
       label: "Cumpleaños de último minuto",
       description: "Necesita sillas para el fin de semana y tiene prisa.",
-      phone: "570000000203",
+      phone: "570000001203",
       contactName: "[Prueba] Cumpleaños urgente",
       script: [
         "Hola necesito 30 sillas para este sábado",

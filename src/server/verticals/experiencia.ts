@@ -5,6 +5,7 @@ import { esPlataforma } from "@/lib/tenancy";
 import { esPackId } from "@/verticals/registro";
 import {
   EXPERIENCIA_DEFAULT,
+  leerOverrides,
   resolverExperiencia,
   type ExperienciaResuelta,
 } from "@/verticals/resolver";
@@ -32,5 +33,10 @@ export const experienciaDe = cache(async (organizationId: string | null | undefi
   if (!esPackId(fila.verticalPack)) {
     console.warn(`[verticals] pack desconocido «${fila.verticalPack}» en ${organizationId}: se usa default`);
   }
+  // B-4 (auditoría 072-A) — Unos ajustes ilegibles se ignoran (el negocio
+  // ve su pack tal cual), pero queda rastro para corregirlos.
+  leerOverrides(fila.verticalOverrides, (motivo) =>
+    console.warn(`[verticals] vertical_overrides inválidos en ${organizationId} (${motivo}): se ignoran`)
+  );
   return resolverExperiencia(fila.verticalPack, fila.verticalOverrides);
 });

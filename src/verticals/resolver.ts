@@ -42,22 +42,37 @@ export const verticalOverridesSchema = z
     vocabulario: z.partialRecord(z.enum(TERMINOS), terminoSchema).optional(),
     nav: z
       .object({
-        ocultas: z.array(hrefSchema).max(20).optional(),
+        // M-3 (auditoría 072-A) — La Bandeja nunca se oculta (el menú la
+        // ignoraba en silencio): se rechaza para que quien lo pida lo sepa.
+        ocultas: z
+          .array(hrefSchema.refine((h) => h !== "/inbox", { message: "bandeja_no_se_oculta" }))
+          .max(20)
+          .optional(),
         orden: z.array(hrefSchema).max(20).optional(),
       })
       .strict()
       .optional(),
-    inicio: z.object({ widgets: z.array(widgetRefSchema).max(8) }).strict().optional(),
+    // M-3 — Un Inicio sin widgets es una página vacía: para no tener Inicio,
+    // se usa un pack sin él (o no se manda `inicio`).
+    inicio: z.object({ widgets: z.array(widgetRefSchema).min(1).max(8) }).strict().optional(),
   })
   .strict()
-  .refine((o) => JSON.stringify(o).length <= TOPE_OVERRIDES_BYTES, { message: "overrides_grandes" });
+  // M-3 — El tope es en BYTES UTF-8 (lo que ocupa en la base), no en
+  // unidades UTF-16: «ñ» o un emoji pesan más de 1.
+  .refine((o) => bytesUtf8(JSON.stringify(o)) <= TOPE_OVERRIDES_BYTES, { message: "overrides_grandes" });
+
+export function bytesUtf8(s: string): number {
+  return new TextEncoder().encode(s).length;
+}
 
 export type VerticalOverrides = z.infer<typeof verticalOverridesSchema>;
 
 /** Lo guardado en la columna; basura = sin overrides (nunca un error). */
-export function leerOverrides(raw: unknown): VerticalOverrides | null {
+export function leerOverrides(raw: unknown, alDescartar?: (motivo: string) => void): VerticalOverrides | null {
   if (raw === null || raw === undefined) return null;
   const r = verticalOverridesSchema.safeParse(raw);
+  // B-4 (auditoría 072-A) — Descartar no es silencioso para quien lo pida.
+  if (!r.success) alDescartar?.(r.error.issues[0]?.message ?? "invalido");
   return r.success ? r.data : null;
 }
 

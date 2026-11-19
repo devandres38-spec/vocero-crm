@@ -41,7 +41,10 @@ export async function aplicarVertical(
     overrides: deseado.overrides === undefined ? actual.overrides : deseado.overrides,
   };
   const advertencias = advertenciasDeOverrides(nuevo.overrides);
-  if (actual.pack === nuevo.pack && igualProfundo(actual.overrides ?? null, nuevo.overrides ?? null)) {
+  // B-4 (auditoría 072-A) — `overrides: null` limpia también una columna con
+  // basura (que `leerOverrides` lee como `null` y parecía «sin cambios»).
+  const basuraQueLimpiar = deseado.overrides === null && (fila?.overrides ?? null) !== null;
+  if (!basuraQueLimpiar && actual.pack === nuevo.pack && igualProfundo(actual.overrides ?? null, nuevo.overrides ?? null)) {
     return { cambio: false, advertencias };
   }
   await tx

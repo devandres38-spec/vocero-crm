@@ -67,11 +67,16 @@ describe("menú por pack", () => {
   });
 
   it("un negocio oculta Resultados (su grupo desaparece) pero nunca la Bandeja", () => {
-    const exp = resolverExperiencia("clinica-salud", { nav: { ocultas: ["/results", "/inbox", "/no-existe"] } });
+    const exp = resolverExperiencia("clinica-salud", { nav: { ocultas: ["/results", "/no-existe"] } });
     const g = appNavGroups({ agenda: false, role: "member", experiencia: exp });
     expect(g.flatMap((x) => x.items.map((i) => i.href))).not.toContain("/results");
     expect(g.flatMap((x) => x.items.map((i) => i.href))).toContain("/inbox");
     expect(g).toHaveLength(2);
+    // Auditoría 072-A (M-3): pedir ocultar la Bandeja ya no se acepta en
+    // silencio — los ajustes se rechazan enteros y la Bandeja sigue ahí.
+    const conBandeja = resolverExperiencia("clinica-salud", { nav: { ocultas: ["/results", "/inbox"] } });
+    const g2 = appNavGroups({ agenda: false, role: "member", experiencia: conBandeja });
+    expect(g2.flatMap((x) => x.items.map((i) => i.href))).toContain("/inbox");
   });
 });
 

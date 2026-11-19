@@ -1,4 +1,4 @@
-import { asc, count, desc, eq, gt, gte, lt, ne, sql } from "drizzle-orm";
+import { asc, count, desc, eq, gt, gte, isNull, lt, ne, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { CLAVE_CAMPO_RE } from "@/lib/ficha-campos";
@@ -140,6 +140,8 @@ export async function proximosPorFecha(
         sql`${fecha} ~ '^\\d{4}-\\d{2}-\\d{2}$'`,
         sql`${fecha} >= ${hoy}`,
         sql`${fecha} <= ${hasta}`,
+        // M-2 (auditoría 072-A) — Un contacto archivado no es un evento próximo.
+        isNull(schema.contact.archivedAt),
         notLabContact(schema.contact.id)
       )
     )

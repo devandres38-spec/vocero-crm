@@ -140,10 +140,19 @@ export function personaPorClave(key: string): Persona | undefined {
  * Las personas de una corrida: las del nicho + las universales. Un pack sin
  * personas propias (`default`) usa las del rol: las 8 de siempre.
  */
-export function personasDelPack(packId: unknown, delRol: Persona[]): Persona[] {
+export function personasDelPack(
+  packId: unknown,
+  delRol: Persona[],
+  opciones: { stallEnabled?: boolean | null } = {}
+): Persona[] {
   const propias = packDe(packId).personas;
   if (propias.length === 0) return delRol;
-  const universales = UNIVERSALES.map((k) => PERSONAS.find((p) => p.key === k)).filter((p): p is Persona => Boolean(p));
+  // M-5 (auditoría 072-A) — `sin_rumbo` prueba que el agente cierre la
+  // conversación sin rumbo; si el negocio apagó ese cierre (eventos lo apaga en
+  // su semilla), la persona fallaría siempre por diseño: no se corre.
+  const universales = UNIVERSALES.filter((k) => !(k === "sin_rumbo" && opciones.stallEnabled === false))
+    .map((k) => PERSONAS.find((p) => p.key === k))
+    .filter((p): p is Persona => Boolean(p));
   return [...propias, ...universales];
 }
 

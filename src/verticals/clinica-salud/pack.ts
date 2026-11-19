@@ -113,7 +113,7 @@ export const PACK_CLINICA_SALUD: PackParcial = {
       key: "paciente_valoracion",
       label: "Paciente que pide valoración",
       description: "Quiere agendar una valoración de ortodoncia y es su primera vez.",
-      phone: "570000000101",
+      phone: "570000001101",
       contactName: "[Prueba] Paciente valoración",
       script: [
         "Buenas tardes",
@@ -126,7 +126,7 @@ export const PACK_CLINICA_SALUD: PackParcial = {
       key: "pregunta_precios_sedes",
       label: "Pregunta precios y sedes",
       description: "Compara precios de limpieza y pregunta por la sede más cercana.",
-      phone: "570000000102",
+      phone: "570000001102",
       contactName: "[Prueba] Precios y sedes",
       script: [
         "Hola, ¿cuánto cuesta una limpieza?",
@@ -139,7 +139,7 @@ export const PACK_CLINICA_SALUD: PackParcial = {
       key: "paciente_molesto_cita",
       label: "Paciente molesto por una cita",
       description: "Llega molesto porque lo hicieron esperar; debe escalar sin discutir.",
-      phone: "570000000103",
+      phone: "570000001103",
       contactName: "[Prueba] Paciente molesto",
       script: [
         "Buenas, quiero poner una queja",
