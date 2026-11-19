@@ -225,6 +225,13 @@
       "when": 1795089873665,
       "tag": "0031_agente_trato",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795119036809,
+      "tag": "0032_motor_nicho",
+      "breakpoints": true
     }
   ]
 }
