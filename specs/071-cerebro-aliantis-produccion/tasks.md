@@ -1,7 +1,7 @@
 # Tasks: Cerebro Aliantis — producción y chasis extensible
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-071.md](contracts/brains-071.md)
-**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, `8e9a046`…`4ba4279`). **Ronda 2 hecha** (2026-11-19): C en `vocero-crm` (`44346e7`, `05502a8`), B en `nea-agent` (`dbef2b7`…`3d4c298`). Ambas ramas subidas, sin merge a `main`. Pendiente: Z (CI, staging, auditoría y merge).
+**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, `8e9a046`…`4ba4279`). **Ronda 2 hecha** (2026-11-19): C en `vocero-crm` (`44346e7`, `05502a8`), B en `nea-agent` (`dbef2b7`…`3d4c298`). Ambas ramas subidas, sin merge a `main`. **Auditoría (`AUDITORIA-071.md`) corregida** (2026-11-19): C-1, A-1..A-8, M-1..M-4, B-1..B-4 — nea-agent `d187819`, `e74ea50`, `07de53d`, `89e11c8` (pytest 870/870 con Postgres 16; 830 + 40 omitidas sin él); vocero-crm `8cf58c6` (Vitest 2 020/2 020). Pendiente: Z (CI, staging y merge).
 
 Convenciones: `[P]` paralelizable · `[nea]` repo `nea-agent` · `[crm]` repo
 `vocero-crm` · `[local]` gate en este equipo · `[CI]` job de CI (p. ej.
