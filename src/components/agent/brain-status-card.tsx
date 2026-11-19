@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
  * «Quién responde a tus clientes»: arriba de la pantalla del Agente.
  *
  * 036 — Vocero no trae agente: contesta el cerebro que se conecta al lado
- * (Nea u otro) y solo si el interruptor de esta página está encendido (el CRM
+ * (el de la plataforma u otro) y solo si el interruptor de esta página está encendido (el CRM
  * le despacha). Sin cerebro, Vocero es una bandeja manual: el aviso
  * `sin_cerebro` informa, no alarma. Con cerebro y el interruptor apagado,
  * `apagado` sí avisa: nadie contesta en automático.
@@ -187,7 +187,7 @@ function externalView(s: BrainStatusDto, now: number): RowView {
     return {
       tone: "warn",
       headline: "No se puede consultar su estado",
-      detail: `BRAIN_HEALTH_URL no es una URL http:// o https:// válida (p. ej. http://nea:8000/health): corrígela y vuelve a desplegar el CRM.${
+      detail: `BRAIN_HEALTH_URL no es una URL http:// o https:// válida (p. ej. http://cerebro:8000/health): corrígela y vuelve a desplegar el CRM.${
         keyConfigured ? ` ${capitalize(llamada)}.` : ""
       }`,
     };
@@ -225,7 +225,7 @@ function dispatchView(d: BrainDispatchDto, now: number): RowView {
     return {
       tone: "warn",
       headline: "No se puede despachar",
-      detail: `BRAIN_DISPATCH_URL no es una URL http:// o https:// válida, o lleva usuario y clave (p. ej. http://nea:8000/vocero/dispatch): corrígela y vuelve a desplegar el CRM. ${mientras}`,
+      detail: `BRAIN_DISPATCH_URL no es una URL http:// o https:// válida, o lleva usuario y clave (p. ej. http://cerebro:8000/vocero/dispatch): corrígela y vuelve a desplegar el CRM. ${mientras}`,
     };
   }
   if (d.problem === "sin_llave") {

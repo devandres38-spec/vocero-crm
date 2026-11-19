@@ -33,7 +33,7 @@ export function PestanaAgente({
     <div className="space-y-4">
       <Seccion
         titulo="Cerebro"
-        descripcion="El agente que contesta por este negocio (una Nea multiorg de Cerebros). Contesta solo si el agente está encendido y el negocio tiene su llave de IA."
+        descripcion="El agente que contesta por este negocio (un cerebro multiorg de Cerebros). Contesta solo si el agente está encendido y el negocio tiene su llave de IA."
       >
         <Campo etiqueta="Cerebro asignado">
           {(id) => (

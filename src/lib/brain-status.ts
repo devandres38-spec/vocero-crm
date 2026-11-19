@@ -115,12 +115,12 @@ export type BrainStatusDto = {
 };
 
 /**
- * El nombre que se puede afirmar. «Nea» solo si su `/health` habla el
- * contrato de Nea (trae `mode`); con un bot propio o una Nea vieja no se
- * inventa ninguno.
+ * El nombre que se puede afirmar. «Agente» solo si su `/health` habla el
+ * contrato del cerebro (trae `mode`); con un bot propio o un cerebro viejo no
+ * se inventa ninguno. Auditoría 071 (M-3): marca blanca, sin «Nea».
  */
 export function externalBrainName(status: BrainStatusDto): string | null {
-  return status.external.health?.mode ? "Nea" : null;
+  return status.external.health?.mode ? "Agente" : null;
 }
 
 /**
@@ -146,12 +146,9 @@ function healthKnown(h: BrainHealthDto | null): h is BrainHealthDto {
   return h !== null && h.problem !== "config";
 }
 
-/** «Responde tu cerebro externo (Nea)», o sin paréntesis si no se sabe quién es. */
+/** «Responde tu agente» si su `/health` lo confirma; si no, «tu cerebro externo». */
 export function externalAnswerLabel(status: BrainStatusDto): string {
-  const name = externalBrainName(status);
-  return name
-    ? `Responde tu cerebro externo (${name})`
-    : "Responde tu cerebro externo";
+  return externalBrainName(status) ? "Responde tu agente" : "Responde tu cerebro externo";
 }
 
 /** «hace 3 min». Tolera relojes desfasados: el futuro es «hace unos segundos». */

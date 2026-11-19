@@ -389,8 +389,20 @@ function TratoSection({
   profile: Profile;
   onSave: (patch: Partial<Profile>) => Promise<boolean>;
 }) {
+  // Auditoría 071 (B-4): mientras guarda no se puede volver a tocar, y si el
+  // servidor lo rechaza se dice (antes el clic se perdía en silencio).
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function guardar(patch: Partial<Profile>) {
+    setGuardando(true);
+    setError(null);
+    const ok = await onSave(patch);
+    setGuardando(false);
+    if (!ok) setError("No se pudo guardar. Revisa tu conexión y vuelve a intentarlo.");
+  }
+
   return (
-    <Card>
+    <Card aria-busy={guardando}>
       <CardHeader>
         <CardTitle>Trato y cierre</CardTitle>
         <CardDescription>
@@ -411,13 +423,14 @@ function TratoSection({
                 role="radio"
                 aria-checked={profile.treatment === t.clave}
                 data-trato={t.clave}
+                disabled={guardando}
                 onClick={() => {
-                  if (profile.treatment !== t.clave) void onSave({ treatment: t.clave });
+                  if (profile.treatment !== t.clave) void guardar({ treatment: t.clave });
                 }}
                 className={
                   profile.treatment === t.clave
                     ? "rounded-md border border-primary bg-brand-tint px-3 py-2 text-sm font-medium text-brand-text"
-                    : "rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
+                    : "rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
                 }
               >
                 {t.etiqueta}
@@ -439,10 +452,17 @@ function TratoSection({
           </div>
           <Switch
             checked={profile.stallEnabled}
+            disabled={guardando}
             label="Cerrar conversaciones sin rumbo"
-            onCheckedChange={(stallEnabled) => void onSave({ stallEnabled })}
+            onCheckedChange={(stallEnabled) => void guardar({ stallEnabled })}
           />
         </div>
+        {guardando && <p className="text-xs text-muted-foreground">Guardando…</p>}
+        {error && (
+          <p role="alert" className="text-xs text-danger-text">
+            {error}
+          </p>
+        )}
       </CardContent>
     </Card>
   );
