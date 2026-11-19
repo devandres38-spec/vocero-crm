@@ -62,6 +62,8 @@ describe("el registro", () => {
       vocabulario: VOCABULARIO_BASE,
       nav: { orden: [], ocultas: [], iconos: {} },
       inicio: null,
+      // 072-B — Sin módulos encendidos no aporta nada.
+      modulos: { claves: [], nav: [], seccionesFicha: [] },
     });
   });
 

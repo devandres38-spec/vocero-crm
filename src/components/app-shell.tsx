@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { BandaSinConexion } from "@/components/banda-sin-conexion";
 import { AtajosGlobales } from "@/components/atajos-globales";
 import { VocabularioProvider } from "@/lib/vocabulario-context";
+import { SeccionesDeModuloProvider } from "@/components/secciones-de-modulo";
 import { VOCABULARIO_BASE } from "@/verticals/vocabulario";
 
 /**
@@ -143,7 +144,10 @@ export function AppShell({
           )}
         >
           {/* 072 (D8) — El vocabulario del pack, para títulos y estados vacíos. */}
-          <VocabularioProvider vocabulario={experiencia?.vocabulario ?? VOCABULARIO_BASE}>{children}</VocabularioProvider>
+          <VocabularioProvider vocabulario={experiencia?.vocabulario ?? VOCABULARIO_BASE}>
+            {/* 072-B — Las secciones de la ficha que aportan los módulos encendidos. */}
+            <SeccionesDeModuloProvider secciones={experiencia?.modulos?.seccionesFicha ?? []}>{children}</SeccionesDeModuloProvider>
+          </VocabularioProvider>
         </main>
       </div>
     </div>

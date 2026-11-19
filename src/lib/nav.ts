@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListChecks,
   PartyPopper,
+  Puzzle,
   Settings,
   Sparkles,
   Users,
@@ -66,6 +67,7 @@ export const ICONOS_NAV: Record<IconoNav, LucideIcon> = {
   guia: ListChecks,
   salud: HeartPulse,
   evento: PartyPopper,
+  modulo: Puzzle,
 };
 
 export function appNavGroups({
@@ -95,6 +97,11 @@ export function appNavGroups({
   if (agenda) trabajo.push({ href: "/bookings", label: t(voc, "cita", "varios"), icon: CalendarDays });
   // 072 (D7) — Inicio solo existe si el pack (o el negocio) lo define.
   if (experiencia?.inicio) trabajo.unshift({ href: "/inicio", label: t(voc, "inicio"), icon: LayoutDashboard });
+  // 072-B — Las entradas de los módulos encendidos, después de las del
+  // núcleo (el pack o el negocio pueden reordenarlas u ocultarlas).
+  for (const e of experiencia?.modulos?.nav ?? []) {
+    trabajo.push({ href: e.href, label: e.label, icon: ICONOS_NAV[e.icono] ?? ICONOS_NAV.modulo });
+  }
 
   const agente: NavItem[] = [];
   // Un miembro del equipo no puede hacer ninguno de los pasos de la guía.

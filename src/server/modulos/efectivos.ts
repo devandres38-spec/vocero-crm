@@ -3,6 +3,7 @@ import { CHANNEL_ORDER, isChannel, type Channel } from "@/lib/channels";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { atribucionEnabled } from "@/server/attribution/flag";
 import { isChannelEnabled } from "@/server/channels/enabled";
+import { CLAVES_MODULO } from "@/modulos/catalogo";
 
 /**
  * 069 (D11) — Módulos por organización. La instancia es el TECHO (lo que el
@@ -15,10 +16,10 @@ import { isChannelEnabled } from "@/server/channels/enabled";
  */
 
 /**
- * Catálogo de módulos verticales (Vertical Packs, 071+). Nace vacío: hasta
- * que exista un módulo vertical real, cualquier clave es desconocida.
+ * Catálogo de módulos (071+). 072-B (FR-040): se deriva del registro de
+ * `src/modulos/catalogo.ts`; una clave que no esté ahí es desconocida.
  */
-export const CATALOGO_VERTICAL: readonly string[] = [];
+export const CATALOGO_VERTICAL: readonly string[] = CLAVES_MODULO;
 
 /** WhatsApp no se puede apagar: es el canal por el que existe el producto. */
 const CANAL_NUCLEO: Channel = "whatsapp";

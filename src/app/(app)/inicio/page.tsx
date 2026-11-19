@@ -35,7 +35,7 @@ export default async function InicioPage() {
     timezone,
     agenda,
   };
-  const widgets = widgetsVisibles(experiencia.inicio.widgets, agenda);
+  const widgets = widgetsVisibles(experiencia.inicio.widgets, agenda, experiencia.modulos.claves);
 
   return (
     <div className="flex h-full flex-col">
