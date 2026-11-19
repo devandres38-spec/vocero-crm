@@ -169,3 +169,24 @@ Pruebas existentes cambiadas A PROPÓSITO (cada una por un cambio aprobado):
 Desviaciones del plan: sin tema `fiesta` (T020); Ajustes → Ficha sin
 soporte de configuración (T026); overrides sin UI propia (T038); extensión del
 arnés `e2e-plataforma.mjs` pendiente para staging (T046).
+
+## Auditoría 072-A (`AUDITORIA-072A.md`) — remediada
+
+Aplicadas A-1..A-8, M-1..M-10 y B-1..B-5 en la misma rama, sin cambio de
+versión (2.12.0 aún no se publica). Decisiones del dueño: Ajustes → Ficha sigue
+fuera del soporte de configuración (solo M-8: el `puedeEditar` del GET = el
+PUT) y los packs siguen con temas existentes + acento propio.
+
+Regresiones: `tests/unit/auditoria-072a.test.ts`,
+`tests/unit/auditoria-072a-contacto.test.ts` (PATCH con `ignored`) y, en Nea,
+`tests/test_ficha_dinamica_072.py` (A-8, M-6, M-9, B-5).
+
+Gates: vocero-crm `typecheck` 0 · `lint` limpio · Vitest **173 archivos /
+2 169 pruebas en verde** · nea-agent `pytest` **888 passed, 40 skipped**; las 6
+doradas B0 intactas.
+
+Pruebas cambiadas A PROPÓSITO: `ficha-072.test.ts` (quitar todos los campos
+deja la memoria de tipos retirados, A-4; opciones una por línea, B-1; la ruta
+usa `puedeEditarFicha`, M-8), `personas-072.test.ts` (rangos 11xx/12xx, A-1),
+`inicio-072.test.ts` (`/inbox` en `ocultas` ahora invalida los ajustes, M-3) y
+el dorado de Nea `072_cloud_con_ficha.txt` (etiquetas como lista JSON, M-9).

@@ -32,6 +32,27 @@ existían— ve exactamente lo de 2.11.0.**
   en la respuesta de `PUT …/ficha` (solo si se descartó algún valor por su
   tipo). Delta: [specs/072…/contracts/brains-072.md](specs/072-motor-multi-nicho/contracts/brains-072.md).
 
+### Auditoría 072-A (antes de publicar)
+
+- **Laboratorio**: las personas de los nichos usan teléfonos `5700000011xx`
+  (clínica) y `5700000012xx` (eventos), que ya no chocan con la demo; con el
+  cierre sin rumbo apagado, el nicho no corre «Sin rumbo»; el progreso de una
+  corrida fallida cuenta sus casos reales.
+- **Ficha**: el tipo de un campo tampoco cambia quitándolo y recreándolo (se
+  recuerdan los tipos retirados; guardar va en una transacción con la fila
+  bloqueada). La ficha resultante respeta el tope de 40 claves. El esquema ve
+  el valor crudo (nuevo motivo `no_es_texto`) y `PATCH /api/contacts/[id]`
+  devuelve `ignored`. `constructor` y `prototype` quedan reservadas. `0.125`
+  es 0,125 y una fecha con basura al final no es fecha.
+- **Formularios**: escribir el nombre de un campo ya no pierde el foco; las
+  opciones de una lista van una por línea (admiten comas); la ficha lateral
+  avisa si no se guardó y abre la edición con su valor; Ajustes → Ficha dice si
+  no cargó y deja ajustar la clave de un campo nuevo. `/platform` conserva los
+  `overrides` del nicho y traduce los errores de la 072.
+- **Nicho**: `nav.ocultas` no acepta `/inbox`, `inicio.widgets` no puede ir
+  vacío y el tope de 4 KB se mide en bytes; «Eventos próximos» omite
+  archivados.
+
 ### Actualizar desde 2.11
 
 Redesplegar, en cualquier orden respecto de Nea: una Nea 071 ignora los campos
