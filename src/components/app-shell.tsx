@@ -5,12 +5,15 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import type { Branding } from "@/lib/branding";
 import type { Apariencia } from "@/lib/temas";
+import type { ExperienciaResuelta } from "@/verticals/resolver";
 import type { ResolvedCommit } from "@/lib/version";
 import { AppNav } from "@/components/app-nav";
 import { BrandLogo } from "@/components/brand-mark";
 import { cn } from "@/lib/utils";
 import { BandaSinConexion } from "@/components/banda-sin-conexion";
 import { AtajosGlobales } from "@/components/atajos-globales";
+import { VocabularioProvider } from "@/lib/vocabulario-context";
+import { VOCABULARIO_BASE } from "@/verticals/vocabulario";
 
 /**
  * Cascarón de la app en dos modos:
@@ -35,6 +38,7 @@ export function AppShell({
   empresasUrl,
   plataformaUrl,
   aviso = null,
+  experiencia = null,
   children,
 }: {
   branding: Branding;
@@ -60,6 +64,8 @@ export function AppShell({
    * no responde nadie.
    */
   aviso?: React.ReactNode;
+  /** 072 — El Vertical Pack del negocio, resuelto en el servidor (serializable). */
+  experiencia?: ExperienciaResuelta | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -104,6 +110,7 @@ export function AppShell({
         kicker={kicker}
         empresasUrl={empresasUrl}
         plataformaUrl={plataformaUrl}
+        experiencia={experiencia}
         open={navOpen}
         onClose={() => setNavOpen(false)}
       />
@@ -125,7 +132,7 @@ export function AppShell({
         {/* 056 — El tiempo real caído se ve desde cualquier pantalla. */}
         <BandaSinConexion />
         {/* 055 — Ctrl+K y «?» desde cualquier pantalla. */}
-        <AtajosGlobales agenda={agenda} role={role} />
+        <AtajosGlobales agenda={agenda} role={role} experiencia={experiencia} />
 
         {/* La Bandeja trae sus propias tarjetas (lista, hilo, panel); el resto
             de las pantallas vive en una sola. */}
@@ -135,7 +142,8 @@ export function AppShell({
             esBandeja ? "lg:bg-transparent" : "lg:tarjeta"
           )}
         >
-          {children}
+          {/* 072 (D8) — El vocabulario del pack, para títulos y estados vacíos. */}
+          <VocabularioProvider vocabulario={experiencia?.vocabulario ?? VOCABULARIO_BASE}>{children}</VocabularioProvider>
         </main>
       </div>
     </div>
