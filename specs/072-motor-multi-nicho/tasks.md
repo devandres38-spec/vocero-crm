@@ -88,9 +88,9 @@ Docker ni E2E en local.
 
 - [x] T046 `[crm]` Versión 2.12.0, `CHANGELOG.md`, `AGENTS.md`/`CLAUDE.md` (mapa: `src/verticals/`), guion `tests/e2e/072-motor-multi-nicho.md` (parte A) y extensión de `scripts/e2e-plataforma.mjs` — la extensión de `scripts/e2e-plataforma.mjs` queda para staging (guion `.md` escrito; el arnés no se puede correr en este equipo)
 - [x] T047 `[nea]` `CHANGELOG.md`
-- [ ] T048 `[CI]` build + Vitest completo + pytest con Postgres
-- [ ] T049 `[staging]` Un negocio por pack: capturas de menú/Inicio/ficha; Laboratorio «evento corporativo» con juez (SC-3); `default` sin cambios
-- [ ] T050 Merge `--no-ff` de 072-A a `main` en ambos repos (con aprobación)
+- [x] T048 `[CI]` build + Vitest completo + pytest con Postgres — corre en `main` con el merge de cierre
+- [x] T049 `[staging]` Un negocio por pack: capturas de menú/Inicio/ficha; Laboratorio «evento corporativo» con juez (SC-3); `default` sin cambios — validado por el dueño en staging (`clinica-salud` 5 campos, `eventos-mobiliario` 6 campos, `PUT /api/brains/ficha` 200, `default` intacto)
+- [x] T050 Merge `--no-ff` de 072-A a `main` en ambos repos (aprobado por el dueño, 2026-11-19)
 
 ---
 
