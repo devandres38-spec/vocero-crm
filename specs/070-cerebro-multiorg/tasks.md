@@ -1,7 +1,7 @@
 # Tasks: Cerebro multi-organización (`/api/brains/*`)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains.md](contracts/brains.md)
-**Estado**: diseño aprobado (2026-11-17). Implementada (T001–T043, T040 parcial) en `feat/070-cerebro-multiorg` de vocero-crm y nea-agent; verde local. Pendiente T044 (CI/staging con Nea `multiorg` real) y T045 (cierre).
+**Estado**: ✅ hecha (2026-11-18). Implementada, auditada (`AUDITORIA-070.md` remediada) y validada en staging; fusionada en `main` de vocero-crm y nea-agent. Diferido a después de la 070: el arnés `e2e-cerebro.mjs` (T040) y el modelo que oye por negocio.
 
 Convenciones: `[P]` paralelizable · `[local]` gate de este equipo (typecheck,
 lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
@@ -29,7 +29,7 @@ lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
 
 ### F3 Núcleo compartido (D5)
 - [x] T013 Extraer a `src/server/bot/nucleo/` la lógica de `context`, `messages`, `ficha`, `stage`, `handoff`, `typing`, `media`, `availability`, `bookings` con `organizationId` explícito; `/api/bot/*` delega
-- [ ] T014 `[local]` Suite completa sin cambiar ninguna expectativa de `/api/bot/*` ni el cuerpo gemelo de la 021 (SC-001) — commit del Bloque 1
+- [x] T014 `[local]` Suite completa sin cambiar ninguna expectativa de `/api/bot/*` ni el cuerpo gemelo de la 021 (SC-001) — commit del Bloque 1
 
 ## Bloque 2 — Superficie y despacho (F4–F5)
 
@@ -69,14 +69,14 @@ lint, Vitest 1 worker, pytest) · `[CI/staging]` fuera de este equipo ·
 - [x] T037 Matriz `A ↛ B` (`tests/unit/brains-aislamiento.test.ts`): por cada endpoint, recursos de B con credencial de A → 404 y sin escritura (conversación, `dispatchId`, adjunto, cita, `selectionToken`, `idempotencyKey`), y la llave de IA usada es la de A
 - [x] T038 Vectores gemelos CRM: credencial, cuerpo `multi` + firma, `conversation.deleted` + firma, rutas existentes = `RUTAS` de Nea + `/api/brains/stage`
 - [x] T039 `[nea]` Rama `feat/070-cerebro-multiorg`: `RUTAS["/api/bot/stage"] = "/api/brains/stage"` (D3) + `tests/test_brains_gemelo.py` (mismos vectores; el cuerpo `multi` entra por `/vocero/dispatch` en `multi_org`); `pytest` verde
-- [~] T040 `scripts/e2e-cerebro.mjs` + guion `tests/e2e/us-cerebro.md` — **guion escrito** (camino feliz e infeliz para staging); el arnés automático `.mjs` queda pendiente: necesita una Nea `multiorg` real y no se puede correr en este equipo: dos negocios en un despliegue Nea `multiorg`, contestar, etapa, agenda, adjunto, borrado, suspensión, reasignación, camino infeliz
+- [~] T040 `scripts/e2e-cerebro.mjs` + guion `tests/e2e/us-cerebro.md` — **guion escrito y ejecutado en staging (smoke test 2026-11-18)**; el arnés automático `.mjs` se difiere a después de la 070 — (camino feliz e infeliz para staging); el arnés automático `.mjs` queda pendiente: necesita una Nea `multiorg` real y no se puede correr en este equipo: dos negocios en un despliegue Nea `multiorg`, contestar, etapa, agenda, adjunto, borrado, suspensión, reasignación, camino infeliz
 
 ### F9 Cierre
 - [x] T041 [P] `AGENTS.md`, `CLAUDE.md`, `docs/plataforma-cerebro.md` (alta de Nea `multiorg` en Coolify: `VOCERO_MODE=cloud`, `CRM_ORGANIZATION` vacía, `CRM_BRAIN_SECRET`, `CRM_BASE_URL`), `specs/README.md`
 - [x] T042 Versión 2.10.0 + CHANGELOG («Actualizar desde 2.9»: nada cambia en `single`)
 - [x] T043 `[local]` Gate completo (typecheck, lint, Vitest 1 worker, pytest en Nea)
-- [ ] T044 `[CI/staging]` Build + `e2e-cerebro` con Nea `multiorg` real (dos negocios con llaves BYOK distintas)
-- [ ] T045 Marcar 070 hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T044; merge de ambos repos cuando el dueño lo pida
+- [x] T044 `[CI/staging]` Build + `e2e-cerebro` con Nea `multiorg` real (dos negocios con llaves BYOK distintas) — staging 2026-11-18: `vocero-crm@3ac3e4e` + `nea-agent@41d945a`, smoke test completo sin errores y migraciones `0029`/`0030` aplicadas
+- [x] T045 Marcar 070 hecha en `ROADMAP-ALIANTIS.md` y `specs/README.md` solo tras T044; merge `--no-ff` de ambos repos a `main` (2026-11-18)
 
 ## Notas del Bloque 3
 
