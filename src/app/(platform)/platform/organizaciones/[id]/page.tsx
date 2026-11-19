@@ -99,7 +99,7 @@ export default async function DetalleOrganizacionPage({
       </Seccion>
       <Seccion
         titulo="Cerebro"
-        descripcion="El agente que contesta por este negocio (una Nea multiorg)."
+        descripcion="El agente que contesta por este negocio (un cerebro multiorg)."
       >
         <AsignarCerebro
           organizationId={org.id}

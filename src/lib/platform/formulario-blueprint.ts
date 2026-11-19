@@ -1,4 +1,5 @@
 import type { OrganizationBlueprint, SeccionBlueprint } from "@/lib/platform/blueprint";
+import { esTrato } from "@/lib/agent-roles";
 import { APARIENCIA_POR_DEFECTO, type Apariencia } from "@/lib/temas";
 import { normalizarAtajo } from "@/lib/respuestas-rapidas";
 import { REGIONES_SUGERIDAS } from "@/lib/region";
@@ -73,6 +74,10 @@ export type FormBlueprint = {
     greeting: string;
     instructions: string;
     escalationRules: string;
+    /** 071 — `""` = sin cambiar (el negocio conserva el suyo; uno nuevo, `tu`). */
+    treatment: string;
+    /** 071 — `null` = sin cambiar (uno nuevo cierra las conversaciones sin rumbo). */
+    stallEnabled: boolean | null;
     /** `true` = todas las herramientas (también las que se agreguen después). */
     todas: boolean;
     tools: string[];
@@ -130,6 +135,8 @@ export function formularioInicial(d: DefaultsForm, techo: TechoForm): FormBluepr
       greeting: "",
       instructions: "",
       escalationRules: "",
+      treatment: "",
+      stallEnabled: null,
       todas: true,
       tools: [],
     },
@@ -191,6 +198,8 @@ export function formularioDesdeBlueprint(
       greeting: bp.agent.greeting ?? "",
       instructions: bp.agent.instructions ?? "",
       escalationRules: bp.agent.escalationRules ?? "",
+      treatment: bp.agent.treatment ?? "",
+      stallEnabled: bp.agent.stallEnabled ?? null,
       todas: bp.agent.tools === null || bp.agent.tools === undefined,
       tools: bp.agent.tools ? [...bp.agent.tools] : [],
     };
@@ -266,9 +275,11 @@ export function seccionesDelFormulario(
     instructions: nulo(a.instructions),
     escalationRules: nulo(a.escalationRules),
     tools: a.todas ? null : [...a.tools],
+    ...(esTrato(a.treatment) ? { treatment: a.treatment } : {}),
+    ...(a.stallEnabled !== null ? { stallEnabled: a.stallEnabled } : {}),
   };
   const agenteVacio =
-    !agente.name && !agente.role && agente.tools === null && [agente.tone, agente.greeting, agente.instructions, agente.escalationRules].every((x) => x === null);
+    !agente.name && !agente.role && !agente.treatment && agente.stallEnabled === undefined && agente.tools === null && [agente.tone, agente.greeting, agente.instructions, agente.escalationRules].every((x) => x === null);
   if (!(modo === "crear" && agenteVacio)) s.agent = agente;
 
   const entradas = f.knowledge.entries

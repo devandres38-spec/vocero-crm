@@ -43,6 +43,8 @@ function profileRow(overrides: Partial<AgentProfile> = {}): AgentProfile {
     greeting: "¡Hola! Soy Sofi 🦷",
     role: "calificador",
     tools: null,
+    treatment: "tu",
+    stallEnabled: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -76,6 +78,18 @@ describe("034 — role y tools en el perfil", () => {
   });
 });
 
+describe("071 — treatment y stallEnabled en el perfil", () => {
+  it("viajan tal cual", () => {
+    const out = serializeBotProfile(profileRow({ treatment: "usted", stallEnabled: false }), []);
+    expect(out.profile.treatment).toBe("usted");
+    expect(out.profile.stallEnabled).toBe(false);
+  });
+
+  it("un trato desconocido cae a tu (igual que el cerebro)", () => {
+    expect(serializeBotProfile(profileRow({ treatment: "vos" }), []).profile.treatment).toBe("tu");
+  });
+});
+
 describe("serializeBotProfile", () => {
   it("perfil completo → shape exacto del contrato", () => {
     const out = serializeBotProfile(profileRow(), [
@@ -90,6 +104,9 @@ describe("serializeBotProfile", () => {
         greeting: "¡Hola! Soy Sofi 🦷",
         role: "calificador",
         tools: ["ficha", "etapa", "agendar", "reprogramar", "salida", "escalar"],
+        // 071 — aditivos
+        treatment: "tu",
+        stallEnabled: true,
       },
       kb: "P: ¿Cuánto cuesta?\nR: $800.",
       resources: [],

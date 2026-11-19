@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
+import { herramientasEfectivas } from "@/lib/agent-roles";
 import { igualProfundo, type Tx } from "./metadata";
 
 /**
@@ -12,7 +13,29 @@ import { igualProfundo, type Tx } from "./metadata";
  */
 
 type Agente = NonNullable<OrganizationBlueprint["agent"]>;
-const CAMPOS = ["name", "tone", "role", "tools", "instructions", "escalationRules", "greeting"] as const;
+const CAMPOS = [
+  "name",
+  "tone",
+  "role",
+  "tools",
+  "instructions",
+  "escalationRules",
+  "greeting",
+  // 071
+  "treatment",
+  "stallEnabled",
+] as const;
+
+/**
+ * Auditoría 071 (B-4): las herramientas se guardan como las guarda Ajustes →
+ * Agente (`herramientasEfectivas`: `escalar` siempre, orden del catálogo, sin
+ * claves desconocidas). Comparar normalizado también es lo que hace
+ * idempotente reaplicar un Blueprint con otro orden.
+ */
+function normalizar(campo: (typeof CAMPOS)[number], valor: unknown): unknown {
+  if (campo === "tools" && Array.isArray(valor)) return herramientasEfectivas(valor as string[]);
+  return valor;
+}
 
 export async function aplicarAgente(tx: Tx, organizationId: string, deseado: Agente): Promise<boolean> {
   const [actual] = await tx
@@ -25,6 +48,8 @@ export async function aplicarAgente(tx: Tx, organizationId: string, deseado: Age
       instructions: schema.agentProfile.instructions,
       escalationRules: schema.agentProfile.escalationRules,
       greeting: schema.agentProfile.greeting,
+      treatment: schema.agentProfile.treatment,
+      stallEnabled: schema.agentProfile.stallEnabled,
     })
     .from(schema.agentProfile)
     .where(eq(schema.agentProfile.organizationId, organizationId))
@@ -32,9 +57,9 @@ export async function aplicarAgente(tx: Tx, organizationId: string, deseado: Age
 
   const cambios: Record<string, unknown> = {};
   for (const campo of CAMPOS) {
-    const v = deseado[campo];
+    const v = normalizar(campo, deseado[campo]);
     if (v === undefined) continue;
-    if (!actual || !igualProfundo(actual[campo] ?? null, v ?? null)) cambios[campo] = v;
+    if (!actual || !igualProfundo(normalizar(campo, actual[campo]) ?? null, v ?? null)) cambios[campo] = v;
   }
   if (Object.keys(cambios).length === 0) return false;
 

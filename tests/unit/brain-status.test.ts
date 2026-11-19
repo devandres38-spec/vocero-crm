@@ -132,10 +132,10 @@ describe("computeBrainStatus — 036: contesta el cerebro al que se le despacha"
 });
 
 describe("textos compartidos", () => {
-  it("«Nea» solo si su /health habla el contrato de Nea", () => {
+  it("«Agente» solo si su /health habla el contrato del cerebro (071 M-3: sin «Nea»)", () => {
     const conNea = status({ botKeyConfigured: true, health: EN_LINEA });
-    expect(externalBrainName(conNea)).toBe("Nea");
-    expect(externalAnswerLabel(conNea)).toBe("Responde tu cerebro externo (Nea)");
+    expect(externalBrainName(conNea)).toBe("Agente");
+    expect(externalAnswerLabel(conNea)).toBe("Responde tu agente");
     const sinNombre = status({ botKeyConfigured: true, lastSeenAt: HACE_3_MIN });
     expect(externalBrainName(sinNombre)).toBeNull();
     expect(externalAnswerLabel(sinNombre)).toBe("Responde tu cerebro externo");

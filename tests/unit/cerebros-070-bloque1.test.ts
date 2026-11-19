@@ -306,6 +306,16 @@ describe("requireBrain — la puerta de /api/brains/*", () => {
     }
   });
 
+  it("071 (R9) — Nea manda el id: tras un cambio de slug la misma petición sigue entrando", async () => {
+    invalidarCacheCerebro();
+    fake().responder(schema.organization, [orgA({ slug: "clinica-renombrada" })]);
+    fake().responder(schema.brainDeployment, [secretoEnBase(SECRETO_A)]);
+    const r = await requireBrain(
+      peticion({ authorization: `Bearer ${credencialDerivada(SECRETO_A, "org_A")}`, "x-vocero-organization": "org_A" })
+    );
+    expect(r).toEqual({ ok: true, ambito: { organizationId: "org_A", slug: "clinica-renombrada", deploymentId: "brn_1" } });
+  });
+
   it("todo fallo es el MISMO 401 (sin oráculo)", async () => {
     const casos: { nombre: string; preparar: () => void; cab: Record<string, string> }[] = [
       { nombre: "sin cabeceras", preparar: () => {}, cab: {} },

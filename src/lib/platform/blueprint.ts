@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLAVES_HERRAMIENTA, ROLES, type ClaveHerramienta, type ClaveRol } from "@/lib/agent-roles";
+import { CLAVES_HERRAMIENTA, CLAVES_TRATO, ROLES, type ClaveHerramienta, type ClaveRol, type Trato } from "@/lib/agent-roles";
 import { isValidHex } from "@/lib/branding";
 import { CURRENCIES } from "@/lib/money";
 import { esLocale, esPais, esZonaValida } from "@/lib/region";
@@ -95,6 +95,10 @@ const agentSchema = z
     instructions: textoLargo(8000).optional(),
     escalationRules: textoLargo(4000).optional(),
     greeting: textoLargo(1000).optional(),
+    /** 071 — `tu` | `usted` | `neutro`. */
+    treatment: z.enum(CLAVES_TRATO as [Trato, ...Trato[]]).optional(),
+    /** 071 — Cerrar con amabilidad las conversaciones sin rumbo. */
+    stallEnabled: z.boolean().optional(),
   })
   .strict();
 

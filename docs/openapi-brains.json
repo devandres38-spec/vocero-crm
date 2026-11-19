@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Aliantis — API de cerebros (/api/brains/*)",
-    "version": "2.10.0",
-    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre."
+    "version": "2.11.0",
+    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md."
   },
   "components": {
     "securitySchemes": {
@@ -14,7 +14,8 @@
       "organizacion": {
         "type": "apiKey",
         "in": "header",
-        "name": "X-Vocero-Organization"
+        "name": "X-Vocero-Organization",
+        "description": "Slug o organization.id del negocio. Desde la 071 Nea manda el id: un cambio de slug no invalida peticiones en vuelo."
       }
     },
     "schemas": {
@@ -45,7 +46,7 @@
   "paths": {
     "/api/brains/context": {
       "get": {
-        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil, coordinationFollowupEnabled:false), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null).",
+        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil con treatment y stallEnabled, coordinationFollowupEnabled:false y, desde la 071, agendaEnabled), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null).",
         "parameters": [
           {
             "name": "conversationId",
@@ -69,7 +70,60 @@
         ],
         "responses": {
           "200": {
-            "description": "Contexto"
+            "description": "Contexto",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "agent": {
+                      "type": "object",
+                      "description": "Perfil del agente (serializeBotProfile) + extras del cerebro. Campos ausentes → defaults.",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "examples": [
+                            "calificador"
+                          ]
+                        },
+                        "tools": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "treatment": {
+                          "type": "string",
+                          "enum": [
+                            "tu",
+                            "usted",
+                            "neutro"
+                          ],
+                          "default": "tu",
+                          "description": "071 — Cómo trata a los clientes. Desconocido → tu."
+                        },
+                        "stallEnabled": {
+                          "type": "boolean",
+                          "default": true,
+                          "description": "071 — Cerrar con amabilidad las conversaciones sin rumbo."
+                        },
+                        "agendaEnabled": {
+                          "type": "boolean",
+                          "description": "071 — Módulo agenda de este negocio (techo ∧ organización). Ausente (CRM 2.10): el cerebro sondea."
+                        },
+                        "coordinationFollowupEnabled": {
+                          "type": "boolean",
+                          "const": false
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           },
           "404": {
             "description": "not_found",

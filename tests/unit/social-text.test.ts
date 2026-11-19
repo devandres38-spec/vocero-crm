@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { plainSocialText } from "@/lib/social-text";
 
@@ -91,6 +93,29 @@ describe("024 · texto de la IA sin formato para redes", () => {
       "• ya plano",
       "",
     ]) {
+      const una = plainSocialText(texto);
+      expect(plainSocialText(una)).toBe(una);
+    }
+  });
+});
+
+/**
+ * 071 (D18) — Vectores gemelos con nea-agent (`texto_plano` en
+ * `app/formato.py`). El JSON es idéntico en los dos repos: si uno cambia la
+ * regla, el otro se entera.
+ */
+describe("071 · gemelo de texto_plano de Nea", () => {
+  const vectores = JSON.parse(
+    readFileSync(path.join(import.meta.dirname, "fixtures", "texto_plano_vectores.json"), "utf8")
+  ) as { pares: { entrada: string; salida: string }[]; sinCambio: string[]; idempotentes: string[] };
+
+  it("cada par da lo mismo que en Nea", () => {
+    for (const { entrada, salida } of vectores.pares) expect(plainSocialText(entrada)).toBe(salida);
+  });
+
+  it("lo que no es formato no se toca, y es idempotente", () => {
+    for (const texto of vectores.sinCambio) expect(plainSocialText(texto)).toBe(texto);
+    for (const texto of vectores.idempotentes) {
       const una = plainSocialText(texto);
       expect(plainSocialText(una)).toBe(una);
     }

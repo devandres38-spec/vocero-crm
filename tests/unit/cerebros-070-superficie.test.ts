@@ -146,6 +146,8 @@ describe("GET /api/brains/context", () => {
     expect(r.status).toBe(200);
     expect(c.contact).toEqual({ id: "ct_1" });
     expect(c.agent).toMatchObject({ name: "Ana", tone: "cálido", role: "calificador", coordinationFollowupEnabled: false });
+    // 071 — aditivos: sin columna (fila vieja) → defaults; agenda = módulo del negocio.
+    expect(c.agent).toMatchObject({ treatment: "tu", stallEnabled: true, agendaEnabled: false });
     expect(c.knowledge).toEqual([
       { kind: "qa", question: "¿Horario?", answer: "8 a 6" },
       { kind: "block", content: "Somos una clínica" },
@@ -153,6 +155,31 @@ describe("GET /api/brains/context", () => {
     // D6: la llave del entorno NO se ofrece en esta superficie.
     expect(c.llm).toBeNull();
     expect(JSON.stringify(c)).not.toContain("sk-or-de-la-plataforma");
+  });
+
+  it("071 — agent.agendaEnabled es el módulo agenda de ESE negocio; treatment y stallEnabled viajan", async () => {
+    vi.stubEnv("TENANCY", "multi");
+    vi.stubEnv("AGENDA", "true");
+    h.contexto.mockResolvedValue({ contact: { id: "ct_1" }, conversation: { id: "cv_1" }, lead: null, adOrigen: null });
+    fake().responder(schema.agentProfile, [
+      { name: "Ana", tone: null, instructions: null, escalationRules: null, greeting: null, role: "calificador", tools: null, treatment: "usted", stallEnabled: false },
+    ]);
+    fake().responder(schema.kbEntry, []);
+    fake().responder(schema.organization, [{ modules: { agenda: false } }]);
+    const apagada = (await (await contexto(new Request(`${BASE}/context?conversationId=cv_1&contextVersion=2`))).json()) as {
+      agent: Record<string, unknown>;
+    };
+    expect(apagada.agent).toMatchObject({ treatment: "usted", stallEnabled: false, agendaEnabled: false });
+
+    h.contexto.mockResolvedValue({ contact: { id: "ct_1" }, conversation: { id: "cv_1" }, lead: null, adOrigen: null });
+    fake().responder(schema.agentProfile, []);
+    fake().responder(schema.kbEntry, []);
+    fake().responder(schema.organization, [{ modules: { agenda: true } }]);
+    const encendida = (await (await contexto(new Request(`${BASE}/context?conversationId=cv_1&contextVersion=2`))).json()) as {
+      agent: Record<string, unknown>;
+    };
+    // Sin perfil: solo los extras del cerebro.
+    expect(encendida.agent).toEqual({ coordinationFollowupEnabled: false, agendaEnabled: true });
   });
 
   it("con la llave propia (proveedor compatible): llm por /api/brains/llm, sin transcribir", async () => {

@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, MessageSquareText, Plus, Text, Trash2 } from "lucid
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { HERRAMIENTAS, ROLES } from "@/lib/agent-roles";
+import { HERRAMIENTAS, ROLES, TRATOS } from "@/lib/agent-roles";
 import { entradaKbCompleta, nuevoUid, type EntradaKb, type FormBlueprint } from "@/lib/platform/formulario-blueprint";
 import { cn } from "@/lib/utils";
 import { BotonIcono, Campo, FilaInterruptor, Pastillas, SELECT, Seccion, mover, type Actualizar } from "./controles";
@@ -33,7 +33,7 @@ export function PestanaAgente({
     <div className="space-y-4">
       <Seccion
         titulo="Cerebro"
-        descripcion="El agente que contesta por este negocio (una Nea multiorg de Cerebros). Contesta solo si el agente está encendido y el negocio tiene su llave de IA."
+        descripcion="El agente que contesta por este negocio (un cerebro multiorg de Cerebros). Contesta solo si el agente está encendido y el negocio tiene su llave de IA."
       >
         <Campo etiqueta="Cerebro asignado">
           {(id) => (
@@ -63,6 +63,32 @@ export function PestanaAgente({
                     {r.etiqueta}
                   </option>
                 ))}
+              </select>
+            )}
+          </Campo>
+          <Campo etiqueta="Trato" ayuda="Cómo se dirige a los clientes. En otro idioma, contesta en ese idioma.">
+            {(id) => (
+              <select id={id} className={SELECT} value={a.treatment} onChange={(e) => upd("agent", { treatment: e.target.value })}>
+                <option value="">Sin cambiar</option>
+                {TRATOS.map((t) => (
+                  <option key={t.clave} value={t.clave}>
+                    {t.etiqueta}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Campo>
+          <Campo etiqueta="Cerrar conversaciones sin rumbo" ayuda="Se despide con amabilidad si la conversación no avanza.">
+            {(id) => (
+              <select
+                id={id}
+                className={SELECT}
+                value={a.stallEnabled === null ? "" : a.stallEnabled ? "si" : "no"}
+                onChange={(e) => upd("agent", { stallEnabled: e.target.value === "" ? null : e.target.value === "si" })}
+              >
+                <option value="">Sin cambiar</option>
+                <option value="si">Sí</option>
+                <option value="no">No</option>
               </select>
             )}
           </Campo>

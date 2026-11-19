@@ -218,6 +218,13 @@
       "when": 1795043288024,
       "tag": "0030_cerebros_indices",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1795089873665,
+      "tag": "0031_agente_trato",
+      "breakpoints": true
     }
   ]
 }

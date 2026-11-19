@@ -22,6 +22,7 @@ vi.mock("@/lib/env", async (original) => ({
 
 import { aplicarBlueprint, BlueprintError } from "@/server/platform/blueprint/aplicar";
 import { exportarBlueprint } from "@/server/platform/blueprint/exportar";
+import { blueprintSchema } from "@/lib/platform/blueprint";
 import { hashToken } from "@/server/platform/invitaciones";
 
 const fake = () => h.fake!;
@@ -181,6 +182,9 @@ const perfil = {
   instructions: "Agenda citas.",
   escalationRules: null,
   greeting: "¡Hola!",
+  // 071
+  treatment: "usted",
+  stallEnabled: false,
 };
 const kb = [
   { id: "kb_1", kind: "qa", question: "¿Horario?", answer: "8 a 6", content: null },
@@ -224,6 +228,8 @@ describe("069 — aplicar sobre una existente (idempotencia)", () => {
       knowledge: { mode: "exact" },
     });
     expect(exportado).not.toHaveProperty("owner");
+    // 071 (SC-006) — el trato y el cierre sin rumbo viajan y no cambian nada al reaplicar.
+    expect(exportado?.agent).toMatchObject({ treatment: "usted", stallEnabled: false });
 
     encolarEstado();
     const r = await aplicarBlueprint(actor, { organizationId: "org_A" }, exportado);
@@ -241,6 +247,31 @@ describe("069 — aplicar sobre una existente (idempotencia)", () => {
     const meta = JSON.parse(String(fake().de(schema.organization, "update")[0]?.valores.metadata));
     expect(meta.region).toEqual({ country: "MX", locale: "es-CO", timezone: "America/Mexico_City" });
     expect(meta.branding.accent).toBe("#10c4a5");
+  });
+
+  it("071 — treatment y stallEnabled: cambia solo lo distinto, y lo igual es `sin_cambios`", async () => {
+    fake().responder(schema.organization, [fila]);
+    fake().responder(schema.agentProfile, [perfil]);
+    const r = await aplicarBlueprint(actor, { organizationId: "org_A" }, {
+      version: 1,
+      agent: { treatment: "neutro", stallEnabled: false },
+    });
+    expect(r.sections).toEqual({ agent: "actualizada" });
+    const valores = fake().de(schema.agentProfile, "update")[0]?.valores;
+    expect(valores).toMatchObject({ treatment: "neutro" });
+    expect(valores).not.toHaveProperty("stallEnabled");
+
+    fake().responder(schema.organization, [fila]);
+    fake().responder(schema.agentProfile, [{ ...perfil, treatment: "neutro" }]);
+    const otra = await aplicarBlueprint(actor, { organizationId: "org_A" }, {
+      version: 1,
+      agent: { treatment: "neutro", stallEnabled: false },
+    });
+    expect(otra.sections).toEqual({ agent: "sin_cambios" });
+  });
+
+  it("071 — un trato fuera del catálogo es un Blueprint inválido", () => {
+    expect(blueprintSchema.safeParse({ version: 1, agent: { treatment: "vos" } }).success).toBe(false);
   });
 
   it("una etapa con leads que el Blueprint omite se conserva y se advierte", async () => {
