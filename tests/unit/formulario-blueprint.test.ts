@@ -123,6 +123,31 @@ describe("Fix-C — editar: solo lo que cambió", () => {
     expect(valido(r.blueprint)).toEqual([]);
   });
 
+  it("071 — trato y cierre sin rumbo: se cargan del Blueprint y un cambio solo toca `agent`", () => {
+    const f = formularioDesdeBlueprint(bp, defaults, techo);
+    expect(f.agent.treatment).toBe("tu");
+    expect(f.agent.stallEnabled).toBe(true);
+    const base = seccionesDelFormulario(f, "editar", techo);
+    f.agent.treatment = "usted";
+    f.agent.stallEnabled = false;
+    const r = blueprintParaEnviar(f, "editar", techo, base);
+    expect(r.modificadas).toEqual(["agent"]);
+    expect(r.blueprint.agent).toMatchObject({ treatment: "usted", stallEnabled: false });
+    expect(valido(r.blueprint)).toEqual([]);
+  });
+
+  it("071 — «Sin cambiar» no manda ni trato ni cierre, y un agente así vacío no crea la sección", () => {
+    const f = formularioInicial(defaults, techo);
+    f.organization.name = "Ferretería Rojas";
+    const { blueprint } = blueprintParaEnviar(f, "crear", techo);
+    expect(blueprint).not.toHaveProperty("agent");
+    f.agent.stallEnabled = false;
+    expect(blueprintParaEnviar(f, "crear", techo).blueprint.agent).toEqual(
+      expect.objectContaining({ stallEnabled: false })
+    );
+    expect(blueprintParaEnviar(f, "crear", techo).blueprint.agent).not.toHaveProperty("treatment");
+  });
+
   it("al editar, el slug nunca se manda (es inmutable)", () => {
     const f = formularioDesdeBlueprint(bp, defaults, techo);
     const base = seccionesDelFormulario(f, "editar", techo);

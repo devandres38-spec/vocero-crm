@@ -5,9 +5,12 @@ import { scoped } from "@/lib/db/tenant";
 import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
 import {
   CLAVES_HERRAMIENTA,
+  CLAVES_TRATO,
   herramientasEfectivas,
   rolDe,
+  tratoDe,
   type ClaveHerramienta,
+  type Trato,
 } from "@/lib/agent-roles";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { mensajeProblemaPlataforma, problemaDeCerebroEnPlataforma } from "@/server/brains/destino";
@@ -41,6 +44,9 @@ export const GET = withAuth(async (session) => {
       // 034
       role: rolDe(p.role).clave,
       tools: herramientasEfectivas(p.tools),
+      // 071
+      treatment: tratoDe(p.treatment),
+      stallEnabled: p.stallEnabled,
     },
     // 034 — Sin la bandera, la pantalla no ofrece agendar ni reprogramar.
     agendaEnabled: agendaActiva(session),
@@ -63,6 +69,9 @@ const putSchema = z.object({
     .array(z.enum(CLAVES_HERRAMIENTA as [ClaveHerramienta, ...ClaveHerramienta[]]))
     .max(CLAVES_HERRAMIENTA.length)
     .optional(),
+  // 071 — Cómo trata a los clientes y si cierra las conversaciones sin rumbo.
+  treatment: z.enum(CLAVES_TRATO as [Trato, ...Trato[]]).optional(),
+  stallEnabled: z.boolean().optional(),
 });
 
 export const PUT = withAuth(async (session, req: Request) => {

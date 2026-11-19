@@ -12,7 +12,18 @@ import { igualProfundo, type Tx } from "./metadata";
  */
 
 type Agente = NonNullable<OrganizationBlueprint["agent"]>;
-const CAMPOS = ["name", "tone", "role", "tools", "instructions", "escalationRules", "greeting"] as const;
+const CAMPOS = [
+  "name",
+  "tone",
+  "role",
+  "tools",
+  "instructions",
+  "escalationRules",
+  "greeting",
+  // 071
+  "treatment",
+  "stallEnabled",
+] as const;
 
 export async function aplicarAgente(tx: Tx, organizationId: string, deseado: Agente): Promise<boolean> {
   const [actual] = await tx
@@ -25,6 +36,8 @@ export async function aplicarAgente(tx: Tx, organizationId: string, deseado: Age
       instructions: schema.agentProfile.instructions,
       escalationRules: schema.agentProfile.escalationRules,
       greeting: schema.agentProfile.greeting,
+      treatment: schema.agentProfile.treatment,
+      stallEnabled: schema.agentProfile.stallEnabled,
     })
     .from(schema.agentProfile)
     .where(eq(schema.agentProfile.organizationId, organizationId))

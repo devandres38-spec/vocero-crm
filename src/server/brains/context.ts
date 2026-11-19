@@ -4,6 +4,7 @@ import { resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import { contextoDeConversacion } from "@/server/bot/nucleo/contexto";
 import { serializeBotProfile } from "@/server/bot/profile";
+import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
  * 070 (contrato §2.1) — El contexto que lee una Nea `multiorg`: el cuerpo de
@@ -23,6 +24,10 @@ import { serializeBotProfile } from "@/server/bot/profile";
  *   pagado con la llave del negocio. Con otro proveedor, vacío: el chat de
  *   OpenAI solo acepta wav/mp3, y Nea prefiere no transcribir antes que
  *   inventar. Elegirlo por negocio es una mejora posterior a la 070.
+ *
+ * 071 (D5) — `agent.agendaEnabled`: el módulo agenda de ESE negocio (techo
+ * de la instalación ∧ organización). Nea lo usa en vez de sondear; si no
+ * viene (CRM 2.10), sigue con su sonda por organización.
  */
 
 /** El modelo que oye por OpenRouter (igual que `MODELO_QUE_OYE` de Nea). */
@@ -80,7 +85,7 @@ export async function contextoDelCerebro(
   if (!base) return null;
 
   const db = getDb();
-  const [perfiles, kb, llm] = await Promise.all([
+  const [perfiles, kb, llm, modulos] = await Promise.all([
     db
       .select()
       .from(schema.agentProfile)
@@ -92,11 +97,11 @@ export async function contextoDelCerebro(
       .where(eq(schema.kbEntry.organizationId, organizationId))
       .orderBy(asc(schema.kbEntry.createdAt)),
     llmDelCerebro(organizationId),
+    modulosDeOrganizacion(organizationId),
   ]);
   const perfil = perfiles[0];
-  const agent = perfil
-    ? { ...serializeBotProfile(perfil, []).profile, coordinationFollowupEnabled: false }
-    : { coordinationFollowupEnabled: false };
+  const extra = { coordinationFollowupEnabled: false, agendaEnabled: modulos.agenda };
+  const agent = perfil ? { ...serializeBotProfile(perfil, []).profile, ...extra } : extra;
 
   return { ...base, agent, knowledge: conocimientoDe(kb), llm };
 }

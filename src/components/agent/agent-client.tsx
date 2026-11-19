@@ -17,7 +17,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   HERRAMIENTAS,
   ROLES,
+  TRATOS,
   type ClaveHerramienta,
+  type Trato,
 } from "@/lib/agent-roles";
 
 type Profile = {
@@ -30,6 +32,9 @@ type Profile = {
   /** 034 */
   role: string;
   tools: ClaveHerramienta[];
+  /** 071 */
+  treatment: Trato;
+  stallEnabled: boolean;
 };
 
 type KbEntry = {
@@ -219,6 +224,7 @@ export function AgentClient() {
           onPreset={() => void cargarPreset()}
         />
         <ProfileSection profile={profile} onSave={saveProfile} />
+        <TratoSection profile={profile} onSave={saveProfile} />
         <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
       </div>
     </div>
@@ -321,7 +327,7 @@ function ProfileSection({
           <Label htmlFor="agent-tone">Tono</Label>
           <Input
             id="agent-tone"
-            placeholder="p. ej. cercano y directo, con usted"
+            placeholder="p. ej. cercano y directo"
             value={form.tone ?? ""}
             onChange={(e) => setForm({ ...form, tone: e.target.value })}
           />
@@ -366,6 +372,77 @@ function ProfileSection({
         >
           Guardar comportamiento
         </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * 071 — Cómo trata a los clientes y si cierra las conversaciones sin rumbo.
+ * Se guardan al tocarlos, como las herramientas: no dependen del formulario
+ * de Comportamiento.
+ */
+function TratoSection({
+  profile,
+  onSave,
+}: {
+  profile: Profile;
+  onSave: (patch: Partial<Profile>) => Promise<boolean>;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Trato y cierre</CardTitle>
+        <CardDescription>
+          Cómo se dirige el agente a tus clientes. Si un cliente escribe en otro
+          idioma, le contesta en ese idioma.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <span id="agent-trato" className="text-sm font-medium">
+            Trato
+          </span>
+          <div role="radiogroup" aria-labelledby="agent-trato" className="grid grid-cols-3 gap-2">
+            {TRATOS.map((t) => (
+              <button
+                key={t.clave}
+                type="button"
+                role="radio"
+                aria-checked={profile.treatment === t.clave}
+                data-trato={t.clave}
+                onClick={() => {
+                  if (profile.treatment !== t.clave) void onSave({ treatment: t.clave });
+                }}
+                className={
+                  profile.treatment === t.clave
+                    ? "rounded-md border border-primary bg-brand-tint px-3 py-2 text-sm font-medium text-brand-text"
+                    : "rounded-md border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
+                }
+              >
+                {t.etiqueta}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {TRATOS.find((t) => t.clave === profile.treatment)?.descripcion}
+          </p>
+        </div>
+        <div className="flex items-start justify-between gap-3 rounded-md border p-3">
+          <div>
+            <p className="text-sm font-medium">Cerrar conversaciones sin rumbo</p>
+            <p className="text-xs text-muted-foreground">
+              Si la conversación da vueltas sin avanzar, el agente se despide con
+              amabilidad y deja de contestar rellenos. Apágalo si prefieres que
+              siga atendiendo siempre.
+            </p>
+          </div>
+          <Switch
+            checked={profile.stallEnabled}
+            label="Cerrar conversaciones sin rumbo"
+            onCheckedChange={(stallEnabled) => void onSave({ stallEnabled })}
+          />
+        </div>
       </CardContent>
     </Card>
   );

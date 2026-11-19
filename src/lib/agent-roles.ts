@@ -143,3 +143,31 @@ export function esClaveRol(valor: unknown): valor is ClaveRol {
 export function rolDe(role: string | null | undefined): Rol {
   return esClaveRol(role) ? ROLES[role] : ROLES.calificador;
 }
+
+/**
+ * 071 — Cómo trata el agente a los clientes. Las claves son contrato con el
+ * cerebro (`profile.treatment`): no se renombran. Una desconocida cae a `tu`,
+ * en el CRM y en el cerebro.
+ */
+export type Trato = "tu" | "usted" | "neutro";
+
+export const TRATOS: readonly { clave: Trato; etiqueta: string; descripcion: string }[] = [
+  { clave: "tu", etiqueta: "Tú", descripcion: "Cercano: tutea al cliente." },
+  { clave: "usted", etiqueta: "Usted", descripcion: "Formal y cordial: lo trata de usted." },
+  {
+    clave: "neutro",
+    etiqueta: "Neutro",
+    descripcion: "Ni tú ni usted: frases impersonales.",
+  },
+];
+
+export const CLAVES_TRATO: readonly Trato[] = TRATOS.map((t) => t.clave);
+
+export function esTrato(valor: unknown): valor is Trato {
+  return typeof valor === "string" && (CLAVES_TRATO as string[]).includes(valor);
+}
+
+/** El trato de un perfil; uno desconocido cae a `tu`. */
+export function tratoDe(valor: string | null | undefined): Trato {
+  return esTrato(valor) ? valor : "tu";
+}

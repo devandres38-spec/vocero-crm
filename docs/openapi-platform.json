@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Aliantis — API de plataforma",
-    "version": "2.10.0",
+    "version": "2.11.0",
     "description": "Solo con TENANCY=multi. Autenticación: sesión de Super-Admin (panel) o token personal alp_… (Authorization: Bearer). Sin credenciales válidas la superficie responde 404; un token presentado e inválido, 401; sin el alcance, 403. El JSON Schema completo del OrganizationBlueprint lo devuelve GET /api/platform/catalog (campo `schema`). Errores: { error: { code, message, issues?: [{ path, message }] } }."
   },
   "components": {
@@ -57,6 +57,23 @@
         "properties": {
           "version": {
             "const": 1
+          },
+          "agent": {
+            "type": "object",
+            "description": "Merge por campo. 071: treatment (tu|usted|neutro) y stallEnabled (boolean). El esquema completo, en GET /api/platform/catalog → schema.",
+            "properties": {
+              "treatment": {
+                "type": "string",
+                "enum": [
+                  "tu",
+                  "usted",
+                  "neutro"
+                ]
+              },
+              "stallEnabled": {
+                "type": "boolean"
+              }
+            }
           }
         }
       },

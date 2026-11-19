@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { normalizeBranding, type Branding } from "@/lib/branding";
-import { esClaveHerramienta, ROLES, type ClaveHerramienta, type ClaveRol } from "@/lib/agent-roles";
+import { esClaveHerramienta, ROLES, tratoDe, type ClaveHerramienta, type ClaveRol } from "@/lib/agent-roles";
 import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
 import { getSettings } from "@/server/agenda/settings";
 import { auditar } from "@/server/platform/auditoria";
@@ -80,6 +80,8 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
       instructions: perfil.instructions,
       escalationRules: perfil.escalationRules,
       greeting: perfil.greeting,
+      treatment: tratoDe(perfil.treatment),
+      stallEnabled: perfil.stallEnabled,
     };
   }
 

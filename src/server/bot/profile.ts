@@ -1,6 +1,6 @@
 import type { schema } from "@/lib/db";
 import { renderKb } from "@/server/ai/prompts";
-import { herramientasEfectivas, rolDe } from "@/lib/agent-roles";
+import { herramientasEfectivas, rolDe, tratoDe } from "@/lib/agent-roles";
 
 type AgentProfile = typeof schema.agentProfile.$inferSelect;
 type KbEntry = typeof schema.kbEntry.$inferSelect;
@@ -21,6 +21,10 @@ type KbEntry = typeof schema.kbEntry.$inferSelect;
  * (`/api/bot/llm`, que le pone la llave de Ajustes → IA) y `model`, el que
  * eligió el negocio. `null` sin proveedor de IA configurado o con la llave
  * pausada: el cerebro no tiene con qué pensar por el CRM.
+ *
+ * 071 — `treatment` (`tu` | `usted` | `neutro`) y `stallEnabled`: cómo trata
+ * a los clientes y si cierra las conversaciones sin rumbo. Aditivas: un
+ * cerebro que no las conozca sigue tuteando y cerrando, como antes.
  */
 export type BotLlm = { path: string; model: string } | null;
 
@@ -34,6 +38,8 @@ export function serializeBotProfile(profile: AgentProfile, kb: KbEntry[], llm: B
       greeting: profile.greeting ?? null,
       role: rolDe(profile.role).clave,
       tools: herramientasEfectivas(profile.tools),
+      treatment: tratoDe(profile.treatment),
+      stallEnabled: profile.stallEnabled ?? true,
     },
     kb: renderKb(kb),
     resources: [] as { label: string; url: string }[],

@@ -842,10 +842,17 @@ export const agentProfile = pgTable(
      * todas: lo que tiene una instalación que actualiza.
      */
     tools: jsonb("tools").$type<string[]>(),
+    /** 071 — Cómo trata el agente a los clientes (`TRATOS` en `src/lib/agent-roles.ts`). */
+    treatment: text("treatment").notNull().default("tu"),
+    /** 071 — Cerrar con amabilidad las conversaciones sin rumbo (el cerebro decide cuándo). */
+    stallEnabled: boolean("stall_enabled").notNull().default(true),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("agent_profile_org_uq").on(t.organizationId)]
+  (t) => [
+    uniqueIndex("agent_profile_org_uq").on(t.organizationId),
+    check("agent_profile_treatment_ck", sql`${t.treatment} in ('tu', 'usted', 'neutro')`),
+  ]
 );
 
 export const kbEntry = pgTable(

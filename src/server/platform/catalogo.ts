@@ -1,4 +1,4 @@
-import { HERRAMIENTAS, ROLES } from "@/lib/agent-roles";
+import { HERRAMIENTAS, ROLES, TRATOS } from "@/lib/agent-roles";
 import { ACCENT_PRESETS, DEFAULT_BRANDING } from "@/lib/branding";
 import { CURRENCY_OPTIONS } from "@/lib/money";
 import { blueprintJsonSchema } from "@/lib/platform/blueprint";
@@ -50,6 +50,8 @@ export const EJEMPLO_COMPLETO = {
     instructions: "Agenda valoraciones; no des diagnósticos.",
     escalationRules: "Pasa a una persona si hay dolor intenso o una queja.",
     tools: null,
+    treatment: "tu",
+    stallEnabled: true,
   },
   knowledge: {
     mode: "merge",
@@ -104,6 +106,9 @@ export function catalogoPlataforma() {
     agent: {
       roles: Object.values(ROLES).map((r) => ({ key: r.clave, label: r.etiqueta, description: r.descripcion })),
       tools: HERRAMIENTAS.map((h) => ({ key: h.clave, label: h.etiqueta, requiresAgenda: h.agenda === true, alwaysOn: h.fija === true })),
+      // 071 — `agent.treatment` del Blueprint; `agent.stallEnabled` es booleano (default `true`).
+      treatments: TRATOS.map((t) => ({ key: t.clave, label: t.etiqueta, description: t.descripcion })),
+      defaults: { treatment: "tu", stallEnabled: true },
     },
     currencies: CURRENCY_OPTIONS.map((c) => c.code),
     modules: {

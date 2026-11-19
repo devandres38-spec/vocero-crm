@@ -5,6 +5,32 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.11.0 — 2026-11-19
+
+Trato del agente y cierre sin rumbo (spec 071, bloque C). **Aditiva**: la
+migración `0031_agente_trato` agrega dos columnas con default (solo metadatos
+en PostgreSQL 16) y se aplica sola al arrancar. Un cerebro que no conozca los
+campos nuevos sigue tuteando y cerrando, como antes.
+
+- **Ajustes → Agente → «Trato y cierre»**: cómo se dirige el agente a los
+  clientes (**Tú · Usted · Neutro**) y si cierra con amabilidad las
+  conversaciones que no avanzan («Cerrar conversaciones sin rumbo»). También
+  en el formulario de `/platform`, el `OrganizationBlueprint`
+  (`agent.treatment`, `agent.stallEnabled`) y el catálogo del MCP
+  (`get_catalog` → `agent.treatments`).
+- **Contrato del cerebro** (aditivo): `profile.treatment` y
+  `profile.stallEnabled` en `GET /api/bot/profile` y en `agent` de
+  `GET /api/brains/context`; además `agent.agendaEnabled` (el módulo agenda
+  de ese negocio), que Nea 071 usa en vez de sondear. `contextVersion` sigue
+  en `2`. Delta: [specs/071…/contracts/brains-071.md](specs/071-cerebro-aliantis-produccion/contracts/brains-071.md).
+- `X-Vocero-Organization` acepta slug **o** id (como en la 2.10); Nea 071
+  manda el id.
+
+### Actualizar desde 2.10
+
+Redesplegar. Recomendado antes que Nea 071 (para que `agendaEnabled` ya esté
+en el contexto); en cualquier orden funciona.
+
 ## 2.10.0 — 2026-11-18
 
 Cerebro multi-organización (spec 070): en modo plataforma, **una Nea
