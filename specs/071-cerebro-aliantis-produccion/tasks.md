@@ -1,7 +1,7 @@
 # Tasks: Cerebro Aliantis — producción y chasis extensible
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-071.md](contracts/brains-071.md)
-**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, commits `8e9a046`…`4ba4279`, sin push): pytest 653/653 con Postgres 16 local (614 + 39 omitidas sin él). Pendiente: Ronda 2 (C + B), luego Z.
+**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, `8e9a046`…`4ba4279`). **Ronda 2 hecha** (2026-11-19): C en `vocero-crm` (`44346e7`, `05502a8`), B en `nea-agent` (`dbef2b7`…`3d4c298`). Ambas ramas subidas, sin merge a `main`. Pendiente: Z (CI, staging, auditoría y merge).
 
 Convenciones: `[P]` paralelizable · `[nea]` repo `nea-agent` · `[crm]` repo
 `vocero-crm` · `[local]` gate en este equipo · `[CI]` job de CI (p. ej.
@@ -68,30 +68,30 @@ Docker ni E2E en local.
 
 ## Bloque C — vocero-crm `[crm]` (D5, D19) · US7 (puede ir en paralelo a A)
 
-- [ ] T036 `drizzle/0031_agente_trato.sql` (aditiva, re-ejecutable) + `schema.ts` + journal
-- [ ] T037 `[P]` `src/lib/agent-roles.ts`: `TRATOS`, `esTrato`, `tratoDe` (desconocido → `tu`)
-- [ ] T038 `serializeBotProfile`: `treatment`, `stallEnabled`; `contextoDelCerebro`: `agent.agendaEnabled`; pruebas de forma en `/api/bot/profile` y `/api/brains/context` (cuerpo gemelo actualizado)
-- [ ] T039 `GET/PUT /api/agent/profile` con Zod (`treatment` enum, `stallEnabled` boolean); soporte `configuracion` sigue pudiendo editar
-- [ ] T040 UI `agent-client.tsx`: selector «Trato» (Tú · Usted · Neutro) y «Cerrar conversaciones sin rumbo» con texto de ayuda; textos de marca Aliantis
-- [ ] T041 Blueprint: `agentSchema` (`treatment`, `stallEnabled` opcionales, `.strict()`), `CAMPOS` de `secciones/agente.ts`, `exportar.ts`, `formulario-blueprint.ts`, `pestana-agente.tsx`; prueba de idempotencia (SC-006)
-- [ ] T042 `[P]` Catálogo: `agent.treatments` en `catalogoPlataforma()` (MCP `get_catalog`); JSON Schema del contrato regenerado
-- [ ] T043 `[P]` OpenAPI: `docs/openapi.json`, `docs/openapi-brains.json`, `docs/openapi-platform.json`; caso explícito de cabecera con id en `/api/brains/*` (R9)
-- [ ] T044 `package.json` 2.11.0 + notas de versión
-- [ ] T045 `[local]` typecheck, lint, Vitest (1 996 + nuevas) — commit «071 C: trato, cierre sin rumbo y agenda en el contexto»
+- [x] T036 `drizzle/0031_agente_trato.sql` (aditiva, re-ejecutable) + `schema.ts` + journal
+- [x] T037 `[P]` `src/lib/agent-roles.ts`: `TRATOS`, `esTrato`, `tratoDe` (desconocido → `tu`)
+- [x] T038 `serializeBotProfile`: `treatment`, `stallEnabled`; `contextoDelCerebro`: `agent.agendaEnabled`; pruebas de forma en `/api/bot/profile` y `/api/brains/context` (cuerpo gemelo actualizado)
+- [x] T039 `GET/PUT /api/agent/profile` con Zod (`treatment` enum, `stallEnabled` boolean); soporte `configuracion` sigue pudiendo editar
+- [x] T040 UI `agent-client.tsx`: selector «Trato» (Tú · Usted · Neutro) y «Cerrar conversaciones sin rumbo» con texto de ayuda; textos de marca Aliantis — hecho como tarjeta «Trato y cierre» que guarda al tocar (como las herramientas); la tarjeta «Quién responde» ya no nombra a Nea
+- [x] T041 Blueprint: `agentSchema` (`treatment`, `stallEnabled` opcionales, `.strict()`), `CAMPOS` de `secciones/agente.ts`, `exportar.ts`, `formulario-blueprint.ts`, `pestana-agente.tsx`; prueba de idempotencia (SC-006) — el formulario ofrece «Sin cambiar» en ambos (no manda nada si no se toca)
+- [x] T042 `[P]` Catálogo: `agent.treatments` en `catalogoPlataforma()` (MCP `get_catalog`); JSON Schema del contrato regenerado — el JSON Schema sale en vivo de Zod (`blueprintJsonSchema`), no hay archivo que regenerar; además `agent.defaults`
+- [x] T043 `[P]` OpenAPI: `docs/openapi.json`, `docs/openapi-brains.json`, `docs/openapi-platform.json`; caso explícito de cabecera con id en `/api/brains/*` (R9) — R9: `cerebros-070-bloque1.test.ts` «tras un cambio de slug la misma petición sigue entrando»
+- [x] T044 `package.json` 2.11.0 + notas de versión — también manifiestos (`render.yaml`, `fly.toml`, `railway.toml`, `docker-compose.yml`), README e INSTALL-IA, que fijan la imagen
+- [x] T045 `[local]` typecheck, lint, Vitest (1 996 + nuevas) — commit «071 C: trato, cierre sin rumbo y agenda en el contexto» — commit `44346e7`; + `05502a8` (vectores gemelos de T052); typecheck y lint limpios; Vitest 2 013/2 013 (1 996 + 17 nuevas)
 
 ## Bloque B — Chasis, roles y ajustes universales `[nea]` (D13–D18, D20) · US6, US7, US8
 
-- [ ] T046 `app/chasis/secciones.py` + `armar.py`: el texto actual troceado; `build_system_prompt` lo usa; **doradas de T001 idénticas**
-- [ ] T047 `app/roles.py`: `RolSpec`, `ROLES={"calificador"}`, `rol_de()`; `enfoque` sustituye a los `.replace()` de `profile.cloud`; la línea de cancelar depende de `agenda_v2`; doradas idénticas
-- [ ] T048 `app/herramientas/registro.py` + `builtin.py`: `ToolSpec(nombre, clave, esquema, ejecutar, disponible)`; `tool_schemas`/`solo_encendidas`/`execute` por registro; `esquema_de_ficha(context)` (D20); todas las pruebas de herramientas sin cambio
-- [ ] T049 Trato (D15): `BusinessProfile.treatment`; sección `voz` por trato; regla de idioma; dorada nueva para `usted`, `neutro` y la regla de idioma
-- [ ] T050 `stallEnabled` (D16): `sin_rumbo` y puerta 1.5 condicionados; pruebas
-- [ ] T051 `app/confirmacion.py` (D17) para book y reschedule, con trato; banco de ≥ 30 casos (ok / pie / contradicción, formatos 12 h y 24 h, «hoy», «mañana», con y sin enlace); `test_tools.py` actualizado (R4)
-- [ ] T052 Formato por canal (D18): `a_texto_plano`, `formatear_para(canal)`; vectores gemelos de `plainSocialText` copiados del CRM; `CORRIGE_RESPUESTA` sin «WhatsApp»
-- [ ] T053 Marca (D13): `AGENT_NAME="Asistente"` (config, profile, multiorg), título, `webhook_retirado`, marcadores sin género; pruebas que esperaban «Nea» ajustadas (R4)
-- [ ] T054 Barrido de marca: prueba que recorre las cadenas de `prompt`, `media`, `tools`, `turn`, `confirmacion`, `webhook_retirado` y respuestas HTTP y falla con «Nea» o «Vocero» visibles (excepto cabeceras/rutas del contrato)
-- [ ] T055 `CHANGELOG.md` «Sin publicar», `README`/`AGENTS.md` (variables y modos)
-- [ ] T056 `[local]` pytest verde — commit «071 B: chasis por secciones, roles, trato y marca»
+- [x] T046 `app/chasis/secciones.py` + `armar.py`: el texto actual troceado; `build_system_prompt` lo usa; **doradas de T001 idénticas** — commit `dbef2b7`; secciones generadas troceando el texto vivo, 6 doradas idénticas
+- [x] T047 `app/roles.py`: `RolSpec`, `ROLES={"calificador"}`, `rol_de()`; `enfoque` sustituye a los `.replace()` de `profile.cloud`; la línea de cancelar depende de `agenda_v2`; doradas idénticas — la línea de cancelar sale con `agenda_v2` **o** con el enfoque cloud (que siempre la tuvo): así el dorado `cloud_sin_agenda_messenger` no cambia; la herramienta solo existe con agenda v2
+- [x] T048 `app/herramientas/registro.py` + `builtin.py`: `ToolSpec(nombre, clave, esquema, ejecutar, disponible)`; `tool_schemas`/`solo_encendidas`/`execute` por registro; `esquema_de_ficha(context)` (D20); todas las pruebas de herramientas sin cambio — `ToolSpec(nombre, clave, esquema, ejecutar, ofrecer, ejecutable)`; `Capacidades` lleva el contexto para `esquema_de_ficha`
+- [x] T049 Trato (D15): `BusinessProfile.treatment`; sección `voz` por trato; regla de idioma; dorada nueva para `usted`, `neutro` y la regla de idioma — commit `fef3c6a`; los 6 dorados de B0 NO se regeneran: la prueba les aplica solo los deltas aprobados (línea de idioma D15; nombre por defecto D13) y exige igualdad byte a byte; dorados nuevos `071_single_usted`, `071_cloud_neutro`
+- [x] T050 `stallEnabled` (D16): `sin_rumbo` y puerta 1.5 condicionados; pruebas — en cloud la puerta 1.5 pide el contexto solo en el caso «cerrada + relleno durante el enfriamiento»; si el CRM no contesta, calla como siempre
+- [x] T051 `app/confirmacion.py` (D17) para book y reschedule, con trato; banco de ≥ 30 casos (ok / pie / contradicción, formatos 12 h y 24 h, «hoy», «mañana», con y sin enlace); `test_tools.py` actualizado (R4) — commit `b413ed4`; banco de 32 casos; «habla del enlace sin darlo» cuenta como contradicción
+- [x] T052 Formato por canal (D18): `a_texto_plano`, `formatear_para(canal)`; vectores gemelos de `plainSocialText` copiados del CRM; `CORRIGE_RESPUESTA` sin «WhatsApp» — commit `40c9fa4`; JSON gemelo idéntico en `nea-agent/tests/fixtures/` y `vocero-crm/tests/unit/fixtures/`
+- [x] T053 Marca (D13): `AGENT_NAME="Asistente"` (config, profile, multiorg), título, `webhook_retirado`, marcadores sin género; pruebas que esperaban «Nea» ajustadas (R4) — commit `3d4c298`
+- [x] T054 Barrido de marca: prueba que recorre las cadenas de `prompt`, `media`, `tools`, `turn`, `confirmacion`, `webhook_retirado` y respuestas HTTP y falla con «Nea» o «Vocero» visibles (excepto cabeceras/rutas del contrato) — `tests/test_marca_071.py` (AST; logs, docstrings y contrato fuera)
+- [x] T055 `CHANGELOG.md` «Sin publicar», `README`/`AGENTS.md` (variables y modos) — también el mapa del código en `AGENTS.md`/`CLAUDE.md` de nea-agent
+- [x] T056 `[local]` pytest verde — commit «071 B: chasis por secciones, roles, trato y marca» — 799/799 con Postgres 16 local (760 + 39 omitidas sin él)
 
 ## Bloque Z — Cierre `[CI]` `[staging]`
 
