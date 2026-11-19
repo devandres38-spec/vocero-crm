@@ -1,7 +1,7 @@
 # Tasks: Cerebro Aliantis — producción y chasis extensible
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-071.md](contracts/brains-071.md)
-**Estado**: 📝 pendiente de aprobación de D1–D21. Ninguna tarea empezada.
+**Estado**: D1–D21 aprobadas (2026-11-18). **Ronda 1 hecha** (B0, A1–A4 en `nea-agent`, commits `8e9a046`…`4ba4279`, sin push): pytest 653/653 con Postgres 16 local (614 + 39 omitidas sin él). Pendiente: Ronda 2 (C + B), luego Z.
 
 Convenciones: `[P]` paralelizable · `[nea]` repo `nea-agent` · `[crm]` repo
 `vocero-crm` · `[local]` gate en este equipo · `[CI]` job de CI (p. ej.
@@ -18,53 +18,53 @@ Docker ni E2E en local.
 
 ## Bloque 0 — Red de seguridad antes de tocar nada `[nea]`
 
-- [ ] T001 Pruebas doradas del prompt: `tests/test_chasis_dorado.py` congela `build_system_prompt` byte a byte para (a) `single` sin agenda, (b) `single` con agenda, (c) cloud con `agenda_v2`, (d) Instagram; fixtures en `tests/fixtures/prompt/*.txt` (D14, R2)
-- [ ] T002 Prueba de concurrencia intra-negocio (hoy en rojo, marcada `xfail`): dos turnos del mismo negocio con contextos distintos intercalando `await`; documenta H2/H4
-- [ ] T003 `[local]` pytest: 567 + doradas en verde — commit «071 B0: red de seguridad»
+- [x] T001 Pruebas doradas del prompt: `tests/test_chasis_dorado.py` congela `build_system_prompt` byte a byte para (a) `single` sin agenda, (b) `single` con agenda, (c) cloud con `agenda_v2`, (d) Instagram; fixtures en `tests/fixtures/prompt/*.txt` (D14, R2)
+- [x] T002 Prueba de concurrencia intra-negocio (hoy en rojo, marcada `xfail`): dos turnos del mismo negocio con contextos distintos intercalando `await`; documenta H2/H4
+- [x] T003 `[local]` pytest: 567 + doradas en verde — commit «071 B0: red de seguridad»
 
 ## Bloque A1 — Concurrencia y estado por turno `[nea]` (D1–D4) · US1, US2
 
-- [ ] T004 Migración `migrations/009_retencion.sql` (índices de D7 incl. `dispatch_inbox(organization_id, conversation_id, created_at) WHERE state<>'done'`); idempotente
-- [ ] T005 `PgStore.migrate()` bajo `pg_advisory_lock(hashtextextended('nea:migrate',0))` (H9)
-- [ ] T006 `PgDispatchStore.claim_dispatch(owner, orgs_al_tope)`: CTE de plan §A1, sin advisory lock ni conexión retenida; `heartbeat`/`finish` por el pool con *fencing*; `MemoryDispatchStore` con la misma semántica (FIFO por conversación, `started` vivo bloquea)
-- [ ] T007 `dispatch_worker.run`: `DISPATCH_CONCURRENCY` tareas consumidoras, contador por org (`DISPATCH_MAX_POR_ORG`), arranque/apagado limpio; `Settings`: `dispatch_concurrency=8`, `dispatch_max_por_org=3`, `db_pool_max` (default `concurrency+4`, mín. 4); `PgStore.connect` con `min_size=2, max_size=db_pool_max`
-- [ ] T008 Ajustar pruebas que dependían del lock por org (`test_dispatch_durable.py`): misma conversación en serie, conversaciones distintas en paralelo, olvido después del turno previo
-- [ ] T009 `[CI]` `tests/test_pg_store.py`: dos conexiones reclaman a la vez → nunca dos `started` de la misma conversación; orden FIFO; lease vencido → `recovery=True`; tope por org
-- [ ] T010 `RegistroDeOrganizaciones`: un `httpx.AsyncClient` compartido (`Limits(32,16)`), `cliente_del_turno(org_id, slug)` efímero (`propietario=False`), cabecera `X-Vocero-Organization` = id (D4); `llm()` con `AsyncOpenAI(http_client=compartido)` en LRU de 256 sin cierre; `aclose()` cierra solo el transporte
-- [ ] T011 `BrainsCrmClient(propietario=…)`: `aclose()` no cierra un transporte ajeno; cabeceras por petición; se eliminan los diccionarios por conversación que sobran (el cliente vive un turno)
-- [ ] T012 `PerfilDelTurno` (perfil fijo del contexto) y `_contexto_multiorg` con `replace(...)` completo (plan §A2); cloud de un negocio por el mismo camino
-- [ ] T013 `single`: `ctx_turno = replace(ctx)` siempre (H4); `conversation_lock` con clave `(org_id, identity)`
-- [ ] T014 `ctx_de_organizacion` (sender, seguimiento) con `cliente_del_turno`; ensayo deja de cerrar transporte compartido
-- [ ] T015 Pruebas: T002 pasa a verde; A↛B: 404 de agenda o perfil de A no alcanza a B; cambio de slug no rompe (cabecera = id); ningún dict crece tras 1 000 turnos simulados
-- [ ] T016 `[local]` pytest verde — commit «071 A1: turnos concurrentes y estado por turno»
+- [x] T004 Migración `migrations/009_retencion.sql` (índices de D7 incl. `dispatch_inbox(organization_id, conversation_id, created_at) WHERE state<>'done'`); idempotente
+- [x] T005 `PgStore.migrate()` bajo `pg_advisory_lock(hashtextextended('nea:migrate',0))` (H9)
+- [x] T006 `PgDispatchStore.claim_dispatch(owner, orgs_al_tope)`: CTE de plan §A1, sin advisory lock ni conexión retenida; `heartbeat`/`finish` por el pool con *fencing*; `MemoryDispatchStore` con la misma semántica (FIFO por conversación, `started` vivo bloquea)
+- [x] T007 `dispatch_worker.run`: `DISPATCH_CONCURRENCY` tareas consumidoras, contador por org (`DISPATCH_MAX_POR_ORG`), arranque/apagado limpio; `Settings`: `dispatch_concurrency=8`, `dispatch_max_por_org=3`, `db_pool_max` (default `concurrency+4`, mín. 4); `PgStore.connect` con `min_size=2, max_size=db_pool_max`
+- [x] T008 Ajustar pruebas que dependían del lock por org (`test_dispatch_durable.py`): misma conversación en serie, conversaciones distintas en paralelo, olvido después del turno previo
+- [x] T009 `[CI]` (verificado en local con Postgres 16.2 embebido; falta el job de CI) `tests/test_pg_store.py`: dos conexiones reclaman a la vez → nunca dos `started` de la misma conversación; orden FIFO; lease vencido → `recovery=True`; tope por org
+- [x] T010 `RegistroDeOrganizaciones`: un `httpx.AsyncClient` compartido (`Limits(32,16)`), `cliente_del_turno(org_id, slug)` efímero (`propietario=False`), cabecera `X-Vocero-Organization` = id (D4); `llm()` con `AsyncOpenAI(http_client=compartido)` en LRU de 256 sin cierre; `aclose()` cierra solo el transporte
+- [x] T011 `BrainsCrmClient(propietario=…)`: `aclose()` no cierra un transporte ajeno; cabeceras por petición; se eliminan los diccionarios por conversación que sobran (el cliente vive un turno)
+- [x] T012 (hecho como `ProfileProvider` por turno atado al cliente del turno: equivalente y sin clase nueva) `PerfilDelTurno` (perfil fijo del contexto) y `_contexto_multiorg` con `replace(...)` completo (plan §A2); cloud de un negocio por el mismo camino
+- [x] T013 `single`: `ctx_turno = replace(ctx)` siempre (H4); `conversation_lock` con clave `(org_id, identity)`
+- [x] T014 `ctx_de_organizacion` (sender, seguimiento) con `cliente_del_turno`; ensayo deja de cerrar transporte compartido
+- [x] T015 Pruebas: T002 pasa a verde; A↛B: 404 de agenda o perfil de A no alcanza a B; cambio de slug no rompe (cabecera = id); ningún dict crece tras 1 000 turnos simulados
+- [x] T016 `[local]` pytest verde — commit «071 A1: turnos concurrentes y estado por turno»
 
 ## Bloque A2 — Envío diferido y mantenimiento `[nea]` (D6, D7) · US3, US4
 
-- [ ] T017 `PgStore.claim_pending_sends(limit)` por lease (D6); `MemoryStore` equivalente; `SenderWorker` lo usa
-- [ ] T018 `SenderWorker._attempt`: `except CrmRechazo` antes de `CrmError` → `mark_pending_send_abandoned`, sin handoff, log `warning` con org
-- [ ] T019 `[P]` `app/mantenimiento.py` `MantenimientoWorker` (cada 3 600 s, `pg_try_advisory_xact_lock`, lotes de 1 000 por `ctid`); `Settings`: `retention_days=14 (ge=2)`, `pending_retention_days=30`; arranca en `lifespan`
-- [ ] T020 Pruebas: sender no duplica con dos reclamos; 401 terminal; purga respeta retención y no toca `queued`/`started`; `relay_queue` sigue existiendo
-- [ ] T021 `[CI]` purga y reclamo de `pending_send` contra Postgres
-- [ ] T022 `[local]` pytest verde — commit «071 A2: sender seguro y retención»
+- [x] T017 `PgStore.claim_pending_sends(limit)` por lease (D6); `MemoryStore` equivalente; `SenderWorker` lo usa
+- [x] T018 `SenderWorker._attempt`: `except CrmRechazo` antes de `CrmError` → `mark_pending_send_abandoned`, sin handoff, log `warning` con org
+- [x] T019 `[P]` `app/mantenimiento.py` `MantenimientoWorker` (cada 3 600 s, `pg_try_advisory_xact_lock`, lotes de 1 000 por `ctid`); `Settings`: `retention_days=14 (ge=2)`, `pending_retention_days=30`; arranca en `lifespan`
+- [x] T020 Pruebas: sender no duplica con dos reclamos; 401 terminal; purga respeta retención y no toca `queued`/`started`; `relay_queue` sigue existiendo
+- [x] T021 `[CI]` (verificado en local con Postgres 16.2 embebido; falta el job de CI) purga y reclamo de `pending_send` contra Postgres
+- [x] T022 `[local]` pytest verde — commit «071 A2: sender seguro y retención»
 
 ## Bloque A3 — Agenda por negocio y multimedia `[nea]` (D5, D12) · US2, US5
 
-- [ ] T023 `BusinessProfile.agenda_enabled` desde `agent.agendaEnabled`; `agenda_vigente(ctx)`: perfil del turno → sonda del turno → `ctx.agenda_enabled`
-- [ ] T024 `RegistroDeOrganizaciones.sonda(org_id)` (una `SondaDeAgenda` por org con su `cliente_del_turno`); se quita la sonda global en `multiorg`; `CrmSinOrganizacion.sondear_agenda` queda para el arranque
-- [ ] T025 Ajustar `test_agenda_404.py` / `test_agenda_sonda.py` (R4): la expectativa pasa del `ctx` global a la sonda/el turno
-- [ ] T026 `turn.py`: imágenes al último `role:"user"` (FR-010); pruebas con `HOSTILITY_ALERT` y `STALL_ALERT` en el mismo turno
-- [ ] T027 `llm.py`: `ImagenNoSoportada` (patrones de D12), `_vision_ok` pegajoso; `turn.py` quita imágenes, marcador honesto y un reintento; sin handoff `error`
-- [ ] T028 `[local]` pytest verde — commit «071 A3: agenda por negocio y visión honesta»
+- [x] T023 `BusinessProfile.agenda_enabled` desde `agent.agendaEnabled`; `agenda_vigente(ctx)`: perfil del turno → sonda del turno → `ctx.agenda_enabled`
+- [x] T024 `RegistroDeOrganizaciones.sonda(org_id)` (una `SondaDeAgenda` por org con su `cliente_del_turno`); se quita la sonda global en `multiorg`; `CrmSinOrganizacion.sondear_agenda` queda para el arranque
+- [x] T025 (no hizo falta: las pruebas de agenda usan su propio contexto y siguen intactas) Ajustar `test_agenda_404.py` / `test_agenda_sonda.py` (R4): la expectativa pasa del `ctx` global a la sonda/el turno
+- [x] T026 `turn.py`: imágenes al último `role:"user"` (FR-010); pruebas con `HOSTILITY_ALERT` y `STALL_ALERT` en el mismo turno
+- [x] T027 `llm.py`: `ImagenNoSoportada` (patrones de D12), `_vision_ok` pegajoso; `turn.py` quita imágenes, marcador honesto y un reintento; sin handoff `error`
+- [x] T028 `[local]` pytest verde — commit «071 A3: agenda por negocio y visión honesta»
 
 ## Bloque A4 — Observabilidad y superficie `[nea]` (D8–D11) · US3
 
-- [ ] T029 `app/observabilidad.py`: `contextvars` (`org`, `dispatch`, `conversation`), `FormatoJson` stdlib, filtro `EnmascararDigitos`; `LOG_FORMAT` (default json en cloud); se fija en worker, sender, ensayo
-- [ ] T030 Ampliar `test_logs_sin_token.py` a JSON y al enmascarado (ningún secreto ni teléfono completo en ninguna línea)
-- [ ] T031 `/health`: `queues` con timeout 1 s, `null` si falla; prueba de tamaño < 1 KB y de que el status lo decide solo `ping()` (H11)
-- [ ] T032 FastAPI sin docs salvo `NEA_DOCS=1` (D10); prueba 404 de `/docs`, `/redoc`, `/openapi.json`
-- [ ] T033 Ensayo: semáforo `ENSAYO_CONCURRENCY` (429 `ocupado`), `ENSAYO_TIMEOUT_SECONDS` (200 `tiempo_agotado` + parciales); pruebas
-- [ ] T034 `.env.example` documenta todas las variables nuevas con su default y su razón
-- [ ] T035 `[local]` pytest verde — commit «071 A4: observabilidad y superficie»
+- [x] T029 `app/observabilidad.py`: `contextvars` (`org`, `dispatch`, `conversation`), `FormatoJson` stdlib, filtro `EnmascararDigitos`; `LOG_FORMAT` (default json en cloud); se fija en worker, sender, ensayo
+- [x] T030 Ampliar `test_logs_sin_token.py` a JSON y al enmascarado (ningún secreto ni teléfono completo en ninguna línea)
+- [x] T031 `/health`: `queues` con timeout 1 s, `null` si falla; prueba de tamaño < 1 KB y de que el status lo decide solo `ping()` (H11)
+- [x] T032 FastAPI sin docs salvo `NEA_DOCS=1` (D10); prueba 404 de `/docs`, `/redoc`, `/openapi.json`
+- [x] T033 Ensayo: semáforo `ENSAYO_CONCURRENCY` (429 `ocupado`), `ENSAYO_TIMEOUT_SECONDS` (200 `tiempo_agotado` + parciales); pruebas
+- [x] T034 `.env.example` documenta todas las variables nuevas con su default y su razón
+- [x] T035 `[local]` pytest verde — commit «071 A4: observabilidad y superficie»
 
 ## Bloque C — vocero-crm `[crm]` (D5, D19) · US7 (puede ir en paralelo a A)
 
