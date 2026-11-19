@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FichaPanel } from "@/components/ficha-panel";
+import { guardarParcheFicha } from "@/components/ficha-guardar";
 import type { FichaField } from "@/lib/ficha-campos";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 
@@ -163,12 +164,12 @@ export function ContactPanel({
       }
       return next; // optimista: el refetch de abajo confirma
     });
-    await fetch(`/api/contacts/${contactId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ficha: patch }),
-    }).catch(() => null);
-    void refreshLive();
+    try {
+      await guardarParcheFicha(contactId, patch);
+    } finally {
+      // Con o sin error, la ficha vuelve a lo que de verdad quedó guardado.
+      void refreshLive();
+    }
   }
 
   async function saveNotes() {

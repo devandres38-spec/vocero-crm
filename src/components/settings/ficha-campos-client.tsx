@@ -10,6 +10,7 @@ import {
   CLAVE_CAMPO_RE,
   CLAVES_RESERVADAS,
   fichaFieldsSchema,
+  opcionesDeTexto,
   TIPOS_CAMPO,
   TOPE_CAMPOS,
   type FichaField,
@@ -32,7 +33,20 @@ export const ETIQUETA_TIPO: Record<TipoCampo, string> = {
   boolean: "Sí / No",
 };
 
-type Fila = FichaField & { nueva: boolean; opcionesTexto: string };
+/**
+ * `uid`: identidad ESTABLE de la fila en el editor (A-2, auditoría 072-A).
+ * La `key` del campo cambia con cada tecla del nombre mientras la fila es
+ * nueva; usarla como `key` de React remontaba el input y se perdía el foco.
+ */
+export type Fila = FichaField & { uid: string; nueva: boolean; opcionesTexto: string };
+
+let contadorUid = 0;
+/** Un id local de fila: no viaja al servidor ni se guarda. */
+export function nuevoUid(): string {
+  contadorUid += 1;
+  return `fila-${contadorUid}`;
+}
+
 
 /** «Tratamiento de interés» → `tratamiento_de_interes`. */
 export function claveSugerida(etiqueta: string): string {
@@ -49,10 +63,7 @@ export function claveSugerida(etiqueta: string): string {
 /** Puro: las filas del editor a lo que se guarda. */
 export function aCampos(filas: Fila[]): FichaField[] {
   return filas.map((f) => {
-    const opciones = f.opcionesTexto
-      .split(/\n|,/)
-      .map((o) => o.trim())
-      .filter(Boolean);
+    const opciones = opcionesDeTexto(f.opcionesTexto);
     return {
       key: f.key.trim(),
       label: f.label.trim(),
@@ -64,8 +75,8 @@ export function aCampos(filas: Fila[]): FichaField[] {
   });
 }
 
-function aFila(f: FichaField, nueva = false): Fila {
-  return { ...f, nueva, opcionesTexto: (f.options ?? []).join("\n") };
+export function aFila(f: FichaField, nueva = false): Fila {
+  return { ...f, uid: nuevoUid(), nueva, opcionesTexto: (f.options ?? []).join("\n") };
 }
 
 export function FichaCamposClient() {
@@ -75,11 +86,20 @@ export function FichaCamposClient() {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState(false);
 
   const cargar = useCallback(async () => {
+    setErrorCarga(false);
     const res = await fetch("/api/settings/ficha-fields").catch(() => null);
-    if (!res?.ok) return;
-    const d = (await res.json()) as { fields: FichaField[]; puedeEditar: boolean };
+    const d = res?.ok
+      ? ((await res.json().catch(() => null)) as { fields: FichaField[]; puedeEditar: boolean } | null)
+      : null;
+    // M-10 (auditoría 072-A) — Si no carga, se dice (y se puede reintentar)
+    // en vez de quedarse en «Cargando…» para siempre.
+    if (!d || !Array.isArray(d.fields)) {
+      setErrorCarga(true);
+      return;
+    }
     setGuardadas(d.fields);
     setFilas(d.fields.map((f) => aFila(f)));
     setPuedeEditar(d.puedeEditar);
@@ -146,7 +166,7 @@ export function FichaCamposClient() {
   }
 
   const sinCambios = guardadas !== null && JSON.stringify(aCampos(filas)) === JSON.stringify(guardadas);
-  const obligatorios = aCampos(filas).filter((f) => f.required);
+  const obligatorios = filas.filter((f) => f.required);
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -160,7 +180,14 @@ export function FichaCamposClient() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {guardadas === null ? (
+          {guardadas === null && errorCarga ? (
+            <div role="alert" className="flex items-center gap-3 text-sm text-text-2">
+              No se pudieron cargar los campos.
+              <Button variant="outline" size="sm" onClick={() => void cargar()}>
+                Reintentar
+              </Button>
+            </div>
+          ) : guardadas === null ? (
             <p className="text-sm text-muted-foreground">Cargando…</p>
           ) : filas.length === 0 ? (
             <p className="text-sm text-text-2">
@@ -169,12 +196,12 @@ export function FichaCamposClient() {
           ) : (
             <ol className="space-y-3">
               {filas.map((f, i) => (
-                <li key={`${f.key}-${i}`} className="space-y-2 rounded-md border p-3" data-testid="campo-ficha">
+                <li key={f.uid} className="space-y-2 rounded-md border p-3" data-testid="campo-ficha">
                   <div className="flex flex-wrap items-end gap-2">
                     <div className="min-w-[12rem] flex-1 space-y-1">
-                      <Label htmlFor={`cf-label-${i}`}>Nombre</Label>
+                      <Label htmlFor={`cf-label-${f.uid}`}>Nombre</Label>
                       <Input
-                        id={`cf-label-${i}`}
+                        id={`cf-label-${f.uid}`}
                         value={f.label}
                         maxLength={60}
                         disabled={!puedeEditar}
@@ -183,9 +210,9 @@ export function FichaCamposClient() {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor={`cf-type-${i}`}>Tipo</Label>
+                      <Label htmlFor={`cf-type-${f.uid}`}>Tipo</Label>
                       <select
-                        id={`cf-type-${i}`}
+                        id={`cf-type-${f.uid}`}
                         value={f.type}
                         disabled={!puedeEditar || !f.nueva}
                         title={f.nueva ? undefined : "El tipo de un campo guardado no cambia"}
@@ -225,9 +252,9 @@ export function FichaCamposClient() {
                   </div>
                   {f.type === "select" && (
                     <div className="space-y-1">
-                      <Label htmlFor={`cf-opts-${i}`}>Opciones (una por línea)</Label>
+                      <Label htmlFor={`cf-opts-${f.uid}`}>Opciones (una por línea)</Label>
                       <textarea
-                        id={`cf-opts-${i}`}
+                        id={`cf-opts-${f.uid}`}
                         value={f.opcionesTexto}
                         rows={3}
                         disabled={!puedeEditar}
@@ -237,9 +264,9 @@ export function FichaCamposClient() {
                     </div>
                   )}
                   <div className="space-y-1">
-                    <Label htmlFor={`cf-desc-${i}`}>Indicación para el agente (opcional)</Label>
+                    <Label htmlFor={`cf-desc-${f.uid}`}>Indicación para el agente (opcional)</Label>
                     <Input
-                      id={`cf-desc-${i}`}
+                      id={`cf-desc-${f.uid}`}
                       value={f.description ?? ""}
                       maxLength={160}
                       disabled={!puedeEditar}
@@ -247,10 +274,25 @@ export function FichaCamposClient() {
                       placeholder="Aunque sea aproximada"
                     />
                   </div>
-                  <p className="font-mono text-[11px] text-text-3">
-                    clave: {f.key || "—"}
-                    {!f.nueva && " · no cambia"}
-                  </p>
+                  {f.nueva && puedeEditar ? (
+                    // M-10 — En una fila nueva la clave se puede ajustar a mano
+                    // (sigue al nombre hasta que alguien la toca).
+                    <div className="space-y-1">
+                      <Label htmlFor={`cf-key-${f.uid}`}>Clave</Label>
+                      <Input
+                        id={`cf-key-${f.uid}`}
+                        value={f.key}
+                        maxLength={40}
+                        onChange={(e) => cambiar(i, { key: e.target.value.toLowerCase() })}
+                        className="font-mono text-xs"
+                      />
+                    </div>
+                  ) : (
+                    <p className="font-mono text-[11px] text-text-3">
+                      clave: {f.key || "—"}
+                      {!f.nueva && " · no cambia"}
+                    </p>
+                  )}
                 </li>
               ))}
             </ol>
@@ -295,8 +337,8 @@ export function FichaCamposClient() {
           <CardContent>
             <ol className="list-decimal space-y-1 pl-5 text-sm">
               {obligatorios.map((f) => (
-                <li key={f.key}>
-                  {f.label} <span className="text-text-3">· {ETIQUETA_TIPO[f.type].toLowerCase()}</span>
+                <li key={f.uid}>
+                  {f.label.trim() || "Campo nuevo"} <span className="text-text-3">· {ETIQUETA_TIPO[f.type].toLowerCase()}</span>
                 </li>
               ))}
             </ol>
@@ -319,6 +361,8 @@ function mensaje(codigo: string | undefined): string {
       return "una lista necesita al menos una opción.";
     case "opciones_repetidas":
       return "hay opciones repetidas.";
+    case "opciones_solo_en_select":
+      return "solo una lista lleva opciones.";
     default:
       return "falta el nombre o algún dato no es válido.";
   }

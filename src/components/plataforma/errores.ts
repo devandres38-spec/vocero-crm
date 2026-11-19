@@ -35,6 +35,19 @@ const MENSAJES: Record<string, string> = {
   url_otro_origen: "La URL de salud debe estar en el mismo servidor que la de despacho.",
   origen_invalido: "La petición no vino del panel de la plataforma. Recarga la página.",
   demasiados_intentos: "Demasiados intentos seguidos: espera un momento.",
+  // 072 (M-4, auditoría 072-A) — Nicho y campos de la ficha.
+  pack_desconocido: "Ese nicho (Vertical Pack) no existe.",
+  tipo_inmutable: "No se puede cambiar el tipo de un campo de la ficha que ya existe (ni quitarlo y recrearlo con otro tipo): usa otra clave.",
+  clave_invalida: "La clave de un campo debe empezar por letra y usar minúsculas, números o _ (2 a 40).",
+  clave_reservada: "Esa clave de campo está reservada (notas, constructor, prototype).",
+  claves_repetidas: "Hay dos campos de la ficha con la misma clave.",
+  opciones_requeridas: "Un campo de lista necesita al menos una opción.",
+  opciones_solo_en_select: "Solo los campos de lista llevan opciones.",
+  opciones_repetidas: "Hay opciones repetidas en un campo de lista.",
+  href_invalido: "Una ruta del menú no es válida (p. ej. /pipeline).",
+  ajustes_no_se_ocultan: "Ajustes no se puede ocultar ni reordenar.",
+  bandeja_no_se_oculta: "La Bandeja no se puede ocultar del menú.",
+  overrides_grandes: "Los ajustes del nicho superan 4 KB: recórtalos.",
 };
 
 type Issue = { path?: string; message?: string };

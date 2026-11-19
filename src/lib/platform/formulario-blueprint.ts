@@ -3,7 +3,8 @@ import { esTrato } from "@/lib/agent-roles";
 import { APARIENCIA_POR_DEFECTO, type Apariencia } from "@/lib/temas";
 import { normalizarAtajo } from "@/lib/respuestas-rapidas";
 import { REGIONES_SUGERIDAS } from "@/lib/region";
-import type { FichaField } from "@/lib/ficha-campos";
+import { opcionesDeTexto, type FichaField } from "@/lib/ficha-campos";
+import type { VerticalOverrides } from "@/verticals/resolver";
 import { semillaDe } from "@/verticals/semilla";
 
 /**
@@ -36,6 +37,13 @@ type ConUid = { uid?: string };
 export type Franja = { start: string; end: string } & ConUid;
 export type EntradaKb = ({ kind: "qa"; question: string; answer: string } | { kind: "block"; content: string }) & ConUid;
 export type RespuestaRapidaForm = { shortcut: string; text: string } & ConUid;
+/**
+ * 072 (auditoría 072-A, A-2/A-3/B-3) — Un campo de la ficha en el formulario:
+ * `uid` estable (la `key` cambia con el nombre), `opcionesTexto` crudo (una
+ * opción por línea; se parsea al serializar, no en cada tecla) y `guardado`
+ * (ya existe en el negocio: su tipo no se puede cambiar). Nada de esto viaja.
+ */
+export type CampoFichaForm = FichaField & ConUid & { opcionesTexto?: string; guardado?: boolean };
 
 let contadorUid = 0;
 /** Un id local único en esta pestaña del navegador (sin `crypto.randomUUID`: no existe por HTTP). */
@@ -100,9 +108,14 @@ export type FormBlueprint = {
   /** 070 — El despliegue de cerebro asignado (`""` = ninguno, bandeja manual). */
   brain: { deployment: string };
   /** 072 — El Vertical Pack (la plantilla se carga aparte, a pedido). */
-  vertical: { pack: string };
+  /**
+   * M-1 (auditoría 072-A) — `overrides` viaja de pasada (se editan en la
+   * pestaña JSON o por MCP): ausente = no tocarlos; `null` = quitarlos.
+   * Antes el formulario los perdía al importar o editar.
+   */
+  vertical: { pack: string; overrides?: VerticalOverrides | null };
   /** 072 — Los campos de la ficha del negocio. */
-  fichaFields: { fields: FichaField[] };
+  fichaFields: { fields: CampoFichaForm[] };
   owner: { email: string };
 };
 
@@ -234,8 +247,13 @@ export function formularioDesdeBlueprint(
     f.quickReplies = { mode: bp.quickReplies.mode ?? "merge", entries: bp.quickReplies.entries.map((e) => conUid({ ...e })) };
   }
   f.brain = { deployment: bp.brain?.deployment ?? "" };
-  f.vertical = { pack: bp.vertical?.pack ?? "default" };
-  f.fichaFields = { fields: bp.fichaFields?.fields ? bp.fichaFields.fields.map((c) => ({ ...c })) : [] };
+  f.vertical = {
+    pack: bp.vertical?.pack ?? "default",
+    ...(bp.vertical && bp.vertical.overrides !== undefined ? { overrides: bp.vertical.overrides } : {}),
+  };
+  f.fichaFields = {
+    fields: bp.fichaFields?.fields ? bp.fichaFields.fields.map((c) => conUid({ ...c, guardado: true })) : [],
+  };
   return f;
 }
 
@@ -249,6 +267,8 @@ export function formularioDesdePlantilla(packId: string, d: DefaultsForm, techo:
   f.organization = { name: "", slug: "", slugTocado: false };
   f.brand = { ...f.brand, name: "", nameTocado: false };
   f.appearance = { ...f.appearance, guardada: false };
+  // Los campos de una plantilla todavía no existen en ningún negocio.
+  f.fichaFields = { fields: f.fichaFields.fields.map((c) => ({ ...c, guardado: false })) };
   return f;
 }
 
@@ -269,7 +289,7 @@ export function aplicarPlantillaAlFormulario(f: FormBlueprint, packId: string, d
     agent: p.agent.name ? p.agent : f.agent,
     knowledge: { mode: "merge", entries: [...f.knowledge.entries, ...p.knowledge.entries.filter((e) => !f.knowledge.entries.some((x) => igual(sinUid(x), sinUid(e))))] },
     quickReplies: { mode: "merge", entries: [...f.quickReplies.entries, ...p.quickReplies.entries.filter((e) => !f.quickReplies.entries.some((x) => x.shortcut === e.shortcut))] },
-    vertical: { pack: p.vertical.pack },
+    vertical: { ...f.vertical, pack: p.vertical.pack },
     fichaFields: p.fichaFields.fields.length > 0 ? p.fichaFields : f.fichaFields,
   };
 }
@@ -370,11 +390,23 @@ export function seccionesDelFormulario(
 
   // 072 — Al crear, solo si se eligió un nicho o hay campos; al editar,
   // siempre (y viaja solo si cambió respecto de lo cargado).
-  if (modo === "editar" || f.vertical.pack !== "default") s.vertical = { pack: f.vertical.pack };
-  if (modo === "editar" || f.fichaFields.fields.length > 0) s.fichaFields = { fields: f.fichaFields.fields.map((c) => ({ ...c })) };
+  const hayOverrides = f.vertical.overrides !== undefined;
+  if (modo === "editar" || f.vertical.pack !== "default" || hayOverrides) {
+    s.vertical = { pack: f.vertical.pack, ...(hayOverrides ? { overrides: f.vertical.overrides } : {}) };
+  }
+  if (modo === "editar" || f.fichaFields.fields.length > 0) s.fichaFields = { fields: f.fichaFields.fields.map(campoParaEnviar) };
 
   if (modo === "crear" && t(f.owner.email)) s.owner = { email: t(f.owner.email) };
   return s;
+}
+
+/** Pura: el campo tal como viaja (sin `uid`, `guardado` ni el texto crudo de opciones). */
+export function campoParaEnviar(c: CampoFichaForm): FichaField {
+  const { uid: _u, guardado: _g, opcionesTexto, options, ...resto } = c;
+  void _u;
+  void _g;
+  const opciones = c.type === "select" ? (opcionesTexto !== undefined ? opcionesDeTexto(opcionesTexto) : options) : undefined;
+  return { ...resto, ...(opciones !== undefined ? { options: opciones } : {}) };
 }
 
 /** Pura: igualdad por JSON con claves ordenadas. */

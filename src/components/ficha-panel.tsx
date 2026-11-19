@@ -5,7 +5,7 @@ import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fichaEntries, fichaLabel, fichaValueText, parseFichaValue } from "@/lib/ficha";
-import { coaccionar, type FichaField } from "@/lib/ficha-campos";
+import { aBooleano, coaccionar, valorPropio, type FichaField } from "@/lib/ficha-campos";
 import { useVocabulario } from "@/lib/vocabulario-context";
 import type { FichaDto, FichaValue } from "@/lib/types";
 
@@ -41,38 +41,58 @@ export function FichaPanel({
   const [claveNueva, setClaveNueva] = useState("");
   const [valorNuevo, setValorNuevo] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
 
   const delEsquema = new Set(campos.map((c) => c.key));
   const entradas = fichaEntries(ficha).filter(([clave]) => !delEsquema.has(clave));
   const conEsquema = campos.length > 0;
 
-  async function guardar(patch: Record<string, FichaValue | null>) {
+  /**
+   * M-10 (auditoría 072-A) — `true` solo si se guardó. Si falla, el error se
+   * muestra y quien llamó deja la edición abierta con lo escrito.
+   */
+  async function guardar(patch: Record<string, FichaValue | null>): Promise<boolean> {
     setGuardando(true);
+    setErrorGuardar(null);
     try {
       await onSave(patch);
+      return true;
+    } catch (err) {
+      setErrorGuardar(err instanceof Error && err.message ? err.message : "No se pudo guardar. Intenta de nuevo.");
+      return false;
     } finally {
       setGuardando(false);
     }
   }
 
+  /** A-7 (auditoría 072-A) — La edición libre se abre siempre con SU valor (nunca vacía ni con el borrador de otra clave). */
+  function abrirEdicionLibre(clave: string, valor: FichaValue | undefined) {
+    setErrorGuardar(null);
+    setBorrador(valor === undefined ? "" : fichaValueText(valor));
+    setEditando(clave);
+  }
+
   async function confirmarEdicion(clave: string) {
-    const valor = parseFichaValue(borrador, ficha[clave]);
-    setEditando(null);
+    const actual = valorPropio(ficha, clave) as FichaValue | undefined;
+    const valor = parseFichaValue(borrador, actual);
     // Vacío no borra: para eso está el bote de basura. Un campo que se vacía
     // solo, porque alguien seleccionó y salió, se lleva un dato que costó una
     // conversación.
-    if (valor === "" || valor === ficha[clave]) return;
-    await guardar({ [clave]: valor });
+    if (valor === "" || valor === actual) {
+      setEditando(null);
+      return;
+    }
+    if (await guardar({ [clave]: valor })) setEditando(null);
   }
 
   async function agregar() {
     const clave = claveNueva.trim();
     const valor = valorNuevo.trim();
     if (!clave || !valor) return;
+    if (!(await guardar({ [clave]: valor }))) return;
     setAgregando(false);
     setClaveNueva("");
     setValorNuevo("");
-    await guardar({ [clave]: valor });
   }
 
   return (
@@ -98,12 +118,18 @@ export function FichaPanel({
             <CampoTipado
               key={campo.key}
               campo={campo}
-              valor={ficha[campo.key]}
+              valor={valorPropio(ficha, campo.key) as FichaValue | undefined}
               guardando={guardando}
               onGuardar={(valor) => guardar({ [campo.key]: valor })}
             />
           ))}
         </dl>
+      )}
+
+      {errorGuardar && (
+        <p role="alert" className="mb-2 text-[11px] text-danger">
+          {errorGuardar}
+        </p>
       )}
 
       {conEsquema && entradas.length > 0 && (
@@ -139,6 +165,7 @@ export function FichaPanel({
                       aria-label={`Valor de ${fichaLabel(clave)}`}
                     />
                     <button
+                      disabled={guardando}
                       onClick={() => void confirmarEdicion(clave)}
                       aria-label="Guardar"
                       className="rounded p-1 text-text-3 hover:bg-accent hover:text-foreground"
@@ -156,10 +183,7 @@ export function FichaPanel({
                 ) : (
                   <>
                     <button
-                      onClick={() => {
-                        setEditando(clave);
-                        setBorrador(fichaValueText(valor));
-                      }}
+                      onClick={() => abrirEdicionLibre(clave, valor)}
                       className="min-w-0 flex-1 break-words rounded px-1 py-1 text-left hover:bg-accent"
                       aria-label={`Editar ${fichaLabel(clave)}`}
                     >
@@ -167,7 +191,7 @@ export function FichaPanel({
                     </button>
                     <span className="flex opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                       <button
-                        onClick={() => setEditando(clave)}
+                        onClick={() => abrirEdicionLibre(clave, valor)}
                         aria-label={`Editar ${fichaLabel(clave)}`}
                         className="rounded p-1 text-text-3 hover:bg-accent hover:text-foreground"
                       >
@@ -260,7 +284,8 @@ function CampoTipado({
   campo: FichaField;
   valor: FichaValue | undefined;
   guardando: boolean;
-  onGuardar: (valor: FichaValue | null) => Promise<void>;
+  /** `true` si se guardó (M-10: si no, la edición queda abierta). */
+  onGuardar: (valor: FichaValue | null) => Promise<boolean>;
 }) {
   const [editando, setEditando] = useState(false);
   const [borrador, setBorrador] = useState("");
@@ -271,7 +296,8 @@ function CampoTipado({
   function abrir() {
     setError(false);
     setBorrador(
-      vacio ? "" : campo.type === "boolean" ? (valor ? "si" : "no") : String(valor)
+      // M-10 — `aBooleano`: un `"no"` o un `0` guardados no se abren como «Sí».
+      vacio ? "" : campo.type === "boolean" ? (aBooleano(valor) ? "si" : "no") : String(valor)
     );
     setEditando(true);
   }
@@ -287,8 +313,11 @@ function CampoTipado({
       setError(true);
       return;
     }
-    setEditando(false);
-    if (r.valor !== valor) await onGuardar(r.valor);
+    if (r.valor === valor) {
+      setEditando(false);
+      return;
+    }
+    if (await onGuardar(r.valor)) setEditando(false);
   }
 
   const teclas = (e: React.KeyboardEvent) => {
@@ -338,6 +367,7 @@ function CampoTipado({
               />
             )}
             <button
+              disabled={guardando}
               onClick={() => void confirmar()}
               aria-label="Guardar"
               className="rounded p-1 text-text-3 hover:bg-accent hover:text-foreground"

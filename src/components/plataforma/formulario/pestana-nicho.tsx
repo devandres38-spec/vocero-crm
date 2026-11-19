@@ -4,8 +4,8 @@ import { useState } from "react";
 import { ArrowDown, ArrowUp, Plus, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TIPOS_CAMPO, TOPE_CAMPOS, type FichaField, type TipoCampo } from "@/lib/ficha-campos";
-import type { FormBlueprint, ModoFormulario } from "@/lib/platform/formulario-blueprint";
+import { TIPOS_CAMPO, TOPE_CAMPOS, type TipoCampo } from "@/lib/ficha-campos";
+import { nuevoUid, type CampoFichaForm, type FormBlueprint, type ModoFormulario } from "@/lib/platform/formulario-blueprint";
 import { claveSugerida, ETIQUETA_TIPO } from "@/components/settings/ficha-campos-client";
 import { PACK_IDS, PACKS } from "@/verticals/registro";
 import { BotonIcono, Campo, SELECT, Seccion, mover, type Actualizar } from "./controles";
@@ -34,7 +34,7 @@ export function PestanaNicho({
   const [plantilla, setPlantilla] = useState<string>(f.vertical.pack === "default" ? "clinica-salud" : f.vertical.pack);
   const actual = PACKS[f.vertical.pack as keyof typeof PACKS] ?? PACKS.default;
   const campos = f.fichaFields.fields;
-  const poner = (fields: FichaField[]) => upd("fichaFields", { fields });
+  const poner = (fields: CampoFichaForm[]) => upd("fichaFields", { fields });
 
   return (
     <div className="space-y-4">
@@ -102,7 +102,7 @@ export function PestanaNicho({
             variant="outline"
             size="sm"
             disabled={campos.length >= TOPE_CAMPOS}
-            onClick={() => poner([...campos, { key: "", label: "", type: "text" }])}
+            onClick={() => poner([...campos, { key: "", label: "", type: "text", uid: nuevoUid() }])}
           >
             <Plus className="mr-1 h-4 w-4" /> Campo
           </Button>
@@ -113,7 +113,9 @@ export function PestanaNicho({
         ) : (
           <ol className="space-y-2">
             {campos.map((c, i) => (
-              <li key={`${i}-${c.key}`} className="space-y-2 rounded-lg border p-3">
+              // A-2 (auditoría 072-A) — `uid` estable: la clave cambia con cada
+              // tecla del nombre y como `key` de React remontaba el input.
+              <li key={c.uid ?? `${i}`} className="space-y-2 rounded-lg border p-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     aria-label="Nombre del campo"
@@ -131,11 +133,23 @@ export function PestanaNicho({
                     aria-label="Tipo"
                     className={`${SELECT} w-auto`}
                     value={c.type}
+                    // B-3 (auditoría 072-A) — El tipo de un campo que ya existe en
+                    // el negocio no cambia (el servidor lo rechazaría igual).
+                    disabled={modo === "editar" && c.guardado === true}
+                    title={modo === "editar" && c.guardado ? "El tipo de un campo guardado no cambia" : undefined}
                     onChange={(e) => {
                       const type = e.target.value as TipoCampo;
                       poner(
                         campos.map((x, j) =>
-                          j === i ? { ...x, type, ...(type === "select" ? { options: x.options ?? ["Opción 1"] } : { options: undefined }) } : x
+                          j === i
+                            ? {
+                                ...x,
+                                type,
+                                ...(type === "select"
+                                  ? { options: x.options ?? ["Opción 1"], opcionesTexto: x.opcionesTexto ?? (x.options ?? ["Opción 1"]).join("\n") }
+                                  : { options: undefined, opcionesTexto: undefined }),
+                              }
+                            : x
                         )
                       );
                     }}
@@ -166,17 +180,16 @@ export function PestanaNicho({
                   </BotonIcono>
                 </div>
                 {c.type === "select" && (
-                  <Input
-                    aria-label="Opciones separadas por coma"
-                    value={(c.options ?? []).join(", ")}
-                    placeholder="Boda, Corporativo, Otro"
-                    onChange={(e) =>
-                      poner(
-                        campos.map((x, j) =>
-                          j === i ? { ...x, options: e.target.value.split(",").map((o) => o.trim()).filter(Boolean) } : x
-                        )
-                      )
-                    }
+                  // A-3 (auditoría 072-A) — Se guarda el texto CRUDO y se parsea al
+                  // enviar: parsear en cada tecla borraba la coma (o el salto)
+                  // recién escrito y no dejaba escribir la segunda opción.
+                  <textarea
+                    aria-label="Opciones (una por línea)"
+                    rows={3}
+                    className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm"
+                    value={c.opcionesTexto ?? (c.options ?? []).join("\n")}
+                    placeholder={"Boda\nCorporativo\nOtro"}
+                    onChange={(e) => poner(campos.map((x, j) => (j === i ? { ...x, opcionesTexto: e.target.value } : x)))}
                   />
                 )}
                 <Input
