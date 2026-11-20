@@ -5,6 +5,119 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.14.0 — 2026-11-20
+
+Cierra la serie **Bot de Producción (073)**: rondas A, B y C con sus parches de
+auditoría. Migraciones aditivas `0035`–`0037` (se aplican solas al arrancar).
+Actualizar **el CRM antes que Nea**. Contrato:
+[brains-073](specs/073-bot-produccion/contracts/brains-073.md).
+
+### Parche final de la auditoría 073-C
+
+- La Bandeja nombra las reacciones («Reacción») en vez de «Contenido».
+- Las citas del contexto del cerebro (`next`/`last`) llevan la hora en 12 h
+  («hoy lunes, 14 de septiembre, 10:30 a. m.»), como las demás etiquetas; el
+  día sigue completo y relativo.
+- `replyTo.text` de una foto o documento citado trae su pie de foto.
+- Teléfonos de una tarjeta de contacto: un `phone` vacío ya no tapa al
+  `wa_id`, y cada uno se acota a 40 caracteres.
+
+### Bot de Producción, ronda 073-C — calidad conversacional, comprobantes y Colombia
+
+- **Reacciones** (👍) a la bandeja, sin despertar al agente ni abrir la
+  ventana de 24 h.
+- **El agente sabe a qué responde el cliente**: el despacho lleva `replyTo`
+  (el mensaje citado) y los teléfonos de las tarjetas de contacto.
+- **Horarios en 12 h** en las etiquetas de la agenda («3:00 p. m.»); los
+  datos (`startUtc`) siguen en ISO.
+- **Colombia por defecto**: plantillas nuevas en `es_CO` (o el idioma de la
+  región del negocio), teléfonos legibles («+57 300 123 4567»), fechas con el
+  idioma de la región en toda la app, y textos sin mexicanismos (`valor` en
+  vez de `importe`, `fila` en vez de `renglón`, `cupos disponibles`,
+  `Almuerzo con proveedor`, montos como «150.000»).
+- Del lado de Nea (actualizarla después): comprobantes de pago siempre a una
+  persona, validador anti-alucinación (incluido `<think>` de GLM), respuestas
+  partidas por canal, memoria de 20 mensajes, léxico colombiano.
+
+### Parche de auditoría 073-B
+
+- La pausa por respuesta humana arranca en el mensaje que la provocó: el
+  primer mensaje del asesor ya no se pierde del `humanGap`.
+- Índice `dispatch_org_created_idx` (migración `0037`) para el conteo
+  anti-flood.
+
+
+### Bot de Producción, ronda 073-B — Humano↔Bot y seguridad
+
+**Aditiva**: la migración `0036_bot_humano` (columnas nuevas, nulables) se
+aplica sola al arrancar. Contrato: [brains-073 §3–§6](specs/073-bot-produccion/contracts/brains-073.md).
+Actualizar **antes** que Nea.
+
+- **Responder desde la Bandeja pausa la IA** (texto, adjuntos, ubicación,
+  contactos y plantillas), con el mismo motivo «Respondiste» que el eco del
+  teléfono. Para que vuelva, «Reactivar IA».
+- **El agente sabe qué pasó mientras atendías.** Al reactivar la IA, el
+  cerebro recibe una sola vez lo que se dijeron el cliente y el equipo
+  (`humanGap`) y retoma desde ahí.
+- **Resumen al pasarte la conversación**: el agente deja una nota interna con
+  qué quiere el cliente y qué falta. Filtro nuevo **«Atención humana»** en la
+  Bandeja.
+- **Anti-flood**: como mucho 25 turnos de IA por hora y 80 al día por
+  conversación, y 500 al día por negocio (la plataforma los ajusta por plan
+  con el Blueprint `bot.limits`). Al pasarse queda una nota y un incidente
+  `abuso`; la IA sigue encendida.
+- **Baja (Ley 1581)**: «no me escriban más», «denme de baja»… se detectan
+  solas (o las decide el agente si son dudosas). El cliente recibe una
+  confirmación, la conversación pasa a «Atención humana» y quedan bloqueados la
+  IA, las plantillas y los seguimientos. Puedes contestarle a mano dentro de la
+  ventana (con aviso). Solo «Reactivar contacto» lo revierte.
+- **Horario de atención humana** (Agente → «Horario de atención humana»), con
+  festivos de Colombia opcionales: fuera de horario el agente no promete que
+  un asesor conteste ya.
+- **Plataforma**: Blueprint `bot` (`limits`, `temperature`, `fallbackModel`) y
+  `humanHours`. La temperatura viaja al cerebro (0.4 por defecto) y el modelo
+  de respaldo lo agrega el proxy de `/api/brains/llm` con OpenRouter.
+
+### Bot de Producción, ronda 073-A — cero silencios y cero apagones
+
+**Aditiva**: la migración `0035_bot_incident` (tabla nueva) se aplica sola al
+arrancar. Contrato: [specs/073-bot-produccion/contracts/brains-073.md](specs/073-bot-produccion/contracts/brains-073.md).
+Actualizar **antes** que Nea.
+
+- **Un fallo pasajero ya no apaga la IA.** El despacho reintenta 6 veces con
+  2 → 120 s de espera (antes 3 en ~5 s): un redeploy del cerebro ya no caduca
+  los despachos. Si aun así caduca, ya no pasa la conversación a una persona
+  con `aiEnabled=false` para siempre: queda un **incidente** y una **nota
+  interna** («el agente no pudo contestar este mensaje…») y la IA sigue
+  activa para el siguiente mensaje.
+- **Sin head-of-line blocking.** El worker entrega hasta 4 despachos a la vez,
+  como mucho 2 del mismo negocio: un cerebro colgado no frena a los demás.
+- **Sin saldo no hay cascada.** En modo plataforma, con la llave de IA del
+  negocio pausada (sin saldo o rechazada) o sin configurar, los mensajes no
+  se le despachan al cerebro: quedan en la bandeja y se registra UN
+  incidente por hora (`sin_saldo` / `sin_credencial`). Antes cada mensaje
+  terminaba en un handoff con motivo «modelo».
+- **Entrega saliente.** `POST /api/brains/messages` responde **422
+  `envio_permanente`** (con el código de Meta) cuando el canal rechaza el
+  envío para siempre y **503 `meta_unavailable`** cuando es pasajero (antes,
+  502 para todo). `/api/bot/messages` (instancia raíz) no cambia. Un texto
+  que el canal rechaza queda en el hilo como **fallido**, visible para el
+  operador (las respuestas de la IA, solo si el rechazo es definitivo).
+- **Motivos de handoff** `sin_saldo`, `opt_out` y `abuso`, con su texto en la
+  bandeja y en Resultados.
+- **`bot_incident`**: despachos caducados, llaves sin saldo y envíos
+  rechazados, agrupados por hora; se purgan a los 90 días. El panel llega en
+  la 074.
+
+#### Parche de auditoría 073-A
+
+- Un `429` del canal es pasajero (`meta_unavailable`, 503 reintentable) en
+  los cuatro canales, y todos pasan el código de Meta (`falloDelCanal`).
+- Si guardar la burbuja fallida revienta, el error original del canal sigue
+  llegando a quien envió.
+- Un fallo de la base al reclamar un despacho retira solo ese carril: la
+  tanda espera a los que siguen en vuelo antes de soltar el turno.
+
 ## 2.13.1 — 2026-11-19
 
 Hotfixes del bot (antesala de la spec 073). **Sin migraciones ni cambios de

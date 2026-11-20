@@ -3,6 +3,8 @@ import { getDb, schema } from "@/lib/db";
 import { normalizeBranding, type Branding } from "@/lib/branding";
 import type { OrganizationBlueprint } from "@/lib/platform/blueprint";
 import { aparienciaSchema } from "@/lib/temas";
+import { fusionarBot } from "@/lib/ajustes-bot";
+import { leerHorarioHumano } from "@/lib/horario-humano";
 
 /**
  * 069 — Secciones que viven en la fila de la organización: `organization`
@@ -50,11 +52,20 @@ export async function aplicarMetadata(
   org: OrgParaBlueprint,
   bp: OrganizationBlueprint,
   created: boolean
-): Promise<{ organization: boolean; region: boolean; brand: boolean; appearance: boolean }> {
+): Promise<{
+  organization: boolean;
+  region: boolean;
+  brand: boolean;
+  appearance: boolean;
+  bot: boolean;
+  humanHours: boolean;
+}> {
   const meta = leerMetadata(org.metadata);
   let region = false;
   let brand = false;
   let appearance = false;
+  let bot = false;
+  let humanHours = false;
 
   if (bp.region) {
     const actual = regionGuardada(meta);
@@ -82,10 +93,27 @@ export async function aplicarMetadata(
     if (appearance) meta.apariencia = deseada;
   }
 
+  // 073-B — Ajustes del bot (merge) y horario humano (entero; `null` lo quita).
+  if (bp.bot) {
+    const actual = (meta.bot ?? {}) as Record<string, unknown>;
+    const deseado = fusionarBot(actual, bp.bot);
+    bot = !igual(actual, deseado);
+    if (bot) meta.bot = deseado;
+  }
+  if (bp.humanHours !== undefined) {
+    const actual = meta.humanHours ?? null;
+    const deseado = bp.humanHours === null ? null : leerHorarioHumano(bp.humanHours);
+    humanHours = !igual(actual, deseado);
+    if (humanHours) {
+      if (deseado === null) delete meta.humanHours;
+      else meta.humanHours = deseado;
+    }
+  }
+
   const nombre = bp.organization?.name;
   const organization = !created && nombre !== undefined && nombre !== org.name;
 
-  const metadata = region || brand || appearance;
+  const metadata = region || brand || appearance || bot || humanHours;
   if (metadata || organization) {
     await tx
       .update(schema.organization)
@@ -95,7 +123,7 @@ export async function aplicarMetadata(
       })
       .where(eq(schema.organization.id, org.id));
   }
-  return { organization, region, brand, appearance };
+  return { organization, region, brand, appearance, bot, humanHours };
 }
 
 /** La apariencia guardada si es válida (sin claves indefinidas), o null. */

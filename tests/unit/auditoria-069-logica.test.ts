@@ -261,7 +261,7 @@ describe("H-07 — el locale del negocio en fechas y avisos", () => {
   it("partsInTz y labelInTz respetan el locale pedido", () => {
     expect(partsInTz(cita, "America/Bogota", "en-US").weekday).toBe("Wednesday");
     expect(partsInTz(cita, "America/Bogota", "es-CO").weekday).toBe("miércoles");
-    expect(labelInTz(cita, "America/Bogota", "en-US")).toMatch(/^Wed 5 Aug, 10:00$/);
+    expect(labelInTz(cita, "America/Bogota", "en-US")).toMatch(/^Wed 5 Aug, 10:00 AM$/);
   });
 
   it("los avisos de longitud formatean el número con el locale del negocio", () => {

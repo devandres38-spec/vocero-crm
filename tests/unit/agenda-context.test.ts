@@ -46,7 +46,7 @@ describe("la forma de una cita en el contexto", () => {
     // esa cita es la de hoy.
     const antes = new Date("2026-09-14T15:00:00.000Z"); // 09:00 del mismo lunes
     expect(citasEnContexto([cita()], TZ, antes).next?.label).toBe(
-      "hoy lunes, 14 de septiembre, 10:30"
+      "hoy lunes, 14 de septiembre, 10:30 a. m."
     );
     const domingo = new Date("2026-09-13T18:00:00.000Z");
     expect(citasEnContexto([cita()], TZ, domingo).next?.label).toMatch(/^mañana lunes/);
@@ -59,7 +59,7 @@ describe("la forma de una cita en el contexto", () => {
       status: "agendada",
       startUtc: "2026-09-14T16:30:00.000Z",
       endUtc: "2026-09-14T17:00:00.000Z",
-      label: "hoy lunes, 14 de septiembre, 10:30",
+      label: "hoy lunes, 14 de septiembre, 10:30 a. m.",
       meetingLink: "https://meet.google.com/aza-iftw-wxp",
       linkPending: false,
     });
@@ -233,7 +233,7 @@ describe("citasParaContexto", () => {
     expect(r?.timezone).toBe("America/Bogota");
     expect(r?.next?.id).toBe("bk_real");
     // 15:00Z es 10:00 en Bogotá (UTC-5).
-    expect(r?.next?.label).toBe("miércoles, 16 de septiembre, 10:00");
+    expect(r?.next?.label).toBe("miércoles, 16 de septiembre, 10:00 a. m.");
     vi.unstubAllEnvs();
   });
 

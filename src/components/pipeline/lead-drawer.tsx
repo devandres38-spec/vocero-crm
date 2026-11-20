@@ -194,13 +194,13 @@ export function LeadDrawer({
                     }
                     if (e.key === "Escape") setEditandoMonto(false);
                   }}
-                  placeholder="12,500"
+                  placeholder="150.000"
                   aria-label="Monto del trato"
                   className="h-8 text-sm"
                 />
                 <p className="mt-1 text-xs text-text-3">
                   {montoInvalido
-                    ? "No se entiende ese importe."
+                    ? "No se entiende ese valor."
                     : montoParseado === null
                       ? "Déjalo vacío para quitar el monto."
                       : `Se guardará como ${formatMoneyCents(montoParseado, moneda, locale)}`}

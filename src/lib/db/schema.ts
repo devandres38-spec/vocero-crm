@@ -351,6 +351,15 @@ export const contact = pgTable(
      * (`getOrCreateConversation`); después manda el interruptor de la Bandeja.
      */
     aiPaused: boolean("ai_paused").notNull().default(false),
+    /**
+     * 073-B (D6, Ley 1581) — La persona pidió no recibir más mensajes. Bloquea
+     * la IA, las plantillas y los seguimientos; una persona del equipo aún
+     * puede contestarle dentro de la ventana. No se revierte sola: solo con
+     * la reactivación explícita de la Bandeja.
+     */
+    optOutAt: timestamp("opt_out_at"),
+    /** Quién la registró: el detector del CRM, el agente o una persona. */
+    optOutSource: text("opt_out_source", { enum: ["detector", "agente", "operador"] }),
     archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -548,8 +557,22 @@ export const conversation = pgTable(
         "ventana",
         "hostilidad",
         "manual_reply",
+        // 073-A — los pone el sistema: llave de IA sin saldo, opt-out (Ley
+        // 1581) y abuso/flood. Solo TS: la columna es texto libre.
+        "sin_saldo",
+        "opt_out",
+        "abuso",
       ],
     }),
+    /** 073-B (D1) — Desde cuándo la IA está apagada a mano (sin handoff). */
+    aiPausedAt: timestamp("ai_paused_at"),
+    /**
+     * 073-B (D1) — El último tramo que atendió una persona: de la pausa a la
+     * reanudación. El cerebro lo lee UNA vez (`humanGap` del contexto) para
+     * no contestar como si nada hubiera pasado.
+     */
+    humanGapFrom: timestamp("human_gap_from"),
+    humanGapTo: timestamp("human_gap_to"),
     lastInboundAt: timestamp("last_inbound_at"),
     lastMessageAt: timestamp("last_message_at"),
     unreadCount: integer("unread_count").notNull().default(0),
@@ -1460,6 +1483,11 @@ export const dispatch = pgTable(
     ),
     // La consulta del worker: pendientes cuya ventana ya venció.
     index("dispatch_status_notbefore_idx").on(t.status, t.notBefore),
+    // Auditoría 073-B — El conteo anti-flood (`contarDespachos`): las últimas
+    // 24 h de un negocio sin recorrer su histórico ni los descartados.
+    index("dispatch_org_created_idx")
+      .on(t.organizationId, t.createdAt)
+      .where(sql`${t.status} <> 'descartado'`),
     // Auditoría 070 (M-3): ON DELETE SET NULL al borrar un cerebro, sin
     // recorrer toda la tabla.
     index("dispatch_brain_deployment_idx")
@@ -1666,5 +1694,46 @@ export const brainToolCall = pgTable(
     check("brain_tool_call_estado_ck", sql`${t.estado} in ('en_curso', 'hecha', 'fallida')`),
     // B-3 — Una llamada `hecha` siempre tiene la respuesta que se repite.
     check("brain_tool_call_hecha_ck", sql`${t.estado} <> 'hecha' or ${t.response} is not null`),
+  ]
+);
+
+/**
+ * 073-A — Lo que le pasó al bot y nadie vio: un despacho que caducó porque el
+ * cerebro no contestaba, una llave de IA sin saldo que frenó los despachos,
+ * un envío que el canal rechazó para siempre.
+ *
+ * Una fila por (organización, `dedupeKey`): un incidente que se repite suma
+ * `count` y mueve `lastAt` en vez de llenar la tabla (una llave sin saldo con
+ * 500 mensajes entrantes es UNA fila por hora). Se purga a los 90 días.
+ */
+export const botIncident = pgTable(
+  "bot_incident",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** La conversación afectada, si la hay (una llave sin saldo es de todo el negocio). */
+    conversationId: text("conversation_id").references(() => conversation.id, {
+      onDelete: "cascade",
+    }),
+    kind: text("kind", {
+      // 073-B — `abuso`: el tope anti-flood frenó el despacho.
+      enum: ["despacho_caducado", "sin_saldo", "sin_credencial", "envio_permanente", "abuso"],
+    }).notNull(),
+    detail: text("detail"),
+    count: integer("count").notNull().default(1),
+    dedupeKey: text("dedupe_key").notNull(),
+    firstAt: timestamp("first_at").notNull().defaultNow(),
+    lastAt: timestamp("last_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("bot_incident_dedupe_uq").on(t.organizationId, t.dedupeKey),
+    index("bot_incident_last_idx").on(t.lastAt),
+    index("bot_incident_conv_idx").on(t.conversationId),
+    check(
+      "bot_incident_kind_ck",
+      sql`${t.kind} in ('despacho_caducado', 'sin_saldo', 'sin_credencial', 'envio_permanente', 'abuso')`
+    ),
   ]
 );

@@ -1,3 +1,4 @@
+import { pausarPorRespuestaHumana } from "@/server/inbox/pausa";
 import { and, eq } from "drizzle-orm";
 import {
   countVariables,
@@ -28,7 +29,9 @@ export class TemplateError extends Error {
     | "invalid"
     | "not_found"
     | "meta_error"
-    | "meta_unavailable";
+    | "meta_unavailable"
+    /** 073-B (Ley 1581): el contacto pidió no recibir más mensajes. */
+    | "opt_out";
 
   constructor(code: TemplateError["code"], message: string) {
     super(message);
@@ -44,6 +47,7 @@ const TEMPLATE_ERROR_STATUS: Record<TemplateError["code"], number> = {
   not_found: 404,
   meta_error: 422,
   meta_unavailable: 503,
+  opt_out: 409,
 };
 
 export function templateErrorStatus(err: TemplateError): number {
@@ -476,6 +480,13 @@ export async function sendTemplate(input: {
       "Conversación de prueba del Laboratorio: el envío real está prohibido"
     );
   }
+  // 073-B (D6, Ley 1581): una plantilla es un mensaje que la persona no pidió.
+  if (row.contact.optOutAt) {
+    throw new TemplateError(
+      "opt_out",
+      "Este contacto pidió no recibir más mensajes (Ley 1581): no se le envían plantillas"
+    );
+  }
 
   const creds = await getCredentialsByOrg(input.organizationId);
   if (!creds) throw new TemplateError("not_connected", "Sin número conectado");
@@ -546,5 +557,11 @@ export async function sendTemplate(input: {
     },
   });
 
+  // 073-B (D1, decisión #1): una plantilla la manda una persona → la IA se pausa.
+  try {
+    await pausarPorRespuestaHumana(input.organizationId, input.conversationId, message.createdAt);
+  } catch (err) {
+    console.error("[plantillas] no pude pausar la IA:", err);
+  }
   return { messageId: message.id };
 }

@@ -1,3 +1,4 @@
+import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -45,5 +46,10 @@ export function avatarColor(seed: string): string {
 
 export function formatPhone(phone: string | null | undefined): string {
   // 003: contactos BSUID pueden no tener teléfono.
-  return phone ? `+${phone}` : "Sin teléfono";
+  if (!phone) return "Sin teléfono";
+  // 073-C (D7): legible («+57 300 123 4567»), con el formato del país del
+  // número. Lo que libphonenumber no reconoce sale como antes.
+  const digitos = phone.replace(/[^\d]/g, "");
+  const n = parsePhoneNumberFromString(`+${digitos}`);
+  return n?.isPossible() ? n.formatInternational() : `+${phone}`;
 }

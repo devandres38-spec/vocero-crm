@@ -38,6 +38,8 @@ export const RESERVADOS: readonly string[] = [
   "coordination_consent",
   "route_out",
   "handoff",
+  // 073-B (D6) — La baja que el detector no reconoce (Ley 1581).
+  "solicitar_baja",
   "notas",
 ];
 

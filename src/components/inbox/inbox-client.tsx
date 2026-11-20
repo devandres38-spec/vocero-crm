@@ -378,7 +378,7 @@ export function InboxClient({
   );
 
   const patchConversation = useCallback(
-    async (patch: { aiEnabled?: boolean; reactivate?: boolean }) => {
+    async (patch: { aiEnabled?: boolean; reactivate?: boolean; optOut?: boolean }) => {
       if (!selectedIdRef.current) return;
       await fetch(`/api/conversations/${selectedIdRef.current}`, {
         method: "PATCH",

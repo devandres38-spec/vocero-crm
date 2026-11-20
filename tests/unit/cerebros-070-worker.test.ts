@@ -17,7 +17,7 @@ const h = vi.hoisted(() => ({
   descartar: vi.fn(),
   anotar: vi.fn(),
   caducar: vi.fn(),
-  pasarAHumano: vi.fn(),
+  avisar: vi.fn(),
   verificar: vi.fn(),
 }));
 
@@ -44,8 +44,8 @@ vi.mock("@/server/dispatch/outbox", () => ({
   encolarDespacho: vi.fn(),
   reintentarOCaducar: vi.fn(async () => false),
   caducarAHumano: h.caducar,
-  pasarAHumano: h.pasarAHumano,
 }));
+vi.mock("@/server/incidentes", () => ({ avisarCaidaDelCerebro: h.avisar }));
 
 import { tanda, VIDA_DESPACHO_MS } from "@/server/dispatch/worker";
 
@@ -71,7 +71,7 @@ const DESTINO = {
 beforeEach(() => {
   fake().reiniciar();
   h.pendientes.length = 0;
-  for (const f of [h.destinoDe, h.construirEvento, h.entregar, h.descartar, h.anotar, h.caducar, h.pasarAHumano, h.verificar]) {
+  for (const f of [h.destinoDe, h.construirEvento, h.entregar, h.descartar, h.anotar, h.caducar, h.avisar, h.verificar]) {
     f.mockReset();
   }
   h.anotar.mockResolvedValue(true);
@@ -103,13 +103,18 @@ describe("worker en modo plataforma", () => {
     expect(h.entregar.mock.calls[0]![1]).toBe(DESTINO);
   });
 
-  it("M-10: un despacho ya vencido no se le manda a Nea: pasa a una persona aquí", async () => {
+  it("M-10: un despacho ya vencido no se le manda a Nea (073-A: incidente + nota, la IA sigue)", async () => {
     vi.stubEnv("TENANCY", "multi");
     h.pendientes.push([{ ...FILA, createdAt: new Date(Date.now() - VIDA_DESPACHO_MS - 1000) }]);
     h.destinoDe.mockResolvedValue(DESTINO);
+    h.caducar.mockResolvedValue(true);
     await tanda();
     expect(h.caducar).toHaveBeenCalledWith(expect.objectContaining({ id: "dsp_1" }), "el despacho venció antes de entregarse");
-    expect(h.pasarAHumano).toHaveBeenCalledWith("org_A", "cv_1");
+    expect(h.avisar).toHaveBeenCalledWith({
+      organizationId: "org_A",
+      conversationId: "cv_1",
+      detalle: "el despacho venció antes de entregarse",
+    });
     expect(h.entregar).not.toHaveBeenCalled();
   });
 

@@ -11,6 +11,8 @@ import { ATAJO_RE, normalizarAtajo, TEXTO_MAX, TOPE_RESPUESTAS } from "@/lib/res
 import { fichaFieldsSchema } from "@/lib/ficha-campos";
 import { esPackId } from "@/verticals/registro";
 import { verticalOverridesSchema } from "@/verticals/resolver";
+import { botSeccionSchema } from "@/lib/ajustes-bot";
+import { horarioHumanoSchema } from "@/lib/horario-humano";
 
 /**
  * 069 (D12, FR-016) — `OrganizationBlueprint` v1: un negocio completo descrito
@@ -275,6 +277,18 @@ export const blueprintSchema = z
     vertical: verticalSchema.optional(),
     /** 072 — Los campos de la ficha del negocio. */
     fichaFields: fichaFieldsSeccionSchema.optional(),
+    /**
+     * 073-B (decisiones #5, #8, #10) — Lo que la plataforma fija del bot por
+     * plan: topes anti-flood, `temperature` y modelo de respaldo. Merge:
+     * ausente = no se toca; `null` = vuelve al de la plataforma.
+     */
+    bot: botSeccionSchema.optional(),
+    /**
+     * 073-B (decisión #7) — Horario de las PERSONAS del equipo (no el de la
+     * agenda) con festivos de Colombia opcionales. Se reemplaza entero;
+     * `null` lo quita.
+     */
+    humanHours: horarioHumanoSchema.nullable().optional(),
     owner: ownerSchema.optional(),
   })
   .strict()
@@ -297,6 +311,8 @@ export const SECCIONES_BLUEPRINT = [
   "brain",
   "vertical",
   "fichaFields",
+  "bot",
+  "humanHours",
   "owner",
 ] as const;
 export type SeccionBlueprint = (typeof SECCIONES_BLUEPRINT)[number];

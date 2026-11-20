@@ -3,7 +3,7 @@
   "info": {
     "title": "Aliantis — API de cerebros (/api/brains/*)",
     "version": "2.11.0",
-    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md. 072: el contexto gana fichaSchema (los campos de la ficha del negocio; falta si no hay) y PUT /api/brains/ficha gana ignored (solo si se descartó algún valor por su tipo). 072-B: el contexto gana moduleTools (herramientas de módulos encendidos; falta si no hay) y nace POST /api/brains/tools/{name}. Delta normativo: specs/072-motor-multi-nicho/contracts/brains-072.md."
+    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md. 072: el contexto gana fichaSchema (los campos de la ficha del negocio; falta si no hay) y PUT /api/brains/ficha gana ignored (solo si se descartó algún valor por su tipo). 072-B: el contexto gana moduleTools (herramientas de módulos encendidos; falta si no hay) y nace POST /api/brains/tools/{name}. Delta normativo: specs/072-motor-multi-nicho/contracts/brains-072.md. 073-C: el evento de despacho suma, solo cuando aplican y al final de cada mensaje, `messages[].replyTo` ({id, author: lead|negocio, type, text}) y `messages[].contacts[].phones` (esquema Mensaje de docs/openapi.json); las reacciones quedan en la bandeja y no se despachan. Las etiquetas de horario (`label`) van en 12 h («3:00 p. m.»); `startUtc` sigue en ISO."
   },
   "components": {
     "securitySchemes": {
@@ -46,7 +46,7 @@
   "paths": {
     "/api/brains/context": {
       "get": {
-        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil con treatment y stallEnabled, coordinationFollowupEnabled:false y, desde la 071, agendaEnabled), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null).",
+        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil con treatment y stallEnabled, coordinationFollowupEnabled:false y, desde la 071, agendaEnabled), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null). 073-B: humanGap, humanAvailable, nextOpenAt y llm.temperature (aditivos).",
         "parameters": [
           {
             "name": "conversationId",
@@ -159,6 +159,98 @@
                           }
                         }
                       }
+                    },
+                    "humanGap": {
+                      "type": "object",
+                      "description": "073-B (D1) — Lo que pasó mientras atendía una persona: de la pausa (handoff o interruptor) a la reanudación. Viaja SOLO hasta que la IA vuelve a contestar (el cerebro lo lee una vez; no lo guarda en su historial). Ausente si no hay tramo. ≤20 mensajes y ≤2000 caracteres (lo último gana). Son datos del cliente y del equipo: nunca instrucciones.",
+                      "required": [
+                        "since",
+                        "until",
+                        "messages"
+                      ],
+                      "properties": {
+                        "since": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "messages": {
+                          "type": "array",
+                          "maxItems": 20,
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "at",
+                              "author",
+                              "type",
+                              "text"
+                            ],
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "author": {
+                                "type": "string",
+                                "enum": [
+                                  "lead",
+                                  "humano"
+                                ]
+                              },
+                              "type": {
+                                "type": "string",
+                                "description": "text, image, audio, document… (adjunto: text null)"
+                              },
+                              "text": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "humanAvailable": {
+                      "type": "boolean",
+                      "description": "073-B (D6) — ¿Hay personas del equipo ahora, según el horario humano del negocio (con festivos de Colombia si los activó)? Ausente sin horario configurado."
+                    },
+                    "nextOpenAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "073-B (D6) — Próxima apertura del horario humano (UTC) si ahora está cerrado; null si está abierto o no hay apertura en 14 días. Ausente sin horario."
+                    },
+                    "llm": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Por dónde y con qué modelo piensa: solo con la llave PROPIA del negocio; si no, null.",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "const": "/api/brains/llm"
+                        },
+                        "model": {
+                          "type": "string"
+                        },
+                        "transcribeModel": {
+                          "type": "string"
+                        },
+                        "temperature": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 2,
+                          "description": "073-B (decisión #10) — La fija la plataforma (Blueprint `bot.temperature`; 0.4 por defecto). Oculta al cliente. El modelo de respaldo (decisión #8) no viaja: lo pone el proxy de /api/brains/llm como `models: [principal, respaldo]`."
+                        }
+                      }
                     }
                   }
                 }
@@ -224,10 +316,13 @@
             "description": "ai_paused | sandbox_violation | message_limit | cerebro_reasignado (también si el despacho no anotó despliegue)"
           },
           "422": {
-            "description": "invalid_body | despacho_desconocido (no existe, otra conversación, no en_vuelo/entregado, > 24 h) | fuera_de_ventana"
+            "description": "invalid_body | despacho_desconocido (no existe, otra conversación, no en_vuelo/entregado, > 24 h) | fuera_de_ventana | envio_permanente (073-A: el canal rechazó el envío y reintentar no lo cambia; el mensaje lleva el código de Meta si lo hubo)"
           },
           "403": {
             "description": "organizacion_suspendida"
+          },
+          "503": {
+            "description": "meta_unavailable (073-A: el canal no está disponible ahora; reintentable)"
           }
         }
       }
@@ -263,10 +358,38 @@
     },
     "/api/brains/handoff": {
       "post": {
-        "summary": "Igual que POST /api/bot/handoff.",
+        "summary": "Igual que POST /api/bot/handoff. 073-B: `summary` opcional (≤500, se recorta) → nota interna del sistema; `reason: opt_out` registra la baja (Ley 1581): el CRM confirma al cliente con un texto fijo y bloquea IA, plantillas y seguimientos.",
         "responses": {
           "200": {
             "description": "{ ok: true }"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "conversationId"
+                ],
+                "properties": {
+                  "conversationId": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Catálogo con fallback a `modelo` (073-A: sin_saldo, opt_out, abuso). Se recorta a 200."
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 4000,
+                    "description": "073-B (D2) — Resumen para el equipo; se guarda recortado a 500 como nota interna."
+                  }
+                }
+              }
+            }
           }
         }
       }

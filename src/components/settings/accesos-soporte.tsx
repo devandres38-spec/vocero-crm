@@ -1,7 +1,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getRegion } from "@/lib/region";
 import type { AccesoSoporte } from "@/server/platform/soporte";
 
-const fecha = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+const fecha = (iso: string) => new Date(iso).toLocaleString(getRegion().locale, { dateStyle: "medium", timeStyle: "short" });
 
 /**
  * 069 (US5-7) — Quién de la plataforma entró a tu negocio, con qué nivel, por

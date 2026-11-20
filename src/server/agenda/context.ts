@@ -1,7 +1,7 @@
 import { eq, gte, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
-import { dayLabelInTz, timeInTz } from "@/lib/time/slots";
+import { dayLabelInTz, hora12InTz } from "@/lib/time/slots";
 import { getSettings } from "@/server/agenda/settings";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 import { localeDeOrganizacion } from "@/server/region";
@@ -108,7 +108,9 @@ function forma(fila: FilaCita, timezone: string, now: Date, locale?: string) {
     endUtc: new Date(
       fila.scheduledAt.getTime() + fila.durationMinutes * 60_000
     ).toISOString(),
-    label: `${dayLabelInTz(startUtc, timezone, now, locale)}, ${timeInTz(startUtc, timezone, locale)}`,
+    // 073-C: la hora en 12 h como el resto de etiquetas del contrato; el día
+    // sigue completo y con «hoy/mañana» (dayLabelInTz), no la forma corta.
+    label: `${dayLabelInTz(startUtc, timezone, now, locale)}, ${hora12InTz(startUtc, timezone, locale)}`,
   };
 }
 

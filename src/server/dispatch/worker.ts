@@ -16,12 +16,12 @@ import {
   encolarDespacho,
   marcarEntregado,
   mensajesAnotados,
-  pasarAHumano,
   reintentarOCaducar,
   renovarLease,
   tomarPendientes,
   type FilaDespacho,
 } from "@/server/dispatch/outbox";
+import { avisarCaidaDelCerebro } from "@/server/incidentes";
 
 /**
  * 021 — El worker del despachador.
@@ -42,6 +42,13 @@ import {
  */
 const INTERVALO_MS = 2000;
 const POR_TANDA = 10;
+/**
+ * 073-A (D3) — Entregas en paralelo por proceso, y cuántas de ellas puede
+ * ocupar un mismo negocio. Antes eran de una en una: un cerebro colgado
+ * (20 s de timeout por entrega) frenaba los despachos de todos los demás.
+ */
+export const CARRILES = 4;
+export const MAX_POR_ORG = 2;
 /**
  * Margen sobre la hora de la cita. `tomarPendientes` filtra por
  * `not_before <= ahora`: despertar clavado en el borde puede llegar un
@@ -120,18 +127,50 @@ export function detenerWorker(): void {
   e.citaEn = null;
 }
 
-/** Una pasada. Devuelve cuántos despachos tomó. */
+/**
+ * Una pasada. Devuelve cuántos despachos tomó.
+ *
+ * 073-A (D3) — `CARRILES` entregas a la vez, como mucho `MAX_POR_ORG` de un
+ * mismo negocio, hasta `POR_TANDA` en total. Cada carril toma de una en una
+ * y con la hora de AHORA (las que esperan no envejecen detrás de un POST
+ * lento con el lease corriendo). El reclamo va en fila india —es una consulta
+ * corta— para que dos carriles no se salten el tope del mismo negocio.
+ */
 export async function tanda(ahora: Date = new Date()): Promise<number> {
   const e = estado();
   if (e.corriendo) return 0;
   e.corriendo = true;
-  try {
-    let count = 0;
-    for (; count < POR_TANDA; count++) {
-      // De una en una, y con la hora de AHORA: las que esperan en la cola no
-      // envejecen detrás de un POST lento con el lease ya corriendo.
-      const [fila] = await tomarPendientes(1, count === 0 ? ahora : new Date());
-      if (!fila) break;
+  const enVuelo = new Map<string, number>();
+  let tomados = 0;
+  let reclamo: Promise<unknown> = Promise.resolve();
+
+  const reclamar = (): Promise<FilaDespacho | null> => {
+    const turno = reclamo.then(async () => {
+      if (tomados >= POR_TANDA) return null;
+      const alTope = [...enVuelo].filter(([, n]) => n >= MAX_POR_ORG).map(([org]) => org);
+      const [fila] = await tomarPendientes(1, tomados === 0 ? ahora : new Date(), alTope);
+      if (!fila) return null;
+      tomados++;
+      enVuelo.set(fila.organizationId, (enVuelo.get(fila.organizationId) ?? 0) + 1);
+      return fila;
+    });
+    reclamo = turno.catch(() => undefined);
+    return turno;
+  };
+
+  const carril = async (): Promise<void> => {
+    for (;;) {
+      let fila: FilaDespacho | null;
+      try {
+        fila = await reclamar();
+      } catch (err) {
+        // Auditoría 073-A: la base falló al reclamar. Este carril se retira;
+        // los demás terminan lo que tienen en vuelo y la tanda espera a todos
+        // antes de soltar `corriendo` (si no, otra tanda arrancaría encima).
+        console.error("[despacho] no se pudo reclamar:", err);
+        return;
+      }
+      if (!fila) return;
       const latido = setInterval(() => {
         void renovarLease(fila).catch(() =>
           console.error("[despacho] no se pudo renovar el lease")
@@ -140,14 +179,25 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
       latido.unref?.();
       try {
         await procesar(fila);
+      } catch (err) {
+        // Un despacho que revienta no tumba a los demás carriles: su lease
+        // vence y el barrido lo retoma.
+        console.error(`[despacho] ${fila.id} falló al procesarse:`, err);
       } finally {
         clearInterval(latido);
+        enVuelo.set(fila.organizationId, (enVuelo.get(fila.organizationId) ?? 1) - 1);
       }
     }
-    return count;
-  } catch (err) {
-    console.error("[despacho] la tanda falló:", err);
-    return 0;
+  };
+
+  try {
+    // `allSettled`: aunque un carril fallara, la tanda no termina hasta que
+    // todos los demás aterrizan.
+    const carriles = await Promise.allSettled(Array.from({ length: CARRILES }, carril));
+    for (const c of carriles) {
+      if (c.status === "rejected") console.error("[despacho] un carril falló:", c.reason);
+    }
+    return tomados;
   } finally {
     e.corriendo = false;
   }
@@ -176,9 +226,8 @@ async function procesar(fila: FilaDespacho): Promise<void> {
   // caído o el cerebro no lo aceptó a tiempo) no se le manda a Nea con un
   // `expiresAt` en el pasado: pasa a una persona aquí mismo.
   if (esPlataforma() && fila.createdAt.getTime() + VIDA_DESPACHO_MS <= Date.now()) {
-    if (await caducarAHumano(fila, "el despacho venció antes de entregarse")) {
-      await pasarAHumano(fila.organizationId, fila.conversationId);
-    }
+    const detalle = "el despacho venció antes de entregarse";
+    if (await caducarAHumano(fila, detalle)) await avisar(fila, detalle);
     return;
   }
 
@@ -247,7 +296,7 @@ async function procesar(fila: FilaDespacho): Promise<void> {
         bloqueo === "no_resuelve"
           ? await reintentarOCaducar(fila, detalle)
           : await caducarAHumano(fila, detalle);
-      if (caduco) await pasarAHumano(fila.organizationId, fila.conversationId);
+      if (caduco) await avisar(fila, detalle);
       return;
     }
     // 070 — Qué cerebro recibió este despacho: `/api/brains/messages` rechaza
@@ -298,5 +347,18 @@ async function procesar(fila: FilaDespacho): Promise<void> {
   const caduco = resultado.reintentable
     ? await reintentarOCaducar(fila, resultado.detalle)
     : await caducarAHumano(fila, resultado.detalle);
-  if (caduco) await pasarAHumano(fila.organizationId, fila.conversationId);
+  if (caduco) await avisar(fila, resultado.detalle);
+}
+
+/**
+ * 073-A (decisión #3) — El despacho caducó: incidente + nota interna, y la
+ * IA sigue encendida. Antes era `pasarAHumano` (`aiEnabled=false` para
+ * siempre): un redeploy del cerebro apagaba la IA de todos los chats activos.
+ */
+async function avisar(fila: FilaDespacho, detalle: string): Promise<void> {
+  await avisarCaidaDelCerebro({
+    organizationId: fila.organizationId,
+    conversationId: fila.conversationId,
+    detalle,
+  });
 }

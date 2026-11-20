@@ -28,6 +28,9 @@ import { despachoActivo } from "@/server/brains/config";
 import { despachoActivoPara } from "@/server/brains/destino";
 import { esPlataforma } from "@/lib/tenancy";
 import { despacharAlCerebro } from "@/server/dispatch/encolar";
+import { pausarPorRespuestaHumana } from "@/server/inbox/pausa";
+import { pideBaja } from "@/lib/baja";
+import { registrarBaja } from "@/server/bajas";
 import {
   aCitaDto,
   citaDelWebhook,
@@ -290,8 +293,26 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
   }
 
   for (const msg of value.messages ?? []) {
+    // 073-C (D5): una reacción queda en la bandeja (el equipo la ve) pero no
+    // es un turno: no se le despacha al cerebro ni abre la ventana.
+    if (msg.type === "reaction") {
+      const emoji = msg.reaction?.emoji?.trim();
+      const resolvedReaccion = emoji ? resolveIdentity(msg, value.contacts) : null;
+      if (!emoji || !resolvedReaccion) continue; // quitar una reacción no deja rastro
+      await ingestInboundMessage({
+        organizationId,
+        identity: resolvedReaccion,
+        waMessageId: msg.id,
+        type: "reaction",
+        text: emoji,
+        timestamp: msg.timestamp,
+        replyToWaMessageId: msg.reaction?.message_id ?? null,
+        despachar: false,
+      });
+      continue;
+    }
     if (!SUPPORTED_TYPES.has(msg.type) && !BUTTON_REPLY_TYPES.has(msg.type)) {
-      continue; // reacciones, etc.: ignorar
+      continue; // otros tipos: ignorar
     }
     const contenido = contenidoEntrante(msg);
     if (!contenido) {
@@ -412,22 +433,9 @@ async function ingestManualEcho(
     .where(eq(schema.conversation.id, conversation.id));
 
   // Pausa automática de la IA, idempotente y atómica (solo si no hay handoff).
-  const paused = await db
-    .update(schema.conversation)
-    .set({
-      aiEnabled: false,
-      handoffAt: new Date(),
-      handoffReason: "manual_reply",
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(schema.conversation.id, conversation.id),
-        sql`${schema.conversation.handoffAt} is null`
-      )
-    )
-    .returning();
-  if (paused[0]) {
+  // 073-B (D1): el mismo helper que la Bandeja web.
+  const paused = await pausarPorRespuestaHumana(organizationId, conversation.id, message.createdAt);
+  if (paused) {
     console.log(
       `[webhook] respuesta manual del dueño en ${conversation.id} — IA pausada (manual_reply)`
     );
@@ -464,6 +472,11 @@ export async function ingestInboundMessage(input: {
   threadRef?: string | null;
   /** 016/018: el anuncio que abrió la conversación, ya normalizado por el canal. */
   anuncio?: AnuncioDeOrigen | null;
+  /**
+   * 073-C (D5): `false` = solo a la bandeja (una reacción): ni despacho al
+   * cerebro ni ventana de 24 h.
+   */
+  despachar?: boolean;
 }): Promise<void> {
   const db = getDb();
   const { organizationId } = input;
@@ -538,10 +551,11 @@ export async function ingestInboundMessage(input: {
     ? await attachMediaAsset(organizationId, message.id, input.media)
     : null;
 
+  const esTurno = input.despachar !== false;
   await db
     .update(schema.conversation)
     .set({
-      lastInboundAt: waTimestamp,
+      ...(esTurno ? { lastInboundAt: waTimestamp } : {}),
       lastMessageAt: waTimestamp,
       unreadCount: sql`${schema.conversation.unreadCount} + 1`,
       updatedAt: new Date(),
@@ -565,6 +579,14 @@ export async function ingestInboundMessage(input: {
     type: "conversation.updated",
     data: { conversation: { id: conversation.id } },
   });
+
+  if (!esTurno) return;
+
+  // 073-B (D6, Ley 1581) — Una baja inequívoca se registra aquí (confirmación
+  // fija + pausa) y no le llega al cerebro. Lo dudoso lo decide el agente.
+  if (input.type === "text" && pideBaja(input.text)) {
+    if (await registrarBaja({ organizationId, conversationId: conversation.id, origen: "detector" })) return;
+  }
 
   // 036 — Quien contesta es el cerebro conectado; sin él, una persona. El
   // 025: `message.id` es lo que el despacho le debe al cerebro.

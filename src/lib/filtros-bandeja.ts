@@ -23,3 +23,11 @@ export function etiquetaVence(ms: number): string {
   if (h === 0) return `Vence en ${m} min`;
   return m === 0 ? `Vence en ${h} h` : `Vence en ${h} h ${m} min`;
 }
+
+/**
+ * 073-B (D2) — «Atención humana»: la IA la pasó a una persona (o una persona
+ * la tomó) y nadie la ha reactivado. Es lo que el equipo tiene que mirar.
+ */
+export function necesitaAtencionHumana(c: { handoffAt: string | null }): boolean {
+  return c.handoffAt !== null;
+}

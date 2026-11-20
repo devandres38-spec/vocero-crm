@@ -192,10 +192,11 @@ describe("overlaps", () => {
 describe("etiquetas para el cliente", () => {
   it("labelInTz muestra la hora local del negocio", () => {
     const label = labelInTz("2026-08-05T15:00:00.000Z", MX);
-    expect(label).toContain("09:00");
+    // 073-C (D7): 12 h en la etiqueta (solo presentación).
+    expect(label).toContain("9:00 a. m.");
     expect(label).toContain("5");
     // Mismo instante, otra zona ⇒ otra hora.
-    expect(labelInTz("2026-08-05T15:00:00.000Z", MADRID)).toContain("17:00");
+    expect(labelInTz("2026-08-05T15:00:00.000Z", MADRID)).toContain("5:00 p. m.");
   });
 
   it("partsInTz separa fecha, hora y día", () => {

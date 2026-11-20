@@ -484,6 +484,9 @@ export const PESTANA_DE_SECCION: Record<SeccionBlueprint, string> = {
   brain: "agente",
   vertical: "nicho",
   fichaFields: "nicho",
+  // 073-B — Solo por JSON avanzado (o API/MCP): no tienen formulario propio.
+  bot: "json",
+  humanHours: "json",
 };
 
 /** Pura: copiar el horario de un día a lunes–viernes (con ids nuevos). */

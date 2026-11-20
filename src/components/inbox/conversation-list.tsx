@@ -16,7 +16,7 @@ import { emptyInboxDescription, formatTime, previewText } from "./helpers";
 import { EVENTO_BORRADOR, leerBorrador } from "@/lib/borradores";
 import { atajoBandeja, esCampoDeTexto, sirveEscribiendo, vecina } from "@/lib/atajos";
 import { hayDialogoAbierto } from "@/components/atajos-globales";
-import { etiquetaVence, porVencer } from "@/lib/filtros-bandeja";
+import { etiquetaVence, necesitaAtencionHumana, porVencer } from "@/lib/filtros-bandeja";
 import { useVocabulario } from "@/lib/vocabulario-context";
 
 /* Puntos de etapa: los tokens del tema, no hex copiados del tema claro —
@@ -104,6 +104,8 @@ export function ConversationList({
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [soloPorVencer, setSoloPorVencer] = useState(false);
   const [soloAnuncios, setSoloAnuncios] = useState(false);
+  // 073-B (D2) — Las que pasaron a una persona.
+  const [soloHumanas, setSoloHumanas] = useState(false);
   const [menuFiltros, setMenuFiltros] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   // El menú se cierra al hacer clic fuera o con Escape.
@@ -193,10 +195,14 @@ export function ConversationList({
   const deAnuncios = inInbox.filter((c) => c.anuncio !== null);
   // 052 — A la ventana le quedan 2 h o menos.
   const venciendo = inInbox.filter(porVencer);
+  const humanas = inInbox.filter(necesitaAtencionHumana);
   // Lo del menú «Filtrar» se aplica antes de las pestañas: «Todas» y «No
   // leídas» cuentan dentro de lo filtrado.
   const filtrado = inInbox.filter(
-    (c) => (!soloPorVencer || porVencer(c)) && (!soloAnuncios || c.anuncio !== null)
+    (c) =>
+      (!soloPorVencer || porVencer(c)) &&
+      (!soloAnuncios || c.anuncio !== null) &&
+      (!soloHumanas || necesitaAtencionHumana(c))
   );
   const unreadCount = filtrado.filter((c) => c.unreadCount > 0).length;
   const visible = filter === "unread" ? filtrado.filter((c) => c.unreadCount > 0) : filtrado;
@@ -205,11 +211,13 @@ export function ConversationList({
     { id: "all", label: "Todas", count: filtrado.length },
     { id: "unread", label: "No leídas", count: unreadCount },
   ];
-  const nFiltros = (stage !== "all" ? 1 : 0) + (soloPorVencer ? 1 : 0) + (soloAnuncios ? 1 : 0);
+  const nFiltros =
+    (stage !== "all" ? 1 : 0) + (soloPorVencer ? 1 : 0) + (soloAnuncios ? 1 : 0) + (soloHumanas ? 1 : 0);
   function limpiarFiltros() {
     setStage("all");
     setSoloPorVencer(false);
     setSoloAnuncios(false);
+    setSoloHumanas(false);
   }
   // Con un solo canal encendido no hay bandejas que distinguir: ni marca en
   // los renglones ni filtro. La pantalla queda exactamente como antes de 014.
@@ -363,6 +371,18 @@ export function ConversationList({
                   </label>
                 )}
                 {/* Como antes: sin ninguna, la casilla no aparece (salvo que esté marcada). */}
+                {(humanas.length > 0 || soloHumanas) && (
+                  <label className="flex cursor-pointer items-center gap-2 text-[13px]">
+                    <input
+                      type="checkbox"
+                      checked={soloHumanas}
+                      onChange={(e) => setSoloHumanas(e.target.checked)}
+                      className="h-4 w-4 accent-[var(--accent)]"
+                    />
+                    <span className="flex-1">Atención humana</span>
+                    <span className="font-mono text-[11px] text-text-3">{humanas.length}</span>
+                  </label>
+                )}
                 {(venciendo.length > 0 || soloPorVencer) && (
                   <label className="flex cursor-pointer items-center gap-2 text-[13px]">
                     <input
@@ -387,7 +407,7 @@ export function ConversationList({
                     <span className="font-mono text-[11px] text-text-3">{deAnuncios.length}</span>
                   </label>
                 )}
-                {stages.length === 0 && venciendo.length === 0 && deAnuncios.length === 0 && nFiltros === 0 && (
+                {stages.length === 0 && venciendo.length === 0 && deAnuncios.length === 0 && humanas.length === 0 && nFiltros === 0 && (
                   <p className="text-[13px] text-text-3">Todavía no hay nada por qué filtrar.</p>
                 )}
                 {nFiltros > 0 && (
@@ -414,6 +434,9 @@ export function ConversationList({
             )}
             {soloAnuncios && (
               <FiltroPuesto texto="De anuncios" onQuitar={() => setSoloAnuncios(false)} />
+            )}
+            {soloHumanas && (
+              <FiltroPuesto texto="Atención humana" onQuitar={() => setSoloHumanas(false)} />
             )}
           </div>
         )}

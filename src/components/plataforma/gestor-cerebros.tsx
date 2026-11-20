@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Activity, BrainCircuit, Check, Copy, Pause, Pencil, Play, RefreshCw, Trash2 } from "lucide-react";
@@ -30,8 +31,8 @@ export type CerebroVista = {
   organizations: number;
 };
 
-const fecha = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "nunca";
+const fecha = (iso: string | null, locale: string) =>
+  iso ? new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : "nunca";
 
 export type EstadoSalud = "sano" | "aviso" | "caido" | "sin_probar";
 
@@ -139,6 +140,8 @@ function EditarCerebro({
 }
 
 export function GestorCerebros({ inicial }: { inicial: CerebroVista[] }) {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const router = useRouter();
   const [name, setName] = useState("");
   const [dispatchUrl, setDispatchUrl] = useState("");
@@ -342,7 +345,7 @@ export function GestorCerebros({ inicial }: { inicial: CerebroVista[] }) {
                         {c.status === "pausado" && <Badge variant="secondary">Pausado</Badge>}
                       </p>
                       <p className="truncate text-xs text-text-3">
-                        <span className="font-mono">{destinoVisible(c)}</span> · {c.organizations} negocio(s) · probado {fecha(c.lastHealthAt)}
+                        <span className="font-mono">{destinoVisible(c)}</span> · {c.organizations} negocio(s) · probado {fecha(c.lastHealthAt, locale)}
                         {typeof detalle.version === "string" ? ` · ${etiquetaVersion(detalle.version)}` : ""}
                         {typeof detalle.error === "string" && detalle.error ? ` · ${detalle.error}` : ""}
                       </p>

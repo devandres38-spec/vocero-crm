@@ -41,6 +41,7 @@ const MEDIA_LABELS: Record<string, string> = {
   location: "Ubicación",
   contacts: "Contacto compartido",
   template: "Plantilla",
+  reaction: "Reacción",
 };
 
 export function mediaLabel(type: string): string {

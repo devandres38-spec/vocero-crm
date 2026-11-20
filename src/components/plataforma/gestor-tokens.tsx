@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Copy, KeyRound } from "lucide-react";
@@ -20,8 +21,8 @@ type Token = {
   revokedAt: string | null;
 };
 
-const fecha = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
+const fecha = (iso: string | null, locale: string) =>
+  iso ? new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" }) : "—";
 
 export type EstadoToken = "vigente" | "vencido" | "revocado";
 
@@ -44,6 +45,8 @@ export const INSIGNIA_ESTADO: Record<EstadoToken, { texto: string; variante: "su
  * que funciona también por HTTP (y solo dice «Copiado» si copió).
  */
 export function GestorTokens({ inicial }: { inicial: Token[] }) {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const router = useRouter();
   const [name, setName] = useState("");
   const [provision, setProvision] = useState(false);
@@ -148,8 +151,8 @@ export function GestorTokens({ inicial }: { inicial: Token[] }) {
                       ))}
                     </p>
                     <p className="text-xs text-text-3">
-                      Último uso {fecha(t.lastUsedAt)} · vence {fecha(t.expiresAt)}
-                      {t.revokedAt ? ` · revocado ${fecha(t.revokedAt)}` : ""}
+                      Último uso {fecha(t.lastUsedAt, locale)} · vence {fecha(t.expiresAt, locale)}
+                      {t.revokedAt ? ` · revocado ${fecha(t.revokedAt, locale)}` : ""}
                     </p>
                   </div>
                   {estado === "vigente" && (

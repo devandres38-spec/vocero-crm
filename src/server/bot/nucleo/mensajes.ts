@@ -35,11 +35,22 @@ export type FalloRespuesta =
   | "message_limit"
   | "text_too_long"
   | "organizacion_suspendida"
-  | "send_failed";
+  | "send_failed"
+  /** 073-A — El canal no está disponible ahora (pasajero): reintentable. */
+  | "canal_no_disponible"
+  /** 073-A — El canal rechazó el envío y reintentar no lo cambia. */
+  | "envio_permanente";
 
 export type ResultadoRespuesta =
   | { ok: true; messageId: string; prueba: boolean }
-  | { ok: false; code: FalloRespuesta; message: string; detalle?: string };
+  | {
+      ok: false;
+      code: FalloRespuesta;
+      message: string;
+      detalle?: string;
+      /** 073-A — El código de Meta del rechazo, si lo hubo. */
+      metaCode?: number | null;
+    };
 
 export async function responderComoCerebro(input: {
   organizationId: string;
@@ -54,8 +65,10 @@ export async function responderComoCerebro(input: {
       aiEnabled: schema.conversation.aiEnabled,
       handoffAt: schema.conversation.handoffAt,
       isTest: schema.conversation.isTest,
+      optOutAt: schema.contact.optOutAt,
     })
     .from(schema.conversation)
+    .innerJoin(schema.contact, eq(schema.conversation.contactId, schema.contact.id))
     .where(
       and(
         eq(schema.conversation.organizationId, input.organizationId),
@@ -65,7 +78,9 @@ export async function responderComoCerebro(input: {
     .limit(1);
   const conv = convs[0];
   if (!conv) return { ok: false, code: "not_found", message: "Conversación no encontrada" };
-  if (!conv.aiEnabled || conv.handoffAt) {
+  // 073-B (D6, Ley 1581): quien pidió la baja no recibe nada automático —ni
+  // respuestas ni seguimientos del cerebro—, aunque se haya reanudado la IA.
+  if (!conv.aiEnabled || conv.handoffAt || conv.optOutAt) {
     return { ok: false, code: "ai_paused", message: "La IA está en pausa en esta conversación" };
   }
   if (conv.isTest) {
@@ -94,8 +109,18 @@ export async function responderComoCerebro(input: {
         case "text_too_long":
         case "organizacion_suspendida":
           return { ok: false, code: err.code, message: err.message };
+        // 073-A (D3): pasajero (5xx de Meta, red) vs. definitivo (todo lo
+        // demás: destinatario inválido, re-engagement, token caducado…).
+        case "meta_unavailable":
+          return { ok: false, code: "canal_no_disponible", message: err.message, detalle: err.code };
         default:
-          return { ok: false, code: "send_failed", message: err.message, detalle: err.code };
+          return {
+            ok: false,
+            code: "envio_permanente",
+            message: err.message,
+            detalle: err.code,
+            metaCode: err.metaCode ?? null,
+          };
       }
     }
     throw err;

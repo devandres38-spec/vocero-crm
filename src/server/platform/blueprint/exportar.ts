@@ -10,6 +10,8 @@ import { aparienciaGuardada, leerMetadata, regionGuardada } from "./secciones/me
 import { leerFichaFields } from "@/lib/ficha-campos";
 import { leerOverrides } from "@/verticals/resolver";
 import { esPackId } from "@/verticals/registro";
+import { botSeccionSchema } from "@/lib/ajustes-bot";
+import { leerHorarioHumano } from "@/lib/horario-humano";
 
 type Entrada = NonNullable<OrganizationBlueprint["knowledge"]>["entries"][number];
 
@@ -68,6 +70,11 @@ export async function exportarBlueprint(organizationId: string): Promise<Organiz
   if (Object.keys(region).length > 0) bp.region = region;
   if (org.modules) bp.modules = org.modules as OrganizationBlueprint["modules"];
   // Una apariencia nunca elegida no se exporta (vale la de la plataforma).
+  // 073-B — Solo lo guardado: sin nada, valen los de la plataforma.
+  const botGuardado = botSeccionSchema.safeParse(meta.bot);
+  if (meta.bot && botGuardado.success && Object.keys(botGuardado.data).length > 0) bp.bot = botGuardado.data;
+  const horario = leerHorarioHumano(meta.humanHours);
+  if (horario) bp.humanHours = horario;
   const apariencia = aparienciaGuardada(meta);
   if (apariencia) bp.appearance = apariencia as OrganizationBlueprint["appearance"];
 

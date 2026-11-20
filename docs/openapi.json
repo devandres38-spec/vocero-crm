@@ -284,7 +284,8 @@
           "caption": { "type": ["string", "null"], "description": "Solo con adjunto." },
           "fileName": { "type": "string", "description": "031 — Solo con adjunto que trae nombre." },
           "location": { "type": "object", "description": "031 — Solo si `type` es `location`.", "required": ["latitude", "longitude"], "properties": { "latitude": { "type": "number" }, "longitude": { "type": "number" }, "name": { "type": "string" }, "address": { "type": "string" } } },
-          "contacts": { "type": "array", "description": "031 — Solo si `type` es `contacts`.", "items": { "type": "object", "properties": { "name": { "type": "string" } } } }
+          "contacts": { "type": "array", "description": "031 — Solo si `type` es `contacts`. 073-C: `phones` solo si la tarjeta trae alguno (hasta 3).", "items": { "type": "object", "properties": { "name": { "type": "string" }, "phones": { "type": "array", "items": { "type": "string" } } } } },
+          "replyTo": { "type": "object", "description": "073-C — El mensaje que el cliente citó al responder, si está en la conversación. Va al final y solo cuando aplica.", "required": ["id", "author", "type", "text"], "properties": { "id": { "type": "string" }, "author": { "type": "string", "enum": ["lead", "negocio"] }, "type": { "type": "string" }, "text": { "type": ["string", "null"], "maxLength": 500 } } }
         }
       },
       "Despacho": {

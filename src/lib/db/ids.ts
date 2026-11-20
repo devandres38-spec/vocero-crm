@@ -50,6 +50,8 @@ const prefixes = {
   brainDeployment: "brn",
   // 072-B — Llamadas a herramientas de módulo (idempotencia del puente).
   brainToolCall: "btc",
+  // 073-A — Incidentes del bot (despachos caídos, llave sin saldo, envíos rechazados).
+  botIncident: "inc",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

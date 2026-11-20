@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Inbox,
   Power,
+  ShieldOff,
   Trash2,
   UserRound,
 } from "lucide-react";
@@ -51,6 +52,8 @@ export function ContactPanel({
   onPatchConversation: (patch: {
     aiEnabled?: boolean;
     reactivate?: boolean;
+    /** 073-B: `false` = «Reactivar contacto» tras una baja (Ley 1581). */
+    optOut?: boolean;
   }) => Promise<void>;
   /** 026 — Ausente = quien mira no puede eliminar: no se le ofrece. */
   onDeleteConversation?: (alsoContact: boolean) => Promise<string | null>;
@@ -218,6 +221,25 @@ export function ContactPanel({
               </p>
             </div>
           </div>
+
+          {conversation.contact.optOutAt && (
+            <div className="mt-3 rounded-md border border-warning-soft bg-warning-tint p-3" data-optout="panel">
+              <p className="flex items-center gap-1.5 text-[13px] font-medium text-warning-text">
+                <ShieldOff className="h-4 w-4" strokeWidth={1.7} /> Pidió no recibir más mensajes
+              </p>
+              <p className="mt-1 text-xs text-warning-text opacity-80">
+                Ley 1581: sin IA, plantillas ni seguimientos. Solo se revierte si la persona lo pide.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-2 w-full"
+                onClick={() => void onPatchConversation({ optOut: false })}
+              >
+                Reactivar contacto
+              </Button>
+            </div>
+          )}
 
           {conversation.handoffAt && (
             <div className="mt-3 rounded-md border border-warning-soft bg-warning-tint p-3">

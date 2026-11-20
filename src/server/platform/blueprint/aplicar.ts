@@ -113,6 +113,8 @@ export async function aplicarBlueprint(
       if (bp.region) r.sections.region = estado(meta.region);
       if (bp.brand || created) r.sections.brand = estado(meta.brand);
       if (bp.appearance) r.sections.appearance = estado(meta.appearance);
+      if (bp.bot) r.sections.bot = estado(meta.bot);
+      if (bp.humanHours !== undefined) r.sections.humanHours = estado(meta.humanHours);
       let modulosGuardados = org.modules;
       if (bp.modules) {
         const m = await aplicarModulos(tx, org, bp.modules);

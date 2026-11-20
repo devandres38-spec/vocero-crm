@@ -5,6 +5,7 @@ import { newId } from "@/lib/db/ids";
 import { construirEventoOlvido } from "@/server/brains/contract";
 import { avisarOlvido, type ResultadoOlvido } from "@/server/brains/deliver";
 import { publish } from "@/server/events/bus";
+import { reactivarContacto, registrarBaja } from "@/server/bajas";
 import { eliminarConversacion } from "@/server/inbox/eliminar";
 import { serializeConversation, getConversation, updateConversation } from "@/server/inbox/queries";
 import { localeDeOrganizacion } from "@/server/region";
@@ -15,6 +16,11 @@ const patchSchema = z.object({
   aiEnabled: z.boolean().optional(),
   reactivate: z.boolean().optional(),
   markRead: z.boolean().optional(),
+  /**
+   * 073-B (D6, Ley 1581) — `true`: una persona marca la baja; `false`:
+   * «Reactivar contacto» (la ÚNICA forma de revertirla). No toca la IA.
+   */
+  optOut: z.boolean().optional(),
 });
 
 type Params = { params: Promise<{ id: string }> };
@@ -24,8 +30,15 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   const body = await parseBody(req, patchSchema);
   if (!body.ok) return body.response;
 
-  const updated = await updateConversation(session.organizationId, id, body.data);
+  const { optOut, ...patch } = body.data;
+  const updated = await updateConversation(session.organizationId, id, patch);
   if (!updated) return apiError(404, "not_found", "Conversación no encontrada");
+  if (optOut === true) {
+    await registrarBaja({ organizationId: session.organizationId, conversationId: id, origen: "operador" });
+  } else if (optOut === false) {
+    await reactivarContacto(session.organizationId, updated.contactId);
+    console.info(`[baja] ${session.userId} reactivó el contacto de ${id}`);
+  }
 
   const row = await getConversation(session.organizationId, id);
   if (row) {
