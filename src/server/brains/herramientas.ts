@@ -8,6 +8,8 @@ import { scoped } from "@/lib/db/tenant";
 import { herramientasDe } from "@/modulos/registro";
 import { NOMBRE_HERRAMIENTA_RE, type ModuleTool, type ResultadoHerramienta } from "@/modulos/tipos";
 import { IA_PAUSADA } from "@/server/bot/nucleo/acciones";
+import type { AmbitoCerebro } from "@/server/brains/auth";
+import { VIGENCIA_RESPUESTA_MS } from "@/server/brains/respuestas";
 import { leerCuerpoAcotado } from "@/server/brains/http";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
@@ -137,9 +139,17 @@ export function jsonCanonico(v: unknown): string {
   return JSON.stringify(v) ?? "null";
 }
 
-/** Contrato §4: sha256(dispatchId + "\n" + name + "\n" + JSON canónico de args). */
-export function claveIdempotencia(dispatchId: string, name: string, args: unknown): string {
-  return createHash("sha256").update(`${dispatchId}\n${name}\n${jsonCanonico(args)}`).digest("hex");
+/**
+ * Contrato §4: sha256(conversationId + "\n" + dispatchId + "\n" + name + "\n" + JSON canónico de args).
+ *
+ * A-1 (auditoría 072-B) — La conversación va en la clave: el mismo
+ * `dispatchId` en otra conversación nunca devuelve la respuesta de la primera.
+ * B-2 — `args` son los YA validados por el esquema del módulo (`parsed.data`).
+ */
+export function claveIdempotencia(conversationId: string, dispatchId: string, name: string, args: unknown): string {
+  return createHash("sha256")
+    .update(`${conversationId}\n${dispatchId}\n${name}\n${jsonCanonico(args)}`)
+    .digest("hex");
 }
 
 const sobreSchema = z.object({
@@ -160,23 +170,33 @@ export function cuerpoDe(r: ResultadoHerramienta, nombre: string): CuerpoOk | Cu
     : { ok: false, error: r.error, ...(r.detalle ? { detalle: r.detalle } : {}) };
   if (bytes(JSON.stringify(cuerpo)) > TOPE_RESULTADO_BYTES) {
     console.warn(`[brains] ${nombre}: resultado de más de ${TOPE_RESULTADO_BYTES} bytes, no se devuelve`);
-    return { ok: false, error: "resultado_grande" };
+    // B-4 (auditoría 072-B) — Con detalle, para que el modelo no repita la
+    // misma llamada esperando otra cosa.
+    return {
+      ok: false,
+      error: "resultado_grande",
+      detalle: "el resultado no cabe en la respuesta; no repitas esta llamada con los mismos argumentos",
+    };
   }
   return cuerpo;
 }
 
 type Opciones = { timeoutMs?: number; ahora?: () => Date };
 
+/** Lo que el puente necesita del ámbito de la credencial (`withBrain`). */
+export type AmbitoLlamada = Pick<AmbitoCerebro, "organizationId" | "deploymentId">;
+
 /**
  * `POST /api/brains/tools/{name}` (plan §2.5, pasos 2–8; el 1 es `withBrain`).
- * `organizationId` es SIEMPRE el del ámbito de la credencial.
+ * `organizationId` y `deploymentId` son SIEMPRE los del ámbito de la credencial.
  */
 export async function ejecutarLlamada(
   req: Request,
-  organizationId: string,
+  ambito: AmbitoLlamada,
   nombre: string,
   opciones: Opciones = {}
 ): Promise<Response> {
+  const { organizationId } = ambito;
   const timeoutMs = opciones.timeoutMs ?? TIEMPO_LIMITE_MS;
   const ahora = opciones.ahora ?? (() => new Date());
 
@@ -210,6 +230,33 @@ export async function ejecutarLlamada(
   if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
   if (!conv.aiEnabled || conv.handoffAt) return apiError(409, "ai_paused", IA_PAUSADA);
 
+  // 4b. A-1 (auditoría 072-B) — El despacho, con las MISMAS reglas que
+  // `POST /api/brains/messages` (`respuestas.ts`): de este negocio y esta
+  // conversación, entregado a un cerebro, de las últimas 24 h y entregado a
+  // ESTE despliegue. Un cerebro no ejecuta nada en una conversación que nadie
+  // le despachó.
+  const [despacho] = await db
+    .select({
+      conversationId: schema.dispatch.conversationId,
+      status: schema.dispatch.status,
+      createdAt: schema.dispatch.createdAt,
+      brainDeploymentId: schema.dispatch.brainDeploymentId,
+    })
+    .from(schema.dispatch)
+    .where(scoped(schema.dispatch.organizationId, organizationId, eq(schema.dispatch.id, dispatchId)))
+    .limit(1);
+  if (
+    !despacho ||
+    despacho.conversationId !== conversationId ||
+    (despacho.status !== "en_vuelo" && despacho.status !== "entregado") ||
+    ahora().getTime() - despacho.createdAt.getTime() > VIGENCIA_RESPUESTA_MS
+  ) {
+    return apiError(422, "despacho_desconocido", "Ese despacho no existe para esta conversación");
+  }
+  if (despacho.brainDeploymentId !== ambito.deploymentId) {
+    return apiError(409, "cerebro_reasignado", "Este negocio ya lo atiende otro cerebro");
+  }
+
   // 5. Los argumentos contra el esquema del módulo.
   const parsed = tool.args.safeParse(args);
   if (!parsed.success) {
@@ -228,8 +275,13 @@ export async function ejecutarLlamada(
 
   // 6. Idempotencia de las de escritura.
   let filaId: string | null = null;
+  // A-3 (auditoría 072-B) — La marca de la toma: `cerrar()` solo escribe si
+  // la fila sigue siendo SUYA (en curso y con esta marca). Una ejecución
+  // colgada que alguien ya volvió a tomar no pisa el resultado del reintento.
+  let tomadoEn: Date | null = null;
   if (tool.efecto === "escritura") {
-    const clave = claveIdempotencia(dispatchId, nombre, args);
+    const clave = claveIdempotencia(conversationId, dispatchId, nombre, parsed.data);
+    tomadoEn = ahora();
     const [nueva] = await db
       .insert(schema.brainToolCall)
       .values({
@@ -240,17 +292,34 @@ export async function ejecutarLlamada(
         tool: nombre,
         idempotencyKey: clave,
         estado: "en_curso",
+        // B-1 — El reloj de quien decide (el mismo de `vencida` y del fencing).
+        createdAt: tomadoEn,
+        updatedAt: tomadoEn,
       })
       .onConflictDoNothing({ target: [schema.brainToolCall.organizationId, schema.brainToolCall.idempotencyKey] })
       .returning({ id: schema.brainToolCall.id });
     if (nueva) {
       filaId = nueva.id;
     } else {
-      const [previa] = await db
-        .select({ id: schema.brainToolCall.id, estado: schema.brainToolCall.estado, response: schema.brainToolCall.response })
-        .from(schema.brainToolCall)
-        .where(scoped(schema.brainToolCall.organizationId, organizationId, eq(schema.brainToolCall.idempotencyKey, clave)))
-        .limit(1);
+      const leer = async () =>
+        (
+          await db
+            .select({
+              id: schema.brainToolCall.id,
+              conversationId: schema.brainToolCall.conversationId,
+              estado: schema.brainToolCall.estado,
+              response: schema.brainToolCall.response,
+            })
+            .from(schema.brainToolCall)
+            .where(scoped(schema.brainToolCall.organizationId, organizationId, eq(schema.brainToolCall.idempotencyKey, clave)))
+            .limit(1)
+        )[0];
+      const previa = await leer();
+      // A-1 — Defensa: la clave ya incluye la conversación; si aun así la
+      // fila es de otra, no se devuelve su respuesta.
+      if (previa && previa.conversationId !== conversationId) {
+        return apiError(422, "despacho_desconocido", "Ese despacho no existe para esta conversación");
+      }
       if (previa?.estado === "hecha" && previa.response) return Response.json(previa.response);
       // Fallida (o «en curso» de un proceso que se cayó): se vuelve a tomar.
       // El `where` condicional hace que, de dos repeticiones simultáneas,
@@ -259,7 +328,7 @@ export async function ejecutarLlamada(
       const [tomada] = previa
         ? await db
             .update(schema.brainToolCall)
-            .set({ estado: "en_curso", updatedAt: ahora() })
+            .set({ estado: "en_curso", updatedAt: tomadoEn })
             .where(
               scoped(
                 schema.brainToolCall.organizationId,
@@ -273,18 +342,33 @@ export async function ejecutarLlamada(
             )
             .returning({ id: schema.brainToolCall.id })
         : [];
-      if (!tomada) return Response.json({ ok: true, estado: "en_curso", result: {} } satisfies CuerpoOk);
+      if (!tomada) {
+        // A-2 (auditoría 072-B) — Entre la lectura y la toma, la primera pudo
+        // terminar: si ya hay respuesta, esa es la que vale.
+        const actual = await leer();
+        if (actual?.estado === "hecha" && actual.response) return Response.json(actual.response);
+        return Response.json({ ok: true, estado: "en_curso", result: {} } satisfies CuerpoOk);
+      }
       filaId = tomada.id;
     }
   }
 
   const cerrar = async (estado: "hecha" | "fallida", response: unknown = null) => {
-    if (!filaId) return;
+    if (!filaId || !tomadoEn) return;
     try {
       await db
         .update(schema.brainToolCall)
         .set({ estado, response, updatedAt: ahora() })
-        .where(scoped(schema.brainToolCall.organizationId, organizationId, eq(schema.brainToolCall.id, filaId)));
+        .where(
+          scoped(
+            schema.brainToolCall.organizationId,
+            organizationId,
+            eq(schema.brainToolCall.id, filaId),
+            // A-3 — Fencing: solo si la fila sigue en la toma de ESTA ejecución.
+            eq(schema.brainToolCall.estado, "en_curso"),
+            eq(schema.brainToolCall.updatedAt, tomadoEn)
+          )
+        );
     } catch (err) {
       console.error(`[brains] ${nombre}: no se pudo anotar la llamada —`, err instanceof Error ? err.message : err);
     }

@@ -11,5 +11,5 @@ export const dynamic = "force-dynamic";
  */
 export const POST = withBrain<{ params: Promise<{ name: string }> }>(async (req, ambito, ctx) => {
   const { name } = await ctx.params;
-  return ejecutarLlamada(req, ambito.organizationId, name);
+  return ejecutarLlamada(req, ambito, name);
 });

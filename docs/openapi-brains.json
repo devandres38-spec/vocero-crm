@@ -306,7 +306,7 @@
     },
     "/api/brains/tools/{name}": {
       "post": {
-        "summary": "072-B — Ejecuta una herramienta de un módulo encendido para ESTE negocio (los módulos se recalculan en cada llamada). Las de efecto escritura son idempotentes por sha256(dispatchId + \"\n\" + name + \"\n\" + args canónicos): la repetición devuelve la respuesta guardada; si la primera sigue en curso, {ok:true, estado:\"en_curso\", result:{}}; una que terminó en 504/500 se vuelve a ejecutar.",
+        "summary": "072-B — Ejecuta una herramienta de un módulo encendido para ESTE negocio (los módulos se recalculan en cada llamada). Las de efecto escritura son idempotentes por sha256(conversationId + \"\n\" + dispatchId + \"\n\" + name + \"\n\" + args validados canónicos): la repetición devuelve la respuesta guardada; si la primera sigue en curso, {ok:true, estado:\"en_curso\", result:{}}; una que terminó en 504/500 se vuelve a ejecutar. El dispatchId debe ser de esta conversación, entregado a ESTE cerebro y de las últimas 24 h (las reglas de POST /api/brains/messages).",
         "parameters": [
           {
             "name": "name",
@@ -354,13 +354,13 @@
             "description": "tool_not_found (no existe o su módulo está apagado: mismo cuerpo) | not_found (conversación de otra organización)"
           },
           "409": {
-            "description": "ai_paused"
+            "description": "ai_paused | cerebro_reasignado (el despacho es de otro despliegue)"
           },
           "413": {
             "description": "payload_too_large (cuerpo de más de 16 KB)"
           },
           "422": {
-            "description": "invalid (sobre) | invalid_args (error.details.path)"
+            "description": "invalid (sobre) | invalid_args (error.details.path) | despacho_desconocido (dispatchId que no es de esta conversación, no entregado o de más de 24 h)"
           },
           "504": {
             "description": "tool_timeout (el manejador pasó de 8 s)"

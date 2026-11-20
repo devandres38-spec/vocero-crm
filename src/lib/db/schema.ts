@@ -1661,6 +1661,10 @@ export const brainToolCall = pgTable(
   (t) => [
     uniqueIndex("brain_tool_call_idem_uq").on(t.organizationId, t.idempotencyKey),
     index("brain_tool_call_created_idx").on(t.createdAt),
+    // M-1 (auditoría 072-B) — Para el `ON DELETE CASCADE` de la conversación.
+    index("brain_tool_call_conv_idx").on(t.conversationId),
     check("brain_tool_call_estado_ck", sql`${t.estado} in ('en_curso', 'hecha', 'fallida')`),
+    // B-3 — Una llamada `hecha` siempre tiene la respuesta que se repite.
+    check("brain_tool_call_hecha_ck", sql`${t.estado} <> 'hecha' or ${t.response} is not null`),
   ]
 );

@@ -38,6 +38,11 @@ const h = vi.hoisted(() => ({
   publish: vi.fn(),
   borrados: [] as unknown[][],
   fecha: (_: unknown[]) => undefined as Date | undefined,
+  despacho: null as null | { organizationId?: string; conversationId: string; status: string; createdAt: Date; brainDeploymentId: string | null },
+  despachoParams: [] as unknown[][],
+  antesDeTomar: null as null | (() => void),
+  ejecuciones: [] as string[],
+  cuentas: [] as number[],
 }));
 
 vi.mock("@/lib/db", async (original) => {
@@ -63,6 +68,10 @@ vi.mock("@/lib/db", async (original) => {
     let ps: unknown[] = [];
     const responder = (): unknown[] => {
       if (tabla === "conversation") return h.conv ? [h.conv] : [];
+      if (tabla === "dispatch") {
+        h.despachoParams.push(ps);
+        return h.despacho && ps.includes(h.despacho.organizationId ?? "org_A") ? [h.despacho] : [];
+      }
       if (tabla === "brain_tool_call") {
         return h.filas.filter((f) => ps.includes(f.organizationId) && ps.includes(f.idempotencyKey));
       }
@@ -99,7 +108,8 @@ vi.mock("@/lib/db", async (original) => {
             const choca = h.filas.some((f) => f.organizationId === v.organizationId && f.idempotencyKey === v.idempotencyKey);
             if (choca) return Promise.resolve([]);
             const ahora = new Date();
-            h.filas.push({ ...(v as unknown as Fila), response: null, createdAt: ahora, updatedAt: ahora });
+            const nueva = v as unknown as Fila;
+            h.filas.push({ ...nueva, createdAt: nueva.createdAt ?? ahora, updatedAt: nueva.updatedAt ?? ahora, response: null });
             return Promise.resolve([{ id: v.id }]);
           },
         }),
@@ -115,10 +125,15 @@ vi.mock("@/lib/db", async (original) => {
           const fila = h.filas.find((f) => ps.includes(f.id) && ps.includes(f.organizationId));
           // La toma condicional (`fallida` o `en_curso` vencida) trae fecha.
           const condicional = ps.includes("fallida") && ps.includes("en_curso");
+          // El cierre con fencing (A-3): `en_curso` y la marca exacta de la toma.
+          const cierre = !condicional && ps.includes("en_curso");
           const corte = fecha(ps);
+          if (condicional) h.antesDeTomar?.();
           const puede =
             fila &&
-            (!condicional || fila.estado === "fallida" || (fila.estado === "en_curso" && corte && fila.updatedAt < corte));
+            (cierre
+              ? fila.estado === "en_curso" && corte !== undefined && fila.updatedAt.getTime() === corte.getTime()
+              : !condicional || fila.estado === "fallida" || (fila.estado === "en_curso" && corte && fila.updatedAt < corte));
           if (puede && fila) Object.assign(fila, v);
           const res = puede && fila ? [{ id: fila.id }] : [];
           return Object.assign(Promise.resolve(res), { returning: () => Promise.resolve(res) });
@@ -134,7 +149,12 @@ vi.mock("@/lib/db", async (original) => {
     },
   });
 
-  const db = { select, insert, update, delete: del };
+  const execute = (c: SQL) => {
+    h.borrados.push(params(c));
+    return Promise.resolve(Object.assign([], { count: h.cuentas.shift() ?? 0 }));
+  };
+
+  const db = { select, insert, update, delete: del, execute };
   return { ...real, getDb: () => db };
 });
 
@@ -167,10 +187,11 @@ import {
   RESERVADOS,
   TOPE_HERRAMIENTAS,
 } from "@/server/brains/herramientas";
-import { purgarLlamadasViejas, RETENCION_LLAMADAS_MS } from "@/server/brains/llamadas-retencion";
+import { LOTE_PURGA, MAX_LOTES, purgarLlamadasViejas, RETENCION_LLAMADAS_MS } from "@/server/brains/llamadas-retencion";
 import { defineHerramienta, type ModuleTool } from "@/modulos/tipos";
 
 const ORG = "org_A";
+const AMBITO = { organizationId: ORG, deploymentId: "brn_1" };
 
 function req(cuerpo: unknown, crudo?: string): Request {
   return new Request("http://plataforma.test/api/brains/tools/x", {
@@ -181,7 +202,7 @@ function req(cuerpo: unknown, crudo?: string): Request {
 }
 
 const llamar = (nombre: string, cuerpo: unknown, opciones?: Parameters<typeof ejecutarLlamada>[3]) =>
-  ejecutarLlamada(req(cuerpo), ORG, nombre, opciones);
+  ejecutarLlamada(req(cuerpo), AMBITO, nombre, opciones);
 
 const marca = (args: unknown = { motivo: "prueba" }, dispatchId = "dsp_1") => ({
   conversationId: "cv_1",
@@ -209,6 +230,11 @@ beforeEach(() => {
   h.extra = {};
   h.borrados.length = 0;
   h.publish.mockReset();
+  h.despacho = { organizationId: ORG, conversationId: "cv_1", status: "en_vuelo", createdAt: new Date(), brainDeploymentId: "brn_1" } as never;
+  h.despachoParams.length = 0;
+  h.antesDeTomar = null;
+  h.ejecuciones.length = 0;
+  h.cuentas.length = 0;
 });
 
 describe("el anuncio (`moduleTools`)", () => {
@@ -257,12 +283,14 @@ describe("el anuncio (`moduleTools`)", () => {
 describe("la clave de idempotencia", () => {
   it("no depende del orden de las claves y sí del despacho, el nombre y los argumentos", () => {
     expect(jsonCanonico({ b: 1, a: { d: [1, { y: 2, x: 1 }], c: null } })).toBe('{"a":{"c":null,"d":[1,{"x":1,"y":2}]},"b":1}');
-    const k = claveIdempotencia("dsp_1", "diagnostico_marca", { a: 1, b: 2 });
+    const k = claveIdempotencia("cv_1", "dsp_1", "diagnostico_marca", { a: 1, b: 2 });
     expect(k).toMatch(/^[0-9a-f]{64}$/);
-    expect(claveIdempotencia("dsp_1", "diagnostico_marca", { b: 2, a: 1 })).toBe(k);
-    expect(claveIdempotencia("dsp_2", "diagnostico_marca", { a: 1, b: 2 })).not.toBe(k);
-    expect(claveIdempotencia("dsp_1", "diagnostico_eco", { a: 1, b: 2 })).not.toBe(k);
-    expect(claveIdempotencia("dsp_1", "diagnostico_marca", { a: 1, b: 3 })).not.toBe(k);
+    expect(claveIdempotencia("cv_1", "dsp_1", "diagnostico_marca", { b: 2, a: 1 })).toBe(k);
+    expect(claveIdempotencia("cv_1", "dsp_2", "diagnostico_marca", { a: 1, b: 2 })).not.toBe(k);
+    expect(claveIdempotencia("cv_1", "dsp_1", "diagnostico_eco", { a: 1, b: 2 })).not.toBe(k);
+    expect(claveIdempotencia("cv_1", "dsp_1", "diagnostico_marca", { a: 1, b: 3 })).not.toBe(k);
+    // A-1 (auditoría 072-B): la conversación también.
+    expect(claveIdempotencia("cv_2", "dsp_1", "diagnostico_marca", { a: 1, b: 2 })).not.toBe(k);
   });
 });
 
@@ -287,13 +315,13 @@ describe("POST /api/brains/tools/{name}: códigos del contrato", () => {
   });
 
   it("413 con un cuerpo de más de 16 KB", async () => {
-    const r = await ejecutarLlamada(req(null, JSON.stringify(marca({ motivo: "x".repeat(17_000) }))), ORG, "diagnostico_marca");
+    const r = await ejecutarLlamada(req(null, JSON.stringify(marca({ motivo: "x".repeat(17_000) }))), AMBITO, "diagnostico_marca");
     expect(r.status).toBe(413);
     expect((await r.json()).error.code).toBe("payload_too_large");
   });
 
   it("422 `invalid` con JSON roto o sin sobre", async () => {
-    const roto = await ejecutarLlamada(req(null, "{no"), ORG, "diagnostico_eco");
+    const roto = await ejecutarLlamada(req(null, "{no"), AMBITO, "diagnostico_eco");
     const sinSobre = await llamar("diagnostico_eco", { args: {} });
     expect([roto.status, sinSobre.status]).toEqual([422, 422]);
     expect((await sinSobre.json()).error.code).toBe("invalid");
@@ -419,7 +447,12 @@ describe("el resultado", () => {
     h.extra.diagnostico = [herramienta("diagnostico_enorme", async () => ({ ok: true, result: { x: "y".repeat(5000) } }), "lectura")];
     const r = await llamar("diagnostico_enorme", marca({}));
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: false, error: "resultado_grande" });
+    // B-4 (auditoría 072-B): con detalle para que el modelo no insista.
+    expect(await r.json()).toEqual({
+      ok: false,
+      error: "resultado_grande",
+      detalle: "el resultado no cabe en la respuesta; no repitas esta llamada con los mismos argumentos",
+    });
     warn.mockRestore();
   });
 
@@ -432,7 +465,7 @@ describe("el resultado", () => {
 describe("A ↛ B", () => {
   it("los módulos y la conversación se buscan SIEMPRE en la organización de la credencial", async () => {
     h.conv = null;
-    await ejecutarLlamada(req({ conversationId: "cv_B", dispatchId: "d", args: { texto: "x" } }), ORG, "diagnostico_eco");
+    await ejecutarLlamada(req({ conversationId: "cv_B", dispatchId: "d", args: { texto: "x" } }), AMBITO, "diagnostico_eco");
     expect(h.modulosPedidos).toEqual([ORG]);
     const conv = h.consultas.filter((c) => c.tabla === "conversation");
     expect(conv).toHaveLength(1);
@@ -442,16 +475,161 @@ describe("A ↛ B", () => {
 
   it("la misma clave en otra organización no devuelve la respuesta guardada de A", async () => {
     await llamar("diagnostico_marca", marca());
-    await ejecutarLlamada(req(marca()), "org_B", "diagnostico_marca");
+    h.despacho = { ...h.despacho!, organizationId: "org_B" } as never;
+    await ejecutarLlamada(req(marca()), { organizationId: "org_B", deploymentId: "brn_1" }, "diagnostico_marca");
     expect(h.notas.map((n) => n.organizationId)).toEqual([ORG, "org_B"]);
   });
 });
 
-describe("retención", () => {
-  it("borra las llamadas de más de 30 días", async () => {
+describe("retención (M-2, auditoría 072-B: en lotes)", () => {
+  it("borra las de más de 30 días en lotes de 1000 hasta que un lote sale corto", async () => {
     const ahora = new Date("2026-11-19T00:00:00Z");
-    expect(await purgarLlamadasViejas(ahora)).toBe(1);
-    const corte = h.fecha(h.borrados[0]!)!;
+    h.cuentas.push(LOTE_PURGA, LOTE_PURGA, 5);
+    expect(await purgarLlamadasViejas(ahora)).toBe(2 * LOTE_PURGA + 5);
+    expect(h.borrados).toHaveLength(3);
+    const ps = h.borrados[0]!;
+    const corte = ps.find((p) => p instanceof Date) as Date;
     expect(ahora.getTime() - corte.getTime()).toBe(RETENCION_LLAMADAS_MS);
+    expect(ps).toContain(LOTE_PURGA);
+  });
+
+  it("como mucho MAX_LOTES por pasada (lo demás, en la siguiente)", async () => {
+    h.cuentas.push(...Array.from({ length: 50 }, () => LOTE_PURGA));
+    expect(await purgarLlamadasViejas()).toBe(MAX_LOTES * LOTE_PURGA);
+    expect(h.borrados).toHaveLength(MAX_LOTES);
+  });
+});
+
+describe("auditoría 072-B — el despacho (A-1)", () => {
+  const caso = async () => llamar("diagnostico_marca", marca());
+  const errorDe = async (r: Response) => [r.status, (await r.json()).error.code];
+
+  it("sin despacho, de otra conversación, no entregado o de más de 24 h: 422 `despacho_desconocido` sin ejecutar", async () => {
+    h.despacho = null;
+    expect(await errorDe(await caso())).toEqual([422, "despacho_desconocido"]);
+    h.despacho = { organizationId: ORG, conversationId: "cv_otra", status: "en_vuelo", createdAt: new Date(), brainDeploymentId: "brn_1" } as never;
+    expect(await errorDe(await caso())).toEqual([422, "despacho_desconocido"]);
+    for (const status of ["pendiente", "caducado_a_humano", "descartado"]) {
+      h.despacho = { organizationId: ORG, conversationId: "cv_1", status, createdAt: new Date(), brainDeploymentId: "brn_1" } as never;
+      expect(await errorDe(await caso()), status).toEqual([422, "despacho_desconocido"]);
+    }
+    h.despacho = {
+      organizationId: ORG,
+      conversationId: "cv_1",
+      status: "entregado",
+      createdAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+      brainDeploymentId: "brn_1",
+    } as never;
+    expect(await errorDe(await caso())).toEqual([422, "despacho_desconocido"]);
+    expect(h.notas).toEqual([]);
+    expect(h.filas).toEqual([]);
+  });
+
+  it("entregado a OTRO despliegue: 409 `cerebro_reasignado`", async () => {
+    h.despacho = { organizationId: ORG, conversationId: "cv_1", status: "entregado", createdAt: new Date(), brainDeploymentId: "brn_viejo" } as never;
+    expect(await errorDe(await caso())).toEqual([409, "cerebro_reasignado"]);
+    expect(h.notas).toEqual([]);
+  });
+
+  it("el despacho se busca en la organización de la credencial", async () => {
+    await caso();
+    expect(h.despachoParams[0]).toContain(ORG);
+    expect(h.despachoParams[0]).toContain("dsp_1");
+  });
+
+  it("también las de lectura exigen un despacho válido", async () => {
+    h.despacho = null;
+    const r = await llamar("diagnostico_eco", { conversationId: "cv_1", dispatchId: "dsp_x", args: { texto: "hola" } });
+    expect(r.status).toBe(422);
+  });
+
+  it("el mismo dispatchId en otra conversación NO devuelve la respuesta de la primera", async () => {
+    await llamar("diagnostico_marca", marca());
+    h.despacho = { organizationId: ORG, conversationId: "cv_2", status: "en_vuelo", createdAt: new Date(), brainDeploymentId: "brn_1" } as never;
+    const b = await (await llamar("diagnostico_marca", { conversationId: "cv_2", dispatchId: "dsp_1", args: { motivo: "prueba" } })).json();
+    expect(b).toMatchObject({ ok: true, estado: "hecho" });
+    expect(h.notas.map((n) => n.conversationId)).toEqual(["cv_1", "cv_2"]);
+    expect(h.filas.map((f) => f.conversationId)).toEqual(["cv_1", "cv_2"]);
+  });
+
+  it("defensa: una fila de otra conversación con la misma clave no se devuelve", async () => {
+    await llamar("diagnostico_marca", marca());
+    h.filas[0]!.conversationId = "cv_ajena";
+    const r = await llamar("diagnostico_marca", marca());
+    expect(r.status).toBe(422);
+    expect(h.notas).toHaveLength(1);
+  });
+});
+
+describe("auditoría 072-B — concurrencia", () => {
+  it("A-2: si la primera terminó entre la lectura y la toma, devuelve su respuesta (no `en_curso` vacío)", async () => {
+    await llamar("diagnostico_marca", marca());
+    const guardada = h.filas[0]!.response;
+    // Estado visto por la segunda: «en curso» (todavía no vencida)…
+    h.filas[0]!.estado = "en_curso";
+    h.filas[0]!.response = null;
+    // …y justo antes de su toma, la primera termina.
+    h.antesDeTomar = () => {
+      h.filas[0]!.estado = "hecha";
+      h.filas[0]!.response = guardada;
+    };
+    const r = await (await llamar("diagnostico_marca", marca())).json();
+    expect(r).toEqual(guardada);
+    expect(h.notas).toHaveLength(1);
+  });
+
+  it("A-2: si de verdad sigue en curso, `en_curso`", async () => {
+    await llamar("diagnostico_marca", marca());
+    h.filas[0]!.estado = "en_curso";
+    expect(await (await llamar("diagnostico_marca", marca())).json()).toEqual({ ok: true, estado: "en_curso", result: {} });
+  });
+
+  it("A-3: una ejecución colgada que otra ya retomó no pisa el resultado del reintento", async () => {
+    let soltar: (r: { ok: true; result: Record<string, unknown> }) => void = () => {};
+    h.extra.diagnostico = [
+      herramienta("diagnostico_lenta2", () => {
+        h.ejecuciones.push("x");
+        return h.ejecuciones.length === 1
+          ? new Promise((ok) => (soltar = ok))
+          : Promise.resolve({ ok: true, result: { quien: "reintento" } });
+      }),
+    ];
+    const primera = llamar("diagnostico_lenta2", marca({}), { timeoutMs: 600_000 });
+    await vi.waitFor(() => expect(h.ejecuciones).toHaveLength(1));
+    // Pasan más de 60 s: la fila «en curso» vence y un reintento la toma.
+    h.filas[0]!.updatedAt = new Date(Date.now() - 120_000);
+    const segunda = await (await llamar("diagnostico_lenta2", marca({}))).json();
+    expect(segunda).toEqual({ ok: true, estado: "hecho", result: { quien: "reintento" } });
+    // La colgada termina tarde: su cierre no encuentra SU toma y no escribe.
+    soltar({ ok: true, result: { quien: "colgada" } });
+    await primera;
+    expect(h.filas[0]).toMatchObject({ estado: "hecha", response: { ok: true, estado: "hecho", result: { quien: "reintento" } } });
+  });
+});
+
+describe("auditoría 072-B — bajos", () => {
+  it("B-1: `created_at` y `updated_at` salen del mismo reloj que decide", async () => {
+    const fijo = new Date("2026-11-19T15:00:00.000Z");
+    await llamar("diagnostico_marca", marca(), { ahora: () => fijo });
+    expect(h.filas[0]!.createdAt.getTime()).toBe(fijo.getTime());
+    expect(h.filas[0]!.estado).toBe("hecha");
+  });
+
+  it("B-2: la clave usa los argumentos YA validados (normalizados por el esquema)", async () => {
+    h.extra.diagnostico = [
+      defineHerramienta({
+        nombre: "diagnostico_norm",
+        descripcion: "Prueba.",
+        args: z.object({ texto: z.string().trim() }).strict(),
+        efecto: "escritura",
+        ejecutar: async (_c, a) => {
+          h.ejecuciones.push(a.texto);
+          return { ok: true, result: { texto: a.texto } };
+        },
+      }) as ModuleTool,
+    ];
+    await llamar("diagnostico_norm", marca({ texto: "hola" }));
+    await llamar("diagnostico_norm", marca({ texto: "  hola  " }));
+    expect(h.ejecuciones).toEqual(["hola"]);
   });
 });
