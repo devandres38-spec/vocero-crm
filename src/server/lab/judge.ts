@@ -66,15 +66,22 @@ export async function judgeCase(input: {
 /**
  * Score 0-100: % ponderado de conversaciones verdes (FR-033).
  * verde = 1 · amarillo = 0.5 · rojo = 0. judge_failed fuera del denominador.
+ *
+ * 2.13.1 — `agent_failed` SÍ cuenta, como 0: el agente no contestó, y eso es
+ * lo peor que puede hacer. Antes quedaba fuera y 4 fallidos + 2 verdes daban
+ * 100. El juez que falla sigue fuera: no es culpa del agente.
  */
 export function computeScore(
   cases: { status: string; veredicto: string | null }[]
 ): number | null {
   const judged = cases.filter(
-    (c) => c.status === "done" && c.veredicto !== null
+    (c) =>
+      c.status === "agent_failed" ||
+      (c.status === "done" && c.veredicto !== null)
   );
   if (judged.length === 0) return null;
   const points = judged.reduce((acc, c) => {
+    if (c.status === "agent_failed") return acc;
     if (c.veredicto === "verde") return acc + 1;
     if (c.veredicto === "amarillo") return acc + 0.5;
     return acc;

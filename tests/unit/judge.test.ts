@@ -65,6 +65,37 @@ describe("computeScore (FR-033: judge_failed excluido del denominador)", () => {
     expect(score).toBe(100); // 2/2, no 2/3
   });
 
+  it("2.13.1 — agent_failed cuenta como 0 (nunca 100 con fallos del agente)", () => {
+    const score = computeScore([
+      { status: "agent_failed", veredicto: null },
+      { status: "agent_failed", veredicto: null },
+      { status: "agent_failed", veredicto: null },
+      { status: "agent_failed", veredicto: null },
+      { status: "done", veredicto: "verde" },
+      { status: "done", veredicto: "verde" },
+    ]);
+    expect(score).toBe(33); // 2/6, no 2/2
+  });
+
+  it("2.13.1 — un agent_failed aunque llegue con veredicto sigue valiendo 0", () => {
+    expect(
+      computeScore([
+        { status: "agent_failed", veredicto: "verde" },
+        { status: "done", veredicto: "verde" },
+      ])
+    ).toBe(50);
+  });
+
+  it("2.13.1 — judge_failed sigue fuera aunque haya agent_failed", () => {
+    expect(
+      computeScore([
+        { status: "judge_failed", veredicto: null },
+        { status: "agent_failed", veredicto: null },
+        { status: "done", veredicto: "verde" },
+      ])
+    ).toBe(50);
+  });
+
   it("todo judge_failed → sin score (null)", () => {
     expect(
       computeScore([{ status: "judge_failed", veredicto: null }])

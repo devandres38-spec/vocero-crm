@@ -1,3 +1,4 @@
+import { aNumero } from "./ficha-campos";
 import type { FichaDto, FichaValue } from "./types";
 
 /**
@@ -50,8 +51,11 @@ export function parseFichaValue(
     return t;
   }
   if (typeof previous === "number") {
-    const n = Number(t);
-    if (t !== "" && Number.isFinite(n)) return n;
+    // 2.13.1 — En es-CO el punto es de miles: `Number("600.000")` daba 600 y
+    // el presupuesto de un lead se guardaba mil veces más chico. `aNumero` es
+    // el mismo lector de la ficha del negocio (072).
+    const n = aNumero(t);
+    if (n !== null) return n;
     return t;
   }
   return t;

@@ -195,6 +195,14 @@ export async function marcarEscribiendo(req: Request, organizationId: string): P
     // mentirle al cliente. Se omite sin tocar Meta.
     return Response.json({ ok: false, reason: "ai_paused" });
   }
+  if (conv.channel !== "whatsapp") {
+    // 2.13.1 — Esto es la Graph API de WhatsApp. En Instagram, Messenger o
+    // TikTok (Zernio) se buscaban las credenciales de WhatsApp y se le mandaba
+    // a Meta el id de un mensaje de otro canal: 409 `no_connection` o
+    // `meta_error` en cada turno. Best-effort como siempre; sin `reason`
+    // nuevo para no tocar el enum del contrato.
+    return Response.json({ ok: false });
+  }
 
   const msgs = await db
     .select({ waMessageId: schema.message.waMessageId })
