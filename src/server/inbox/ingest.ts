@@ -416,7 +416,7 @@ async function ingestManualEcho(
 
   // Pausa automática de la IA, idempotente y atómica (solo si no hay handoff).
   // 073-B (D1): el mismo helper que la Bandeja web.
-  const paused = await pausarPorRespuestaHumana(organizationId, conversation.id);
+  const paused = await pausarPorRespuestaHumana(organizationId, conversation.id, message.createdAt);
   if (paused) {
     console.log(
       `[webhook] respuesta manual del dueño en ${conversation.id} — IA pausada (manual_reply)`

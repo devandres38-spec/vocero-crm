@@ -444,6 +444,17 @@ async function persistOutbound(input: {
   /** 039: el mensaje citado, ya validado por `resolverMensajeCitado`. */
   cita?: CitaEncontrada | null;
 }): Promise<string> {
+  return (await persistirSaliente(input)).id;
+}
+
+/**
+ * Auditoría 073-B — Como `persistOutbound`, pero devuelve también el
+ * `createdAt` de la fila: la pausa de la IA arranca EXACTAMENTE ahí, así el
+ * primer mensaje de la persona entra en el `humanGap`.
+ */
+async function persistirSaliente(
+  input: Parameters<typeof persistOutbound>[0]
+): Promise<{ id: string; createdAt: Date }> {
   const db = getDb();
   const inserted = await db
     .insert(schema.message)
@@ -478,7 +489,7 @@ async function persistOutbound(input: {
     },
   });
 
-  return message.id;
+  return { id: message.id, createdAt: message.createdAt };
 }
 
 /** Envía un mensaje de texto libre por WhatsApp. */
@@ -571,7 +582,7 @@ export async function sendText(input: {
     throw err;
   }
 
-  const messageId = await persistOutbound({
+  const { id: messageId, createdAt } = await persistirSaliente({
     organizationId: input.organizationId,
     conversationId: input.conversationId,
     waMessageId,
@@ -589,7 +600,7 @@ export async function sendText(input: {
   });
 
   // 073-B (D1): una persona contestó desde la Bandeja → la IA se pausa.
-  if (!input.aiGenerated) await pausaDelOperador(input.organizationId, input.conversationId);
+  if (!input.aiGenerated) await pausaDelOperador(input.organizationId, input.conversationId, createdAt);
   return { messageId };
 }
 
@@ -678,7 +689,7 @@ export async function sendMediaMessage(input: {
       )
     );
 
-    const messageId = await persistOutbound({
+    const { id: messageId, createdAt } = await persistirSaliente({
       organizationId: input.organizationId,
       conversationId: input.conversationId,
       waMessageId,
@@ -690,7 +701,7 @@ export async function sendMediaMessage(input: {
       media: asset,
       cita,
     });
-    await pausaDelOperador(input.organizationId, input.conversationId);
+    await pausaDelOperador(input.organizationId, input.conversationId, createdAt);
     return { messageId };
   } catch (err) {
     let sendErr: SendError;
@@ -798,7 +809,7 @@ export async function sendStructured(
     .returning();
   const asset = assetRows[0]!;
 
-  const messageId = await persistOutbound({
+  const { id: messageId, createdAt } = await persistirSaliente({
     organizationId: input.organizationId,
     conversationId: input.conversationId,
     waMessageId,
@@ -810,7 +821,7 @@ export async function sendStructured(
     media: asset,
     cita,
   });
-  await pausaDelOperador(input.organizationId, input.conversationId);
+  await pausaDelOperador(input.organizationId, input.conversationId, createdAt);
   return { messageId };
 }
 
@@ -819,9 +830,9 @@ export async function sendStructured(
  * persona: la IA se pausa con `manual_reply`, como con el eco del teléfono.
  * Nunca lanza: el mensaje ya salió y eso no se deshace por una pausa.
  */
-async function pausaDelOperador(organizationId: string, conversationId: string): Promise<void> {
+async function pausaDelOperador(organizationId: string, conversationId: string, desde: Date): Promise<void> {
   try {
-    await pausarPorRespuestaHumana(organizationId, conversationId);
+    await pausarPorRespuestaHumana(organizationId, conversationId, desde);
   } catch (err) {
     console.error("[send] no pude pausar la IA tras la respuesta del operador:", err);
   }

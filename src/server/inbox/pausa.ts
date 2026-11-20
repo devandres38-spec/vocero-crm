@@ -16,13 +16,19 @@ import { publish } from "@/server/events/bus";
 export async function pausarPorRespuestaHumana(
   organizationId: string,
   conversationId: string,
-  ahora: Date = new Date()
+  /**
+   * Auditoría 073-B — Desde cuándo atiende la persona: el `createdAt` del
+   * mensaje que la pausó. Con la hora de la pausa (posterior al mensaje) el
+   * primer mensaje humano quedaba FUERA del `humanGap`.
+   */
+  desde: Date
 ): Promise<boolean> {
+  const ahora = new Date();
   const paused = await getDb()
     .update(schema.conversation)
     .set({
       aiEnabled: false,
-      handoffAt: ahora,
+      handoffAt: desde,
       handoffReason: "manual_reply",
       updatedAt: ahora,
     })

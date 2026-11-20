@@ -336,7 +336,8 @@ describe("073-B (D1) — responder desde la Bandeja pausa la IA", () => {
     h.selectRows.push([CONVERSACION_WA]);
     const { sendText } = await import("@/server/inbox/send");
     await sendText({ conversationId: "cv_1", organizationId: "org_1", text: "Hola, te atiendo yo" });
-    expect(h.pausar).toHaveBeenCalledWith("org_1", "cv_1");
+    // Auditoría 073-B: desde el `createdAt` del mensaje guardado (así entra en el humanGap).
+    expect(h.pausar).toHaveBeenCalledWith("org_1", "cv_1", new Date("2026-10-21T12:00:00Z"));
   });
 
   it("la IA: no se pausa a sí misma", async () => {

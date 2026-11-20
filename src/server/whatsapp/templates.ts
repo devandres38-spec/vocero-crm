@@ -559,7 +559,7 @@ export async function sendTemplate(input: {
 
   // 073-B (D1, decisión #1): una plantilla la manda una persona → la IA se pausa.
   try {
-    await pausarPorRespuestaHumana(input.organizationId, input.conversationId);
+    await pausarPorRespuestaHumana(input.organizationId, input.conversationId, message.createdAt);
   } catch (err) {
     console.error("[plantillas] no pude pausar la IA:", err);
   }

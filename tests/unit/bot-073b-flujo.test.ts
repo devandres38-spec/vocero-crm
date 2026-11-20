@@ -237,15 +237,18 @@ describe("pausa al responder desde la Bandeja (D1, decisión #1)", () => {
   it("el helper solo pausa si no había handoff y publica el cambio", async () => {
     const { pausarPorRespuestaHumana } = await import("@/server/inbox/pausa");
     h.fake!.responder("update:", [{ id: "cv_1" }]);
-    expect(await pausarPorRespuestaHumana("org_1", "cv_1")).toBe(true);
+    const desde = new Date("2026-11-19T15:00:00Z");
+    expect(await pausarPorRespuestaHumana("org_1", "cv_1", desde)).toBe(true);
     expect(h.fake!.de(schema.conversation, "update")[0]!.valores).toMatchObject({
       aiEnabled: false,
       handoffReason: "manual_reply",
+      // Auditoría 073-B: la pausa arranca en el mensaje, no después.
+      handoffAt: desde,
     });
     expect(h.publish).toHaveBeenCalledWith("org_1", expect.objectContaining({ type: "conversation.updated" }));
 
     h.publish.mockClear();
-    expect(await pausarPorRespuestaHumana("org_1", "cv_1")).toBe(false); // ya en handoff
+    expect(await pausarPorRespuestaHumana("org_1", "cv_1", desde)).toBe(false); // ya en handoff
     expect(h.publish).not.toHaveBeenCalled();
   });
 
@@ -276,5 +279,34 @@ describe("opt-out bloquea todo lo automático (Ley 1581)", () => {
   it("templateErrorStatus: opt_out → 409", async () => {
     const { TemplateError, templateErrorStatus } = await import("@/server/whatsapp/templates");
     expect(templateErrorStatus(new TemplateError("opt_out", "x"))).toBe(409);
+  });
+});
+
+describe("auditoría 073-B", () => {
+  it("el primer mensaje humano entra en el humanGap: pausa = createdAt del mensaje y el tramo es inclusivo", () => {
+    const leer = (...p: string[]) => readFileSync(join(process.cwd(), "src", ...p), "utf8");
+    const send = leer("server", "inbox", "send.ts");
+    expect(send).toMatch(/pausaDelOperador\(input\.organizationId, input\.conversationId, createdAt\)/);
+    expect(leer("server", "inbox", "ingest.ts")).toMatch(/pausarPorRespuestaHumana\(organizationId, conversation\.id, message\.createdAt\)/);
+    expect(leer("server", "whatsapp", "templates.ts")).toMatch(/pausarPorRespuestaHumana\([^)]*message\.createdAt\)/);
+    // El tramo empieza en `desde` INCLUSIVE.
+    expect(leer("server", "brains", "humano.ts")).toMatch(/gte\(m\.createdAt, desde\)/);
+  });
+
+  it("reanudar toma la pausa MÁS VIEJA (manual antes de responder)", () => {
+    const q = readFileSync(join(process.cwd(), "src", "server", "inbox", "queries.ts"), "utf8");
+    expect(q).toContain("coalesce(least(${c.handoffAt}, ${c.aiPausedAt}), ${ts})");
+  });
+
+  it("índice parcial para el conteo anti-flood (migración aditiva 0037)", () => {
+    const sqlMig = readFileSync(join(process.cwd(), "drizzle", "0037_dispatch_antiflood_idx.sql"), "utf8");
+    expect(sqlMig).toMatch(/CREATE INDEX IF NOT EXISTS "dispatch_org_created_idx" ON "dispatch" USING btree \("organization_id","created_at"\) WHERE "dispatch"\."status" <> 'descartado'/);
+    const diario = JSON.parse(readFileSync(join(process.cwd(), "drizzle", "meta", "_journal.json"), "utf8")) as {
+      entries: { tag: string }[];
+    };
+    expect(diario.entries.map((e) => e.tag)).toContain("0037_dispatch_antiflood_idx");
+    expect(readFileSync(join(process.cwd(), "src", "lib", "db", "schema.ts"), "utf8")).toMatch(
+      /index\("dispatch_org_created_idx"\)\s*\.on\(t\.organizationId, t\.createdAt\)/
+    );
   });
 });

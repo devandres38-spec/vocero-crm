@@ -1483,6 +1483,11 @@ export const dispatch = pgTable(
     ),
     // La consulta del worker: pendientes cuya ventana ya venció.
     index("dispatch_status_notbefore_idx").on(t.status, t.notBefore),
+    // Auditoría 073-B — El conteo anti-flood (`contarDespachos`): las últimas
+    // 24 h de un negocio sin recorrer su histórico ni los descartados.
+    index("dispatch_org_created_idx")
+      .on(t.organizationId, t.createdAt)
+      .where(sql`${t.status} <> 'descartado'`),
     // Auditoría 070 (M-3): ON DELETE SET NULL al borrar un cerebro, sin
     // recorrer toda la tabla.
     index("dispatch_brain_deployment_idx")

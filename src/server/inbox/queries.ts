@@ -226,7 +226,7 @@ export async function updateConversation(
     // anotado para que el cerebro lo lea UNA vez (`humanGap`). Solo si
     // estaba pausada: reanudar una conversación activa no abre ningún tramo.
     set.humanGapFrom = sql`case when ${c.aiEnabled} = false or ${c.handoffAt} is not null
-      then coalesce(${c.handoffAt}, ${c.aiPausedAt}, ${ts}) else ${c.humanGapFrom} end`;
+      then coalesce(least(${c.handoffAt}, ${c.aiPausedAt}), ${ts}) else ${c.humanGapFrom} end`;
     set.humanGapTo = sql`case when ${c.aiEnabled} = false or ${c.handoffAt} is not null
       then ${ts} else ${c.humanGapTo} end`;
     set.aiPausedAt = null;
