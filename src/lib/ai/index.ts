@@ -59,6 +59,14 @@ export async function chatJson<T>(
      * la plataforma no paga las corridas de un negocio sin llave).
      */
     soloOrganizacion?: boolean;
+    /** 074 (D9, FR-15) — Fija la `temperature` (el juez del Laboratorio: 0). Sin ella, la del proveedor. */
+    temperature?: number;
+    /**
+     * 074 (D9) — Se llama una vez por intento con lo que respondió el
+     * proveedor (estado, cuerpo, latencia) para registrar el uso. Nunca debe
+     * lanzar; si lanza, se ignora.
+     */
+    onUso?: (u: { status: number; cuerpo: string; latencyMs: number; model: string }) => void;
   }
 ): Promise<ChatJsonResult<T>> {
   // Auditoría 070 (M-7): «solo la de la organización» sin organización no
@@ -105,7 +113,8 @@ export async function chatJson<T>(
         provider,
         model,
         attemptMessages,
-        opts?.timeoutMs
+        opts?.timeoutMs,
+        { temperature: opts?.temperature, onUso: opts?.onUso }
       );
       const extracted = extractJson(raw);
       if (extracted === null) {
@@ -174,10 +183,22 @@ async function callProvider(
   provider: AiProvider,
   model: string,
   messages: ChatMessage[],
-  timeoutMs = 60_000
+  timeoutMs = 60_000,
+  extra: {
+    temperature?: number;
+    onUso?: (u: { status: number; cuerpo: string; latencyMs: number; model: string }) => void;
+  } = {}
 ): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const inicio = Date.now();
+  const usar = (status: number, cuerpo: string) => {
+    try {
+      extra.onUso?.({ status, cuerpo, latencyMs: Date.now() - inicio, model });
+    } catch {
+      // El registro de uso nunca tumba la llamada.
+    }
+  };
   try {
     const res = await fetch(chatCompletionsUrl(provider.baseUrl), {
       method: "POST",
@@ -186,14 +207,22 @@ async function callProvider(
         Authorization: `Bearer ${provider.token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ model, messages }),
+      body: JSON.stringify(
+        extra.temperature === undefined ? { model, messages } : { model, messages, temperature: extra.temperature }
+      ),
       signal: controller.signal,
+    }).catch((err: unknown) => {
+      usar(0, "");
+      throw err;
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      usar(res.status, text);
       throw new ProviderHttpError(res.status, text);
     }
-    const json = (await res.json()) as {
+    const crudo = await res.text();
+    usar(res.status, crudo);
+    const json = JSON.parse(crudo) as {
       choices?: { message?: { content?: string } }[];
     };
     const content = json.choices?.[0]?.message?.content;

@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { OPENROUTER_BASE_URL } from "@/lib/ai/presets";
@@ -8,6 +8,8 @@ import { herramientasEfectivas } from "@/server/brains/herramientas";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 import { ajustesDelNegocio } from "@/server/ajustes-bot";
 import { camposDeHorario, tramoHumano } from "@/server/brains/humano";
+import { tituloLimpio } from "@/lib/kb";
+import { kbParaElCerebro, recursosDe } from "@/server/kb";
 
 /**
  * 070 (contrato §2.1) — El contexto que lee una Nea `multiorg`: el cuerpo de
@@ -69,17 +71,33 @@ export async function llmDelCerebro(organizationId: string): Promise<LlmDelCereb
 }
 
 export type ConocimientoDelCerebro =
-  | { kind: "qa"; question: string; answer: string }
-  | { kind: "block"; content: string };
+  | { kind: "qa"; question: string; answer: string; title?: string }
+  | { kind: "block"; content: string; title?: string };
 
-/** Pura: las entradas del conocimiento en la forma que lee Nea. */
+/**
+ * Pura: las entradas del conocimiento en la forma que lee Nea.
+ *
+ * 074 (D8, contrato brains-074 §1) — Las apagadas no salen (por si alguien
+ * pasa filas sin filtrar) y `title` va al final, solo si la entrada lo tiene:
+ * sin título, el cuerpo es el de 2.14.
+ */
 export function conocimientoDe(
-  filas: { kind: "qa" | "block"; question: string | null; answer: string | null; content: string | null }[]
+  filas: {
+    kind: "qa" | "block";
+    question: string | null;
+    answer: string | null;
+    content: string | null;
+    title?: string | null;
+    enabled?: boolean | null;
+  }[]
 ): ConocimientoDelCerebro[] {
   const out: ConocimientoDelCerebro[] = [];
   for (const f of filas) {
-    if (f.kind === "qa" && f.question && f.answer) out.push({ kind: "qa", question: f.question, answer: f.answer });
-    else if (f.kind === "block" && f.content) out.push({ kind: "block", content: f.content });
+    if (f.enabled === false) continue;
+    const titulo = tituloLimpio(f.title);
+    const conTitulo = titulo ? { title: titulo } : {};
+    if (f.kind === "qa" && f.question && f.answer) out.push({ kind: "qa", question: f.question, answer: f.answer, ...conTitulo });
+    else if (f.kind === "block" && f.content) out.push({ kind: "block", content: f.content, ...conTitulo });
   }
   return out;
 }
@@ -92,17 +110,14 @@ export async function contextoDelCerebro(
   if (!base) return null;
 
   const db = getDb();
-  const [perfiles, kb, llm, modulos, ajustes, conv] = await Promise.all([
+  const [perfiles, kb, llm, modulos, ajustes, conv, resources] = await Promise.all([
     db
       .select()
       .from(schema.agentProfile)
       .where(eq(schema.agentProfile.organizationId, organizationId))
       .limit(1),
-    db
-      .select()
-      .from(schema.kbEntry)
-      .where(eq(schema.kbEntry.organizationId, organizationId))
-      .orderBy(asc(schema.kbEntry.createdAt)),
+    // 074 (D8): solo lo activo, fijado primero y en el orden del dueño.
+    kbParaElCerebro(organizationId),
     llmDelCerebro(organizationId),
     modulosDeOrganizacion(organizationId),
     ajustesDelNegocio(organizationId),
@@ -111,6 +126,7 @@ export async function contextoDelCerebro(
       .from(schema.conversation)
       .where(and(eq(schema.conversation.organizationId, organizationId), eq(schema.conversation.id, conversationId)))
       .limit(1),
+    recursosDe(organizationId),
   ]);
   const perfil = perfiles[0];
   const extra = { coordinationFollowupEnabled: false, agendaEnabled: modulos.agenda };
@@ -131,5 +147,7 @@ export async function contextoDelCerebro(
     ...(moduleTools.length > 0 ? { moduleTools } : {}),
     ...(humanGap ? { humanGap } : {}),
     ...camposDeHorario(ajustes),
+    // 074 (D8, contrato brains-074 §2): enlaces verificados, omitidos si no hay.
+    ...(resources.length > 0 ? { resources } : {}),
   };
 }

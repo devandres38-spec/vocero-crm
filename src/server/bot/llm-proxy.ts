@@ -1,6 +1,7 @@
 import { apiRoot, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import { resolveAiProvider, resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
+import { leerPeticion, registrarUsoLlm, usoDesdeRespuesta, type FuenteLlm } from "@/server/llm-usage";
 
 /**
  * 036 — El CRM piensa por el cerebro (`POST /api/bot/llm/{ruta}`).
@@ -65,6 +66,13 @@ export async function pensarPorElCerebro(input: {
    * segundo si el primero no está disponible. Oculto al cliente.
    */
   modeloDeRespaldo?: string | null;
+  /**
+   * 074 (D9, E9) — De dónde viene la llamada, para `llm_usage`. Sin decir:
+   * `transcribe` si el cuerpo trae audio, si no `turn`.
+   */
+  fuente?: FuenteLlm;
+  /** 074 (E8) — El despacho del turno (`X-Vocero-Dispatch`), ya validado. */
+  dispatchId?: string | null;
 }): Promise<ResultadoProxy> {
   const r = input.soloOrganizacion
     ? await resolveAiProviderDeOrganizacion(input.organizationId)
@@ -84,6 +92,20 @@ export async function pensarPorElCerebro(input: {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LLM_PROXY_TIMEOUT_MS);
+  // 074 (D9): una fila de `llm_usage` por llamada al proveedor. Sin texto.
+  const peticion = leerPeticion(input.cuerpoCrudo);
+  const fuente: FuenteLlm = input.fuente ?? (peticion.audio ? "transcribe" : "turn");
+  const inicio = Date.now();
+  const anotar = (statusCode: number, cuerpo: string) =>
+    // Sin `await`: el turno no espera a la base. `registrarUsoLlm` nunca lanza.
+    void registrarUsoLlm({
+      organizationId: input.organizationId,
+      dispatchId: input.dispatchId ?? null,
+      source: fuente,
+      statusCode,
+      latencyMs: Date.now() - inicio,
+      ...usoDesdeRespuesta(cuerpo, peticion.model),
+    });
   try {
     const res = await fetch(`${apiRoot(provider.baseUrl)}/${input.ruta}`, {
       method: "POST",
@@ -96,6 +118,7 @@ export async function pensarPorElCerebro(input: {
       signal: controller.signal,
     });
     const cuerpo = await res.text();
+    anotar(res.status, cuerpo);
 
     // El estado de la credencial lo dicta quien cobra. El respaldo del
     // entorno no tiene fila que pausar. `.catch`: un fallo al escribir el
@@ -114,6 +137,7 @@ export async function pensarPorElCerebro(input: {
     };
   } catch (err) {
     // Timeout o red: no fue el proveedor quien rechazó la llave, no se pausa.
+    anotar(0, "");
     return {
       ok: false,
       status: 504,

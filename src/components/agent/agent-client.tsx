@@ -1,14 +1,15 @@
 "use client";
 
-import { useRegion } from "@/lib/region-context";
-import { formatNumber } from "@/lib/region";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, Sparkles, Trash2 } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { BrainStatusCard } from "@/components/agent/brain-status-card";
 import { HorarioHumanoCard } from "@/components/agent/horario-humano-card";
+import { EnlacesCard } from "@/components/agent/enlaces-card";
+import { KbSection, type KbEntry, type KbSize } from "@/components/agent/kb-section";
+import { PlaygroundCard } from "@/components/agent/playground-card";
+import { SaludBotCard } from "@/components/agent/salud-bot-card";
 import { externalDown, type BrainStatusDto } from "@/lib/brain-status";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,20 +39,13 @@ type Profile = {
   stallEnabled: boolean;
 };
 
-type KbEntry = {
-  id: string;
-  kind: "qa" | "block";
-  question: string | null;
-  answer: string | null;
-  content: string | null;
-};
 
 export function AgentClient() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
   const [aiMensaje, setAiMensaje] = useState<string | null>(null);
   const [entries, setEntries] = useState<KbEntry[]>([]);
-  const [kbSize, setKbSize] = useState<{ chars: number; warnAt: number; warning: boolean } | null>(null);
+  const [kbSize, setKbSize] = useState<KbSize | null>(null);
   const [saved, setSaved] = useState(false);
   // 036 — Por qué no se pudo encender (409 `sin_cerebro`): el mensaje del
   // servidor, tal cual, junto al interruptor.
@@ -226,8 +220,12 @@ export function AgentClient() {
         />
         <ProfileSection profile={profile} onSave={saveProfile} />
         <TratoSection profile={profile} onSave={saveProfile} />
-        <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
+        <EnlacesCard onChanged={() => void refetch()} />
         <HorarioHumanoCard />
+        <KbSection entries={entries} kbSize={kbSize} onChanged={() => void refetch()} />
+        {/* 074 (D9) — Probar al agente y ver su salud: solo dueño/admin (la API devuelve 403 al resto y la tarjeta no se pinta). */}
+        <PlaygroundCard />
+        <SaludBotCard />
       </div>
     </div>
   );
@@ -465,142 +463,6 @@ function TratoSection({
             {error}
           </p>
         )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function KbSection({
-  entries,
-  kbSize,
-  onChanged,
-}: {
-  entries: KbEntry[];
-  kbSize: { chars: number; warnAt: number; warning: boolean } | null;
-  onChanged: () => void;
-}) {
-  const { locale } = useRegion();
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [block, setBlock] = useState("");
-
-  async function addQa() {
-    if (!question.trim() || !answer.trim()) return;
-    await fetch("/api/kb", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ kind: "qa", question, answer }),
-    }).catch(() => null);
-    setQuestion("");
-    setAnswer("");
-    onChanged();
-  }
-
-  async function addBlock() {
-    if (!block.trim()) return;
-    await fetch("/api/kb", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ kind: "block", content: block }),
-    }).catch(() => null);
-    setBlock("");
-    onChanged();
-  }
-
-  async function remove(id: string) {
-    await fetch(`/api/kb/${id}`, { method: "DELETE" }).catch(() => null);
-    onChanged();
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Knowledge base</CardTitle>
-            <CardDescription>
-              La única fuente de verdad del agente: lo que no está aquí, no lo
-              afirma.
-            </CardDescription>
-          </div>
-          {kbSize && (
-            <Badge variant={kbSize.warning ? "warning" : "secondary"}>
-              {formatNumber(kbSize.chars, locale)} caracteres
-            </Badge>
-          )}
-        </div>
-        {kbSize?.warning && (
-          <p className="text-xs text-warning-text">
-            El conocimiento se acerca al límite del contexto del modelo (v1 lo
-            inyecta completo en cada turno). Considera depurar entradas.
-          </p>
-        )}
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-2 rounded-md border p-3">
-          <p className="text-sm font-medium">Nueva pregunta / respuesta</p>
-          <Input
-            placeholder="Pregunta (p. ej. ¿Hacen envíos?)"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-          />
-          <Textarea
-            placeholder="Respuesta"
-            rows={2}
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-          />
-          <Button
-            size="sm"
-            onClick={() => void addQa()}
-            disabled={!question.trim() || !answer.trim()}
-          >
-            <Plus className="h-4 w-4" /> Agregar P/R
-          </Button>
-        </div>
-
-        <div className="space-y-2 rounded-md border p-3">
-          <p className="text-sm font-medium">Nuevo bloque de texto libre</p>
-          <Textarea
-            placeholder="Horarios, direcciones, políticas…"
-            rows={3}
-            value={block}
-            onChange={(e) => setBlock(e.target.value)}
-          />
-          <Button size="sm" onClick={() => void addBlock()} disabled={!block.trim()}>
-            <Plus className="h-4 w-4" /> Agregar bloque
-          </Button>
-        </div>
-
-        <ul className="space-y-2">
-          {entries.map((e) => (
-            <li key={e.id} className="flex items-start gap-2 rounded-md border p-3">
-              <div className="min-w-0 flex-1 text-sm">
-                {e.kind === "qa" ? (
-                  <>
-                    <p className="font-medium">{e.question}</p>
-                    <p className="mt-0.5 text-muted-foreground">{e.answer}</p>
-                  </>
-                ) : (
-                  <p className="whitespace-pre-wrap text-muted-foreground">{e.content}</p>
-                )}
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Eliminar entrada"
-                onClick={() => void remove(e.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </li>
-          ))}
-          {entries.length === 0 && (
-            <p className="py-2 text-center text-xs text-muted-foreground">
-              Sin entradas todavía: agrega lo que el agente debe saber.
-            </p>
-          )}
-        </ul>
       </CardContent>
     </Card>
   );

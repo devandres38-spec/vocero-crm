@@ -9,6 +9,7 @@ import {
 import { procesarFuente } from "./procesar";
 import { purgarLlamadasViejas } from "@/server/brains/llamadas-retencion";
 import { purgarIncidentesViejos } from "@/server/incidentes";
+import { purgarUsoLlmViejo } from "@/server/llm-usage";
 
 /**
  * 047 — El barrido de los eventos de webhook.
@@ -123,6 +124,12 @@ export async function barrido(ahora: Date = new Date()): Promise<number> {
         return 0;
       });
       if (incidentes > 0) console.log(`[webhooks] ${incidentes} incidente(s) del bot viejo(s) borrado(s)`);
+      // 074 (D9) — El uso del modelo vive 90 días, por lotes. Tampoco frena.
+      const usos = await purgarUsoLlmViejo(ahora).catch((err: unknown) => {
+        console.error("[webhooks] la purga de uso del modelo falló:", mensaje(err));
+        return 0;
+      });
+      if (usos > 0) console.log(`[webhooks] ${usos} registro(s) de uso del modelo viejo(s) borrado(s)`);
     }
     return filas.length;
   } catch (err) {

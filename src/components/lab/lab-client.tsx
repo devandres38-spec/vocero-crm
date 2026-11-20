@@ -129,9 +129,11 @@ export function LabClient() {
       setError(data?.error?.message ?? "No se pudo lanzar la corrida");
       return;
     }
-    const data = (await res.json()) as { runId: string };
+    const data = (await res.json()) as { runId: string; total?: number | null };
     setSelectedRunId(data.runId);
-    setProgress({ done: 0, total: 6 });
+    // 074 (FR-15): el total real de la corrida (cambia por rol y nicho); sin
+    // él, la barra espera al primer progreso del servidor.
+    setProgress(typeof data.total === "number" && data.total > 0 ? { done: 0, total: data.total } : null);
     void refetchRuns();
   }
 
@@ -235,7 +237,7 @@ export function LabClient() {
             description={
               runs.length === 0
                 ? brainConnected
-                  ? "Corre tu primera evaluación: 6 clientes simulados conversarán con tu agente y un juez calificará cada conversación."
+                  ? "Corre tu primera evaluación: clientes simulados conversarán con tu agente y un juez calificará cada conversación."
                   : "Cuando conectes tu agente, aquí aparecerán sus evaluaciones."
                 : "Abre una corrida del historial para ver su reporte."
             }

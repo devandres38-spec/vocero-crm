@@ -4,6 +4,7 @@ import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { publish } from "@/server/events/bus";
 import { renderKb } from "@/server/ai/prompts";
+import { kbParaElCerebro } from "@/server/kb";
 import { construirEventoOlvido } from "@/server/brains/contract";
 import { avisarOlvido } from "@/server/brains/deliver";
 import { encolarDespacho } from "@/server/dispatch/outbox";
@@ -43,6 +44,17 @@ const QUIETUD_MS = 1_500;
 export const SILENCIO_MS = 45_000;
 
 export class RunConflictError extends Error {}
+
+/**
+ * 074 (FR-15) — Cuántos casos tiene una corrida recién creada (la pantalla
+ * pinta la barra con eso mientras llega el primer progreso).
+ */
+const ultimoTotal = new Map<string, number>();
+export function totalDeCasos(runId: string): number | null {
+  const n = ultimoTotal.get(runId) ?? null;
+  ultimoTotal.delete(runId);
+  return n;
+}
 
 export async function startRun(organizationId: string): Promise<string> {
   const db = getDb();
@@ -89,6 +101,8 @@ export async function startRun(organizationId: string): Promise<string> {
     await failRun(runId, organizationId, String(err));
   });
 
+  // 074 (FR-15): el total real de casos, para que la pantalla no diga «6» fijo.
+  ultimoTotal.set(runId, delRol.length);
   return runId;
 }
 
@@ -127,10 +141,8 @@ async function runAllCases(
     .where(eq(schema.agentTestCase.runId, runId))
     .orderBy(asc(schema.agentTestCase.createdAt));
 
-  const kbEntries = await db
-    .select()
-    .from(schema.kbEntry)
-    .where(eq(schema.kbEntry.organizationId, organizationId));
+  // 074 (D8): el juez mide contra lo que de verdad ve el agente (activo, en orden).
+  const kbEntries = await kbParaElCerebro(organizationId);
   const kbText = renderKb(kbEntries);
 
   const profileRows = await db

@@ -1,28 +1,16 @@
-import type { schema } from "@/lib/db";
-
 /**
  * 036 — Lo que queda de los prompts desde que el CRM no trae agente: el
  * conocimiento en texto (lo sirve `/api/bot/profile` y lo mide la pantalla
  * Agente) y el prompt del juez del Laboratorio. El del agente vive en el
  * cerebro (Nea: `app/prompt.py`).
+ *
+ * 074 (D8) — `renderKb` vive en `src/lib/kb.ts` (orden, títulos y entradas
+ * apagadas); se re-exporta aquí para quien ya lo importaba.
  */
-
-type KbEntry = typeof schema.kbEntry.$inferSelect;
+export { renderKb } from "@/lib/kb";
 
 /** Marcador del prompt del juez: el ai-mock lo usa para despachar veredictos. */
 export const JUDGE_MARKER = "[JUEZ]";
-
-export function renderKb(entries: KbEntry[]): string {
-  if (entries.length === 0) return "(knowledge base vacío)";
-  return entries
-    .map((e) =>
-      e.kind === "qa"
-        ? `P: ${e.question}\nR: ${e.answer}`
-        : (e.content ?? "")
-    )
-    .filter(Boolean)
-    .join("\n\n");
-}
 
 /** Prompt del juez del Laboratorio: UNA llamada por conversación (FR-032). */
 export function buildJudgePrompt(input: {

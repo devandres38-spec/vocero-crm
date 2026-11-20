@@ -13,6 +13,7 @@ import {
   rateLimitExcedido,
 } from "@/lib/rate-limit";
 import { credencialDerivada, secretoDeDespliegue } from "@/server/brains/deployment";
+import { leerFichaEnsayo } from "@/server/brains/ensayo-ficha";
 
 /**
  * 070 (D4, contrato §1) — La ÚNICA puerta de `/api/brains/*`.
@@ -42,7 +43,15 @@ export type AmbitoCerebro = {
   organizationId: string;
   slug: string | null;
   deploymentId: string;
+  /**
+   * 074 (D9, contrato brains-074 §3) — La petición viene de un ensayo de
+   * «Probar mi agente» (`X-Vocero-Ensayo` válida para ESTA organización).
+   * `withBrain` solo le deja pensar y leer huecos.
+   */
+  ensayo?: { conversationId: string };
 };
+
+export const CABECERA_ENSAYO = "x-vocero-ensayo";
 
 export type ResultadoCerebro =
   | { ok: true; ambito: AmbitoCerebro }
@@ -130,6 +139,16 @@ export async function requireBrain(req: Request): Promise<ResultadoCerebro> {
     };
   }
 
+  // 074 (D9) — Una ficha de ensayo mala, vencida o de otra organización es
+  // un 401 más (sin oráculo): quien la trae ya probó la credencial.
+  const fichaCruda = req.headers.get(CABECERA_ENSAYO)?.trim();
+  let ensayo: AmbitoCerebro["ensayo"];
+  if (fichaCruda) {
+    const ficha = leerFichaEnsayo(org.id, fichaCruda);
+    if (!ficha) return rechazar();
+    ensayo = { conversationId: ficha.conversationId };
+  }
+
   const presupuesto = checkRateLimit(`brains-api:${org.id}`, BRAINS_API_BUDGET);
   if (!presupuesto.allowed) {
     return { ok: false, response: apiError(429, "rate_limited", "Demasiadas solicitudes") };
@@ -137,6 +156,11 @@ export async function requireBrain(req: Request): Promise<ResultadoCerebro> {
 
   return {
     ok: true,
-    ambito: { organizationId: org.id, slug: org.slug ?? null, deploymentId: org.deploymentId },
+    ambito: {
+      organizationId: org.id,
+      slug: org.slug ?? null,
+      deploymentId: org.deploymentId,
+      ...(ensayo ? { ensayo } : {}),
+    },
   };
 }
