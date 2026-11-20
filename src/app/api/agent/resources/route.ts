@@ -4,6 +4,7 @@ import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { recursosSchema } from "@/lib/kb";
 import { recursosDe } from "@/server/kb";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export const GET = withAuth(async (session) => {
 const putSchema = z.object({ resources: recursosSchema }).strict();
 
 export const PUT = withAuth(async (session, req: Request) => {
+  // 074 (auditoría, MEDIO): solo el dueño o un admin (sin soporte: lista cerrada).
+  if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo el dueño o un admin");
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
   const vistas = new Set<string>();

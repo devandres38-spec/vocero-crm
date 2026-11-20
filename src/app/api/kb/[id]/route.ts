@@ -4,6 +4,7 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { kbCategoriaSchema, kbTituloSchema } from "@/lib/kb";
+import { puedeConfigurar } from "@/lib/auth/roles";
 
 /** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
 const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
@@ -32,6 +33,8 @@ const patchSchema = z
   .refine((d) => Object.keys(d).length > 0, { message: "sin_cambios" });
 
 export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
+  // 074 (auditoría, MEDIO): un `member` atiende la Bandeja, no configura el agente.
+  if (!puedeConfigurar(session)) return apiError(403, "forbidden", "Solo quien configura el agente puede cambiar el conocimiento");
   const { id } = await ctx.params;
   const body = await parseBody(req, patchSchema);
   if (!body.ok) return body.response;
@@ -57,6 +60,8 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
 }, SOPORTE_CONFIGURACION);
 
 export const DELETE = withAuth(async (session, _req: Request, ctx: Params) => {
+  // 074 (auditoría, MEDIO): un `member` atiende la Bandeja, no configura el agente.
+  if (!puedeConfigurar(session)) return apiError(403, "forbidden", "Solo quien configura el agente puede cambiar el conocimiento");
   const { id } = await ctx.params;
   const db = getDb();
   const deleted = await db

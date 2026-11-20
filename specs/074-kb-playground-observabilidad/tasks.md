@@ -1,7 +1,7 @@
 # Tasks: Spec 074 — KB de producción, «Probar mi agente», observabilidad BYOK y Laboratorio v2
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-074.md](contracts/brains-074.md)
-**Estado**: en implementación (2026-11-20), sin merge a `main`. Se numera 2.15.0 al cerrar.
+**Estado**: implementada, auditada y parcheada (2026-11-20); versión **2.15.0**, fusionada en `main`. Pendiente CI y staging (K43–K44).
 
 Convenciones: `[crm]` `vocero-crm` · `[nea]` `nea-agent` · `[local]` gate en este equipo · `[CI]` · `[staging]`.
 
@@ -42,4 +42,5 @@ Gates locales: `[crm]` typecheck · lint · vitest (1 worker) — `[nea]` pytest
 - [x] K40 `docs/openapi-brains.json` (aditivo), CHANGELOG «Sin publicar» en ambos repos
 - [x] K41 `[local]` typecheck · lint · vitest completo · pytest completo
 - [x] K42 Push de `feat/074-kb-playground-observabilidad` en ambos repos, sin merge
-- [ ] K43 `[CI]` build + E2E · K44 `[staging]` · K45 auditoría 074
+- [x] K45 Auditoría 074 (0 CRÍTICO · 0 ALTO; parche de 1 MEDIO + 1 BAJO por repo aplicado, 2026-11-20)
+- [ ] K43 `[CI]` build + E2E · K44 `[staging]`

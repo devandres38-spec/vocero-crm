@@ -5,12 +5,21 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
-## Sin publicar
+## 2.15.0 — 2026-11-20
 
-Se numera **2.15.0** al cerrar la Spec 074 tras su auditoría. Migración
-aditiva `0038_kb_produccion` (se aplica sola al arrancar). Actualizar **el CRM
-antes que Nea**. Contrato:
+Cierra la **Spec 074** (KB de producción, «Probar mi agente», observabilidad
+BYOK y Laboratorio v2) con su parche de auditoría. Migración aditiva
+`0038_kb_produccion` (se aplica sola al arrancar). Actualizar **el CRM antes
+que Nea**. Contrato:
 [brains-074](specs/074-kb-playground-observabilidad/contracts/brains-074.md).
+
+### Parche de auditoría 074
+
+- Crear, editar y borrar entradas de la KB exige poder configurar (dueño,
+  admin o soporte de nivel `configuracion`); reordenar y cambiar los enlaces
+  verificados, dueño o admin. Un `member` recibe 403.
+- Las flechas de orden de la KB no cruzan la frontera entre fijadas y no
+  fijadas.
 
 ### Spec 074 — KB de producción, «Probar mi agente», observabilidad BYOK y Laboratorio v2
 

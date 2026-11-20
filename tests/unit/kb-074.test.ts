@@ -32,7 +32,9 @@ import {
 } from "@/lib/kb";
 import { conocimientoDe } from "@/server/brains/context";
 import { serializeBotProfile } from "@/server/bot/profile";
-import { PATCH } from "@/app/api/kb/[id]/route";
+import { DELETE, PATCH } from "@/app/api/kb/[id]/route";
+import { POST as CREAR } from "@/app/api/kb/route";
+import { limitesDeMovimiento } from "@/components/agent/kb-section";
 import { POST as REORDER } from "@/app/api/kb/reorder/route";
 import { PUT as PUT_RESOURCES } from "@/app/api/agent/resources/route";
 
@@ -251,5 +253,51 @@ describe("migración 0038 re-ejecutable", () => {
     expect(constraints.length).toBeGreaterThan(0);
     for (const c of constraints) expect(sqlTexto).toContain(`DROP CONSTRAINT IF EXISTS "${c}"`);
     expect(leer("drizzle", "meta", "_journal.json")).toContain("0038_kb_produccion");
+  });
+});
+
+describe("auditoría 074 — permisos de rol en las mutaciones", () => {
+  const json = (url: string, method: string, body: unknown) =>
+    new Request(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const params = { params: Promise.resolve({ id: "kb_1" }) };
+
+  it("un `member` recibe 403 en crear, editar, borrar, reordenar y enlaces, sin escribir nada", async () => {
+    h.session.mockResolvedValue({ userId: "u_2", organizationId: "org_a", role: "member" });
+    expect((await CREAR(json("http://x/api/kb", "POST", { kind: "qa", question: "P", answer: "R" }))).status).toBe(403);
+    expect((await PATCH(json("http://x/api/kb/kb_1", "PATCH", { answer: "R" }), params)).status).toBe(403);
+    expect((await DELETE(new Request("http://x/api/kb/kb_1", { method: "DELETE" }), params)).status).toBe(403);
+    expect((await REORDER(json("http://x/api/kb/reorder", "POST", { ids: ["kb_1"] }))).status).toBe(403);
+    expect(
+      (await PUT_RESOURCES(json("http://x/api/agent/resources", "PUT", { resources: [{ label: "Web", url: "https://acme.co" }] }))).status
+    ).toBe(403);
+    expect(fake().escrituras).toHaveLength(0);
+  });
+
+  it("admin sí; soporte de configuración edita la KB pero no reordena (lista cerrada)", async () => {
+    h.session.mockResolvedValue({ userId: "u_3", organizationId: "org_a", role: "admin" });
+    fake().responder("update:", [{ id: "kb_1" }]);
+    expect((await PATCH(json("http://x/api/kb/kb_1", "PATCH", { answer: "R" }), params)).status).toBe(200);
+
+    expect(
+      (await import("@/lib/auth/roles")).puedeConfigurar({ role: "soporte", grant: { level: "configuracion" } })
+    ).toBe(true);
+    h.session.mockResolvedValue({ userId: "u_4", organizationId: "org_a", role: "soporte", via: "soporte", grant: { level: "configuracion" } });
+    expect((await REORDER(json("http://x/api/kb/reorder", "POST", { ids: ["kb_1"] }))).status).toBe(403);
+  });
+});
+
+describe("auditoría 074 — las flechas no cruzan la frontera de fijadas", () => {
+  const lista = [
+    { id: "f1", pinned: true },
+    { id: "f2", pinned: true },
+    { id: "n1", pinned: false },
+    { id: "n2", pinned: false },
+  ];
+  it("«Bajar» se apaga en la última fijada y «Subir» en la primera no fijada", () => {
+    expect(limitesDeMovimiento(lista, "f1")).toEqual({ primera: true, ultima: false });
+    expect(limitesDeMovimiento(lista, "f2")).toEqual({ primera: false, ultima: true });
+    expect(limitesDeMovimiento(lista, "n1")).toEqual({ primera: true, ultima: false });
+    expect(limitesDeMovimiento(lista, "n2")).toEqual({ primera: false, ultima: true });
+    expect(limitesDeMovimiento(lista, "no-existe")).toEqual({ primera: true, ultima: true });
   });
 });

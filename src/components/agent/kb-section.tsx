@@ -90,6 +90,9 @@ export function KbSection({
     const i = ids.indexOf(id);
     const j = i + delta;
     if (i < 0 || j < 0 || j >= ids.length) return;
+    // 074 (auditoría, BAJO): las fijadas van siempre primero; mover a través
+    // de esa frontera no cambiaría nada para el agente y confunde.
+    if (Boolean(entries[i]?.pinned) !== Boolean(entries[j]?.pinned)) return;
     [ids[i], ids[j]] = [ids[j]!, ids[i]!];
     await guardar("/api/kb/reorder", "POST", { ids });
   }
@@ -195,8 +198,7 @@ export function KbSection({
               key={e.id}
               entry={e}
               puedeMover={!filtrando}
-              primera={entries[0]?.id === e.id}
-              ultima={entries[entries.length - 1]?.id === e.id}
+              {...limitesDeMovimiento(entries, e.id)}
               onPatch={(patch) => guardar(`/api/kb/${e.id}`, "PATCH", patch)}
               onDelete={async () => {
                 if (window.confirm("¿Eliminar esta entrada? Si solo ya no aplica, puedes apagarla.")) {
@@ -218,6 +220,26 @@ export function KbSection({
       </CardContent>
     </Card>
   );
+}
+
+/**
+ * 074 (auditoría, BAJO) — Las flechas no cruzan la frontera entre fijadas y
+ * no fijadas: «Bajar» se apaga en la última fijada y «Subir» en la primera
+ * no fijada (y en los extremos de la lista).
+ */
+export function limitesDeMovimiento(
+  entries: Pick<KbEntry, "id" | "pinned">[],
+  id: string
+): { primera: boolean; ultima: boolean } {
+  const i = entries.findIndex((e) => e.id === id);
+  if (i < 0) return { primera: true, ultima: true };
+  const actual = Boolean(entries[i]!.pinned);
+  const antes = entries[i - 1];
+  const despues = entries[i + 1];
+  return {
+    primera: !antes || Boolean(antes.pinned) !== actual,
+    ultima: !despues || Boolean(despues.pinned) !== actual,
+  };
 }
 
 type Datos = {

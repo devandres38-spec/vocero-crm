@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { canConfigure } from "@/lib/auth/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ const reorderSchema = z
  * falta alguno, 404 y no se toca nada (una lista ajena no reordena la mía).
  */
 export const POST = withAuth(async (session, req: Request) => {
+  // 074 (auditoría, MEDIO): solo el dueño o un admin (sin soporte: lista cerrada).
+  if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo el dueño o un admin");
   const body = await parseBody(req, reorderSchema);
   if (!body.ok) return body.response;
   const { ids } = body.data;

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `feat/074-kb-playground-observabilidad` (en `vocero-crm` y `nea-agent`, creadas desde `main` tras 2.14.0)
 **Created**: 2026-11-20
-**Status**: En implementación (bloques 1–4 de la petición del 2026-11-20), sin merge a `main`
+**Status**: Implementada, auditada y parcheada (2026-11-20) — versión 2.15.0
 **Carril**: **Ciclo completo** (Principio VI): migración aditiva y re-ejecutable `0038_kb_produccion`, crecimiento aditivo de `/api/brains/context` y de la superficie del cerebro (ficha de ensayo), y un cambio coordinado entre los dos repositorios.
 **Constitución**: 2.0.0 (Principios I, III, IV, V, VI, IX, X, XI; restricción «Contratos entre repositorios»).
 **Repos**: `vocero-crm` · `nea-agent`.

@@ -4,6 +4,7 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { kbCategoriaSchema, kbTituloSchema } from "@/lib/kb";
 import { kbDelNegocio } from "@/server/kb";
+import { puedeConfigurar } from "@/lib/auth/roles";
 
 /** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
 const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
@@ -41,6 +42,8 @@ const createSchema = z
   ]);
 
 export const POST = withAuth(async (session, req: Request) => {
+  // 074 (auditoría, MEDIO): un `member` atiende la Bandeja, no configura el agente.
+  if (!puedeConfigurar(session)) return apiError(403, "forbidden", "Solo quien configura el agente puede cambiar el conocimiento");
   const body = await parseBody(req, createSchema);
   if (!body.ok) return body.response;
 
