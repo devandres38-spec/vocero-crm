@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { CalendarDays, Inbox, Kanban, LayoutDashboard, PartyPopper, Users, type LucideIcon } from "lucide-react";
+import { CalendarDays, Inbox, Kanban, LayoutDashboard, PartyPopper, Puzzle, Users, type LucideIcon } from "lucide-react";
+import { widgetDeModulo } from "@/modulos/catalogo";
+import { WidgetDeModulo } from "@/modulos/registro-cliente";
 import { formatDate, formatTime } from "@/lib/region";
 import { urlDeConversacion } from "@/lib/avisos-sistema";
 import { t, type Vocabulario } from "@/verticals/vocabulario";
@@ -181,11 +183,17 @@ function AccesosRapidos({ ctx }: { ctx: ContextoWidget }) {
   );
 }
 
-/** Puro: qué widgets se pintan. Sin agenda, `citas_de_hoy` no existe; los de módulo, en 072-B. */
-export function widgetsVisibles(widgets: WidgetRef[], agenda: boolean): WidgetRef[] {
+/**
+ * Puro: qué widgets se pintan. Sin agenda, `citas_de_hoy` no existe. 072-B:
+ * uno de módulo (`<modulo>.<clave>`) solo si su módulo está encendido y lo
+ * declara en su `modulo.ts`.
+ */
+export function widgetsVisibles(widgets: WidgetRef[], agenda: boolean, modulos: readonly string[] = []): WidgetRef[] {
   return widgets.filter((w) => {
     if (w.tipo === "citas_de_hoy") return agenda;
-    return !w.tipo.includes(".");
+    if (!w.tipo.includes(".")) return true;
+    const decl = widgetDeModulo(w.tipo);
+    return decl !== undefined && modulos.includes(decl.modulo);
   });
 }
 
@@ -203,8 +211,17 @@ export async function Widget({ w, ctx }: { w: WidgetRef; ctx: ContextoWidget }) 
         return AccesosRapidos({ ctx });
       case "proximos_por_fecha":
         return "params" in w ? await ProximosWidget({ ctx, campo: w.params.campo, titulo: w.params.titulo }) : null;
-      default:
-        return null;
+      default: {
+        // 072-B — Un widget de módulo: su tarjeta es del núcleo, su cuerpo
+        // es del módulo y se carga con `next/dynamic` (registro-cliente).
+        const decl = widgetDeModulo(w.tipo);
+        if (!decl) return null;
+        return (
+          <Tarjeta titulo={decl.titulo} icono={Puzzle}>
+            <WidgetDeModulo tipo={w.tipo} />
+          </Tarjeta>
+        );
+      }
     }
   } catch (err) {
     console.error(`[inicio] widget ${w.tipo}:`, err instanceof Error ? err.message : err);

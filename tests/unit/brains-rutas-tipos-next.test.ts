@@ -29,12 +29,17 @@ type RouteContext<P> = { params: Promise<P> };
 // Las dos dinámicas (las que rompieron el build).
 type Llm = typeof import("@/app/api/brains/llm/[...ruta]/route");
 type Media = typeof import("@/app/api/brains/media/[mediaId]/route");
+// 072-B — La tercera dinámica: el puente de herramientas de módulo.
+type Tools = typeof import("@/app/api/brains/tools/[name]/route");
 
 checkFields<
   Diff<ParamCheck<RouteContext<{ ruta: string[] }>>, { __tag__: "POST"; __param_position__: "second"; __param_type__: SecondArg<Llm["POST"]> }, "POST">
 >();
 checkFields<
   Diff<ParamCheck<RouteContext<{ mediaId: string }>>, { __tag__: "GET"; __param_position__: "second"; __param_type__: SecondArg<Media["GET"]> }, "GET">
+>();
+checkFields<
+  Diff<ParamCheck<RouteContext<{ name: string }>>, { __tag__: "POST"; __param_position__: "second"; __param_type__: SecondArg<Tools["POST"]> }, "POST">
 >();
 
 // Y las estáticas: su segundo argumento (si lo declaran) también debe caber.

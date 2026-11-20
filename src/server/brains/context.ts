@@ -4,6 +4,7 @@ import { resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import { contextoDeConversacion } from "@/server/bot/nucleo/contexto";
 import { serializeBotProfile } from "@/server/bot/profile";
+import { herramientasEfectivas } from "@/server/brains/herramientas";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
 
 /**
@@ -28,6 +29,10 @@ import { modulosDeOrganizacion } from "@/server/modulos/consulta";
  * 071 (D5) — `agent.agendaEnabled`: el módulo agenda de ESE negocio (techo
  * de la instalación ∧ organización). Nea lo usa en vez de sondear; si no
  * viene (CRM 2.10), sigue con su sonda por organización.
+ *
+ * 072-B (FR-042) — `moduleTools`: las herramientas de los módulos encendidos
+ * de ESE negocio (contrato brains-072 §3). Ausente si no hay ninguna, así que
+ * un negocio sin módulos recibe exactamente el cuerpo de 2.12.
  */
 
 /** El modelo que oye por OpenRouter (igual que `MODELO_QUE_OYE` de Nea). */
@@ -103,5 +108,7 @@ export async function contextoDelCerebro(
   const extra = { coordinationFollowupEnabled: false, agendaEnabled: modulos.agenda };
   const agent = perfil ? { ...serializeBotProfile(perfil, []).profile, ...extra } : extra;
 
-  return { ...base, agent, knowledge: conocimientoDe(kb), llm };
+  const moduleTools = herramientasEfectivas(modulos.modules).map((e) => e.anuncio);
+
+  return { ...base, agent, knowledge: conocimientoDe(kb), llm, ...(moduleTools.length > 0 ? { moduleTools } : {}) };
 }

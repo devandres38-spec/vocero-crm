@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { FichaPanel } from "@/components/ficha-panel";
+import { SeccionesDeModulo } from "@/components/secciones-de-modulo";
 import { guardarParcheFicha } from "@/components/ficha-guardar";
 import type { FichaField } from "@/lib/ficha-campos";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
@@ -374,6 +375,9 @@ export function ContactPanel({
         {/* Ficha: lo que se SABE del lead. Va antes de Notas —lo que alguien
             OPINA— porque es lo que se consulta a mitad de una conversación. */}
         <FichaPanel ficha={ficha} campos={fichaFields} onSave={saveFicha} />
+
+        {/* 072-B — Lo que aportan los módulos encendidos (ninguno = nada). */}
+        <SeccionesDeModulo conversationId={conversation.id} />
 
         {/* Notas */}
         <section className={cn("p-4", onDeleteConversation && "border-b")}>

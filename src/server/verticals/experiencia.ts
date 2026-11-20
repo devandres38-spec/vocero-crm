@@ -2,6 +2,7 @@ import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { esPlataforma } from "@/lib/tenancy";
+import { modulosEfectivos, techoDeInstancia } from "@/server/modulos/efectivos";
 import { esPackId } from "@/verticals/registro";
 import {
   EXPERIENCIA_DEFAULT,
@@ -24,6 +25,7 @@ export const experienciaDe = cache(async (organizationId: string | null | undefi
     .select({
       verticalPack: schema.organization.verticalPack,
       verticalOverrides: schema.organization.verticalOverrides,
+      modules: schema.organization.modules,
     })
     .from(schema.organization)
     .where(eq(schema.organization.id, organizationId))
@@ -38,5 +40,7 @@ export const experienciaDe = cache(async (organizationId: string | null | undefi
   leerOverrides(fila.verticalOverrides, (motivo) =>
     console.warn(`[verticals] vertical_overrides inválidos en ${organizationId} (${motivo}): se ignoran`)
   );
-  return resolverExperiencia(fila.verticalPack, fila.verticalOverrides);
+  // 072-B — Los módulos encendidos (techo ∧ organización), de la misma fila.
+  const { modules } = modulosEfectivos(techoDeInstancia(), fila.modules ?? null);
+  return resolverExperiencia(fila.verticalPack, fila.verticalOverrides, modules);
 });

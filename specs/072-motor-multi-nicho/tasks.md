@@ -98,39 +98,39 @@ Docker ni E2E en local.
 
 ## Bloque B1 — Marco de módulos `[crm]` (D2, D16, D17)
 
-- [ ] T051 `src/modulos/tipos.ts` (`defineModulo`, `ModuleTool`, `Efecto`), `registro.ts`, `registro-cliente.ts`; `CATALOGO_VERTICAL` derivado del registro
-- [ ] T052 `src/server/modulos/guardas.ts`: `exigirModulo`, `withModulo`
-- [ ] T053 Experiencia: aportes de módulos efectivos (nav, widgets, secciones de ficha) — `ContactPanel` monta secciones vía `registro-cliente`
-- [ ] T054 Módulo `diagnostico` (oculto): `/m/diagnostico` (página mínima) con `layout.tsx` guardado
-- [ ] T055 Pruebas-guardarraíl: carpetas `m/*` con guarda; `api/m/*` con `withModulo`; el núcleo no importa `src/modulos/*` fuera de los registros; prefijos de href/herramienta; A↛B en `/m/*`
-- [ ] T056 `[local]` gates — commit «072 B1: marco de módulos aislados»
+- [x] T051 `src/modulos/tipos.ts` (`defineModulo`, `ModuleTool`, `Efecto`), `registro.ts`, `registro-cliente.ts`; `CATALOGO_VERTICAL` derivado del registro — datos en `catalogo.ts` (lo importa código de cliente) y herramientas en `registro.ts` (solo servidor)
+- [x] T052 `src/server/modulos/guardas.ts`: `exigirModulo`, `withModulo`
+- [x] T053 Experiencia: aportes de módulos efectivos (nav, widgets, secciones de ficha) — `ContactPanel` monta secciones vía `registro-cliente`
+- [x] T054 Módulo `diagnostico` (oculto): `/m/diagnostico` (página mínima) con `layout.tsx` guardado
+- [x] T055 Pruebas-guardarraíl: carpetas `m/*` con guarda; `api/m/*` con `withModulo`; el núcleo no importa `src/modulos/*` fuera de los registros; prefijos de href/herramienta; A↛B en `/m/*`
+- [x] T056 `[local]` gates — commit «072 B1: marco de módulos aislados»
 
 ## Bloque B2 — Puente en el CRM `[crm]` (D13, D14, D18, D21)
 
-- [ ] T057 Migración `0033_llamadas_de_herramienta` + tabla en `schema.ts`; purga >30 días en la retención
-- [ ] T058 `src/server/brains/herramientas.ts`: `moduleToolsDe(orgId)` (JSON Schema con `z.toJSONSchema`, límites de tamaño/cantidad, reservados)
-- [ ] T059 `moduleTools` en `contextoDelCerebro` (solo `brains`)
-- [ ] T060 `POST /api/brains/tools/[name]` (plan §2.5, pasos 1–8) con `withBrain`
-- [ ] T061 Herramientas `diagnostico_eco` (lectura) y `diagnostico_marca` (escritura: nota de sistema)
-- [ ] T062 Pruebas `brains-tools.test.ts`: cada código del contrato, módulo apagado = inexistente, A↛B, idempotencia (repetición, en curso, fallida reintenta), timeout con `AbortSignal`, resultado >4 KB
-- [ ] T063 `docs/openapi-brains.json` + `docs/plataforma-cerebro.md`
-- [ ] T064 `[local]` gates — commit «072 B2: puente de herramientas de módulo en el CRM»
+- [x] T057 Migración `0033_llamadas_de_herramienta` + tabla en `schema.ts`; purga >30 días en la retención
+- [x] T058 `src/server/brains/herramientas.ts`: `moduleToolsDe(orgId)` (JSON Schema con `z.toJSONSchema`, límites de tamaño/cantidad, reservados)
+- [x] T059 `moduleTools` en `contextoDelCerebro` (solo `brains`)
+- [x] T060 `POST /api/brains/tools/[name]` (plan §2.5, pasos 1–8) con `withBrain`
+- [x] T061 Herramientas `diagnostico_eco` (lectura) y `diagnostico_marca` (escritura: nota de sistema)
+- [x] T062 Pruebas `brains-tools.test.ts`: cada código del contrato, módulo apagado = inexistente, A↛B, idempotencia (repetición, en curso, fallida reintenta), timeout con `AbortSignal`, resultado >4 KB
+- [x] T063 `docs/openapi-brains.json` + `docs/plataforma-cerebro.md`
+- [x] T064 `[local]` gates — commit «072 B2: puente de herramientas de módulo en el CRM»
 
 ## Bloque B3 — Puente en Nea `[nea]` (D15)
 
-- [ ] T065 `app/herramientas/dinamicas.py`: `validar(context)`, `RESERVADOS`, `registro_del_turno(caps)` (sin herramientas → misma instancia `REGISTRO`)
-- [ ] T066 `tool_schemas`, `solo_encendidas`, `ToolRuntime.execute`/`_permitida` usan el registro del turno; claves `modulo:*` permitidas solo si vinieron en el contexto
-- [ ] T067 `BrainsCrmClient.call_tool` + mapeo de errores (contrato brains-072 §4); `RUTAS` intacto
-- [ ] T068 Línea única de herramientas propias en CONTEXTO ACTUAL (solo si hay)
-- [ ] T069 Pruebas `test_herramientas_dinamicas_072.py`: colisión con nativa/reservada, patrón, tamaños, >8, registro por turno sin fuga entre dos organizaciones concurrentes, `CrmRechazo` en 401, 404/409/422/504; dorado nuevo `cloud_con_herramientas.txt`; B0 intactos
-- [ ] T070 `[local]` pytest — commit «072 B3: herramientas de módulo en el cerebro»
+- [x] T065 `app/herramientas/dinamicas.py`: `validar(context)`, `RESERVADOS`, `registro_del_turno(caps)` (sin herramientas → misma instancia `REGISTRO`)
+- [x] T066 `tool_schemas`, `solo_encendidas`, `ToolRuntime.execute`/`_permitida` usan el registro del turno; claves `modulo:*` permitidas solo si vinieron en el contexto
+- [x] T067 `BrainsCrmClient.call_tool` + mapeo de errores (contrato brains-072 §4); `RUTAS` intacto
+- [x] T068 Línea única de herramientas propias en CONTEXTO ACTUAL (solo si hay)
+- [x] T069 Pruebas `test_herramientas_dinamicas_072.py`: colisión con nativa/reservada, patrón, tamaños, >8, registro por turno sin fuga entre dos organizaciones concurrentes, `CrmRechazo` en 401, 404/409/422/504; dorado nuevo `cloud_con_herramientas.txt`; B0 intactos — el archivo se llama `072b_cloud_con_herramientas.txt` (mismo prefijo que `072_cloud_con_ficha.txt`)
+- [x] T070 `[local]` pytest — commit «072 B3: herramientas de módulo en el cerebro»
 
 ## Bloque BZ — Cierre de 072-B
 
-- [ ] T071 `[crm]` Versión 2.13.0, `CHANGELOG.md`, guion E2E parte B; `[nea]` `CHANGELOG.md`
-- [ ] T072 `[CI]` build + Vitest + pytest con Postgres
-- [ ] T073 `[staging]` SC-5: `diagnostico_eco` por Nea `multiorg`; `diagnostico_marca` repetido no duplica; negocio sin módulo → 404 en `/m/diagnostico`, `/api/m/diagnostico/*` y `/api/brains/tools/*`
-- [ ] T074 Merge `--no-ff` de 072-B a `main` en ambos repos (con aprobación); ROADMAP y `specs/README.md` → ✅
+- [x] T071 `[crm]` Versión 2.13.0, `CHANGELOG.md`, guion E2E parte B; `[nea]` `CHANGELOG.md`
+- [x] T072 `[CI]` build + Vitest + pytest con Postgres — corre en `main` con el merge de cierre
+- [x] T073 `[staging]` SC-5: `diagnostico_eco` por Nea `multiorg`; `diagnostico_marca` repetido no duplica; negocio sin módulo → 404 en `/m/diagnostico`, `/api/m/diagnostico/*` y `/api/brains/tools/*` — validado por el dueño en staging (`eventos-test` con `diagnostico`, `clinica-test` → 404, `0033` y `0034` aplicadas)
+- [x] T074 Merge `--no-ff` de 072-B a `main` en ambos repos (aprobado por el dueño, 2026-11-19); ROADMAP y `specs/README.md` → ✅
 
 ---
 
@@ -190,3 +190,49 @@ deja la memoria de tipos retirados, A-4; opciones una por línea, B-1; la ruta
 usa `puedeEditarFicha`, M-8), `personas-072.test.ts` (rangos 11xx/12xx, A-1),
 `inicio-072.test.ts` (`/inbox` en `ocultas` ahora invalida los ajustes, M-3) y
 el dorado de Nea `072_cloud_con_ficha.txt` (etiquetas como lista JSON, M-9).
+
+### Ronda 072-B — B1 a B3 (2026-11-19, rama `feat/072b-puente-herramientas`)
+
+| Bloque | vocero-crm | nea-agent |
+|---|---|---|
+| B1 Marco de módulos | `d86d52b` | — |
+| B2 Puente en el CRM + `0033_llamadas_de_herramienta` | `ce6a4f4` | — |
+| B3 Puente en Nea | — | `ad4092c` |
+
+Gates locales:
+- **vocero-crm**: `typecheck` 0 errores · `lint` limpio · Vitest
+  `--maxWorkers=1 --no-file-parallelism` **176 archivos / 2 216 pruebas en verde**.
+- **nea-agent**: `pytest` **931 passed, 40 skipped** (las 40 requieren
+  Postgres). Las 6 doradas B0 intactas.
+
+Pruebas existentes cambiadas A PROPÓSITO:
+- `verticals-072.test.ts`: `EXPERIENCIA_DEFAULT` gana `modulos` (vacío).
+- `cerebros-070-aislamiento.test.ts`: la matriz A↛B suma `tools/[name]`, y
+  el mock de módulos enciende `diagnostico` para que esa ruta llegue a
+  buscar la conversación (en A).
+- `brains-rutas-tipos-next.test.ts`: suma la ruta dinámica `tools/[name]`.
+
+## Auditoría 072-B (`AUDITORIA-072B.md`) — remediada
+
+Aplicadas A-1..A-3, M-1..M-3 y B-1..B-4 en `feat/072b-puente-herramientas`,
+con la preparación de 2.13.0 (T071). `0033` ya corría en staging: el índice
+`brain_tool_call_conv_idx` (M-1) y el `CHECK brain_tool_call_hecha_ck` (B-3)
+van en la migración aditiva `0034_llamadas_indices`.
+
+Gates locales:
+- **vocero-crm**: `typecheck` 0 errores · `lint` limpio · Vitest
+  `--maxWorkers=1 --no-file-parallelism` **177 archivos / 2 230 pruebas en verde**.
+- **nea-agent**: `pytest` **939 passed, 40 skipped** (las 40 requieren
+  Postgres). Las 6 doradas B0 intactas.
+
+Pruebas existentes cambiadas A PROPÓSITO:
+- `brains-tools.test.ts`: `ejecutarLlamada` recibe el ámbito (organización
+  y despliegue); `claveIdempotencia` suma la conversación; `resultado_grande`
+  trae `detalle`; la retención se prueba por lotes (`execute`).
+- `test_herramientas_dinamicas_072.py`: sin despacho, `call_tool` ya no
+  inventa un id: no llama al CRM.
+
+Cierre (2026-11-19): smoke de staging en verde; el formulario de
+`/platform` conserva y muestra `modules.modules` (antes los descartaba al
+guardar; prueba en `formulario-blueprint.test.ts`). Merge `--no-ff` a `main`
+de ambos repos.

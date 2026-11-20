@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { CLAVE_CAMPO_RE } from "@/lib/ficha-campos";
+import { moduloDe, type SeccionFichaRef } from "@/modulos/catalogo";
+import type { EntradaNavModulo } from "@/modulos/tipos";
 import { packDe } from "./registro";
 import { TERMINOS, WIDGETS_NUCLEO, type IconoNav, type WidgetRef } from "./tipos";
 import { VOCABULARIO_BASE, type Vocabulario } from "./vocabulario";
@@ -85,10 +87,34 @@ export type ExperienciaResuelta = {
   vocabulario: Vocabulario;
   nav: { orden: string[]; ocultas: string[]; iconos: Record<string, IconoNav> };
   inicio: { widgets: WidgetRef[] } | null;
+  /**
+   * 072-B (D4, FR-040) — Lo que aportan los módulos ENCENDIDOS del negocio
+   * (techo ∧ organización): entradas de menú y secciones de la ficha. Los
+   * widgets de módulo se piden en `inicio.widgets` (`<modulo>.<clave>`) y se
+   * pintan solo si su módulo está en `claves`.
+   */
+  modulos: { claves: string[]; nav: EntradaNavModulo[]; seccionesFicha: SeccionFichaRef[] };
 };
 
-/** Puro: pack ⊕ overrides. Los aportes de módulos llegan en la 072-B. */
-export function resolverExperiencia(packId: unknown, overridesRaw: unknown): ExperienciaResuelta {
+/** Puro: lo que aportan los módulos, en el orden del catálogo pedido. */
+export function aportesDeModulos(claves: readonly string[]): ExperienciaResuelta["modulos"] {
+  const out: ExperienciaResuelta["modulos"] = { claves: [], nav: [], seccionesFicha: [] };
+  for (const clave of claves) {
+    const m = moduloDe(clave);
+    if (!m || out.claves.includes(m.clave)) continue;
+    out.claves.push(m.clave);
+    out.nav.push(...m.nav);
+    out.seccionesFicha.push(...m.seccionesFicha.map((s) => ({ ...s, modulo: m.clave })));
+  }
+  return out;
+}
+
+/** Puro: pack ⊕ overrides ⊕ módulos encendidos. */
+export function resolverExperiencia(
+  packId: unknown,
+  overridesRaw: unknown,
+  modulos: readonly string[] = []
+): ExperienciaResuelta {
   const pack = packDe(packId);
   const o = leerOverrides(overridesRaw);
   const iconos: Record<string, IconoNav> = {};
@@ -102,6 +128,7 @@ export function resolverExperiencia(packId: unknown, overridesRaw: unknown): Exp
       iconos,
     },
     inicio: o?.inicio ? { widgets: o.inicio.widgets as WidgetRef[] } : pack.inicio,
+    modulos: aportesDeModulos(modulos),
   };
 }
 

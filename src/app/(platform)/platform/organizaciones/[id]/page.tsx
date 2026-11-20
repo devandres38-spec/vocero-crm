@@ -237,6 +237,7 @@ export default async function DetalleOrganizacionPage({
             agenda: org.modulos.agenda,
             atribucion: org.modulos.atribucion,
             channels: [...org.modulos.channels],
+            verticales: [...org.modulos.modules],
           },
         }}
       />

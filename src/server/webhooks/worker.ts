@@ -7,6 +7,7 @@ import {
   type FilaEvento,
 } from "./eventos";
 import { procesarFuente } from "./procesar";
+import { purgarLlamadasViejas } from "@/server/brains/llamadas-retencion";
 
 /**
  * 047 — El barrido de los eventos de webhook.
@@ -102,8 +103,19 @@ export async function barrido(ahora: Date = new Date()): Promise<number> {
     for (const fila of filas) await intentar(fila);
     if (ahora.getTime() - e.ultimaPurga >= PURGA_CADA_MS) {
       e.ultimaPurga = ahora.getTime();
-      const borrados = await purgar(ahora);
+      // M-2 (auditoría 072-B) — Un fallo de la purga no frena el barrido.
+      const borrados = await purgar(ahora).catch((err: unknown) => {
+        console.error("[webhooks] la purga de eventos falló:", mensaje(err));
+        return 0;
+      });
       if (borrados > 0) console.log(`[webhooks] ${borrados} evento(s) viejo(s) borrado(s)`);
+      // 072-B (D14) — Las llamadas a herramientas de módulo viven 30 días.
+      // Su fallo no frena el barrido de webhooks.
+      const llamadas = await purgarLlamadasViejas(ahora).catch((err: unknown) => {
+        console.error("[webhooks] la purga de llamadas a herramientas falló:", mensaje(err));
+        return 0;
+      });
+      if (llamadas > 0) console.log(`[webhooks] ${llamadas} llamada(s) a herramientas vieja(s) borrada(s)`);
     }
     return filas.length;
   } catch (err) {

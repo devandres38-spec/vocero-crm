@@ -101,24 +101,34 @@ Content-Type: application/json
 | 404 | `tool_not_found` | No existe, o su módulo no está encendido para ESTE negocio (cuerpo idéntico) |
 | 404 | `not_found` | Conversación de otra organización o inexistente |
 | 409 | `ai_paused` | IA apagada o `handoffAt` en la conversación |
+| 409 | `cerebro_reasignado` | El despacho se le entregó a OTRO despliegue (auditoría 072-B, A-1) |
 | 413 | `payload_too_large` | Cuerpo >16 KB |
 | 422 | `invalid` / `invalid_args` | Sobre inválido / `args` no cumplen el esquema (`details.path`) |
+| 422 | `despacho_desconocido` | `dispatchId` que no es de este negocio y esta conversación, no entregado (`en_vuelo`/`entregado`) o de hace más de 24 h — las mismas reglas que `POST /api/brains/messages` (auditoría 072-B, A-1) |
 | 504 | `tool_timeout` | El manejador pasó de 8 s |
 | 500 | `internal` | Sobre JSON de `withBrain` |
 
-**Idempotencia** (`effect: "escritura"`): clave = `sha256(dispatchId + "\n" + name + "\n" + JSON canónico de args)`.
+**Idempotencia** (`effect: "escritura"`): clave =
+`sha256(conversationId + "\n" + dispatchId + "\n" + name + "\n" + JSON canónico de los args YA validados)`
+(auditoría 072-B: A-1 suma la conversación; B-2 usa los argumentos tras el esquema del módulo).
 Una repetición devuelve la respuesta guardada (200) sin ejecutar; si la
-primera sigue en curso, `{ "ok": true, "estado": "en_curso", "result": {} }`.
-Una ejecución que terminó en 504/500 queda `fallida` y la repetición vuelve a ejecutar.
+primera sigue en curso, `{ "ok": true, "estado": "en_curso", "result": {} }`
+(salvo que haya terminado entre la lectura y la toma: entonces su respuesta, A-2).
+Una ejecución que terminó en 504/500 queda `fallida` y la repetición vuelve a
+ejecutar; una «en curso» de más de 60 s se puede volver a tomar, y la
+ejecución vieja ya no puede escribir su resultado (fencing por la marca de la toma, A-3).
 
-**Resultado**: ≤4 KB serializado. Convenciones para módulos:
+**Resultado**: ≤4 KB serializado (si no, `{ "ok": false, "error": "resultado_grande", "detalle": … }`). Convenciones para módulos:
 `result.enviadoAlCliente: true` cuando el CRM ya le envió algo al cliente (el
 bot no lo repite); `estado: "en_curso"` cuando el trabajo sigue en segundo plano.
 
-**Mapeo en Nea** (`CrmClient.call_tool`): 200 → el cuerpo tal cual al modelo;
-404 → `{"ok": false, "error": "herramienta_no_disponible"}`; 409 →
-`{"ok": false, "error": "ai_paused"}`; 422 → `{"ok": false, "error": "argumentos_invalidos", "detalle": …}`;
+**Mapeo en Nea** (`CrmClient.call_tool`): 200 → el cuerpo al modelo (con `nota`
+si `estado: "en_curso"` o `result.enviadoAlCliente`; `resultado_grande` si pasa
+de 4 KB); 404 y 422 `despacho_desconocido` → `{"ok": false, "error": "herramienta_no_disponible"}`;
+409 → `{"ok": false, "error": "ai_paused" | "cerebro_reasignado"}`; otros 413/422 →
+`{"ok": false, "error": "argumentos_invalidos", "detalle": …}`;
 504/5xx/timeout 10 s → `{"ok": false, "error": "crm_error", …}`; 401/403 → `CrmRechazo` (terminal).
+Sin despacho en curso (un turno que no vino de un despacho) Nea no llama.
 
 ## 5. Compatibilidad cruzada
 

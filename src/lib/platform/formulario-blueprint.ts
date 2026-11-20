@@ -63,7 +63,19 @@ export type DefaultsForm = {
   /** Etapas abiertas con que nace un negocio. */
   etapas: string[];
 };
-export type ModulosForm = { agenda: boolean; atribucion: boolean; channels: string[] };
+export type ModulosForm = {
+  agenda: boolean;
+  atribucion: boolean;
+  channels: string[];
+  /**
+   * 072-B — `modules.modules`: los módulos de código (`src/modulos/`) que la
+   * agencia enciende para este negocio. Se conservan tal cual al importar o
+   * editar (antes el formulario los descartaba al guardar).
+   */
+  verticales?: string[];
+  /** El negocio ya tenía alguno: guardar debe mandar la lista aunque quede vacía (para apagarlos). */
+  verticalesGuardados?: boolean;
+};
 
 export type FormBlueprint = {
   organization: { name: string; slug: string; slugTocado: boolean };
@@ -210,6 +222,12 @@ export function formularioDesdeBlueprint(
     atribucion: bp.modules?.atribucion ?? m.atribucion,
     channels: ["whatsapp", ...((bp.modules?.channels ?? m.channels) as string[]).filter((c) => c !== "whatsapp")],
   };
+  // 072-B — Los módulos de código del Blueprint (o los efectivos del negocio).
+  const verticales = [...new Set(((bp.modules?.modules ?? m.verticales ?? []) as string[]).filter((x) => typeof x === "string"))];
+  if (verticales.length > 0) {
+    f.modules.verticales = verticales;
+    f.modules.verticalesGuardados = true;
+  }
   f.pipeline = { stages: bp.pipeline?.stages ? [...bp.pipeline.stages] : [] };
   if (bp.agent) {
     f.agent = {
@@ -333,6 +351,11 @@ export function seccionesDelFormulario(
     ...(techo.agenda ? { agenda: f.modules.agenda } : {}),
     ...(techo.atribucion ? { atribucion: f.modules.atribucion } : {}),
     channels: ["whatsapp", ...f.modules.channels.filter((c) => c !== "whatsapp" && techo.channels.includes(c))],
+    // 072-B — Solo si hay alguno, o si el negocio tenía y se apagaron todos
+    // (el merge por clave conserva lo que no se menciona).
+    ...((f.modules.verticales?.length ?? 0) > 0 || f.modules.verticalesGuardados
+      ? { modules: [...(f.modules.verticales ?? [])] }
+      : {}),
   };
   const etapas = f.pipeline.stages.map(t).filter(Boolean);
   if (etapas.length > 0) s.pipeline = { stages: etapas };

@@ -3,7 +3,7 @@
   "info": {
     "title": "Aliantis — API de cerebros (/api/brains/*)",
     "version": "2.11.0",
-    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md. 072: el contexto gana fichaSchema (los campos de la ficha del negocio; falta si no hay) y PUT /api/brains/ficha gana ignored (solo si se descartó algún valor por su tipo). Delta normativo: specs/072-motor-multi-nicho/contracts/brains-072.md."
+    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md. 072: el contexto gana fichaSchema (los campos de la ficha del negocio; falta si no hay) y PUT /api/brains/ficha gana ignored (solo si se descartó algún valor por su tipo). 072-B: el contexto gana moduleTools (herramientas de módulos encendidos; falta si no hay) y nace POST /api/brains/tools/{name}. Delta normativo: specs/072-motor-multi-nicho/contracts/brains-072.md."
   },
   "components": {
     "securitySchemes": {
@@ -117,6 +117,46 @@
                         "coordinationFollowupEnabled": {
                           "type": "boolean",
                           "const": false
+                        }
+                      }
+                    },
+                    "moduleTools": {
+                      "type": "array",
+                      "maxItems": 8,
+                      "description": "072-B — Herramientas de los módulos ENCENDIDOS de este negocio (techo ∧ organización). Ausente si no hay ninguna. Se ejecutan con POST /api/brains/tools/{name}.",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "name",
+                          "module",
+                          "effect",
+                          "description",
+                          "parameters"
+                        ],
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_]{2,47}$",
+                            "description": "Empieza por <module>_; nunca una reservada (las nativas de Nea + notas)."
+                          },
+                          "module": {
+                            "type": "string"
+                          },
+                          "effect": {
+                            "type": "string",
+                            "enum": [
+                              "lectura",
+                              "escritura"
+                            ]
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 400
+                          },
+                          "parameters": {
+                            "type": "object",
+                            "description": "JSON Schema type:object, ≤4 KB (≤12 KB entre todas)."
+                          }
                         }
                       }
                     }
@@ -260,6 +300,70 @@
           },
           "404": {
             "description": "not_found"
+          }
+        }
+      }
+    },
+    "/api/brains/tools/{name}": {
+      "post": {
+        "summary": "072-B — Ejecuta una herramienta de un módulo encendido para ESTE negocio (los módulos se recalculan en cada llamada). Las de efecto escritura son idempotentes por sha256(conversationId + \"\n\" + dispatchId + \"\n\" + name + \"\n\" + args validados canónicos): la repetición devuelve la respuesta guardada; si la primera sigue en curso, {ok:true, estado:\"en_curso\", result:{}}; una que terminó en 504/500 se vuelve a ejecutar. El dispatchId debe ser de esta conversación, entregado a ESTE cerebro y de las últimas 24 h (las reglas de POST /api/brains/messages).",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{2,47}$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "conversationId",
+                  "dispatchId",
+                  "args"
+                ],
+                "properties": {
+                  "conversationId": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "dispatchId": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "args": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "{ ok: true, result, estado: hecho | en_curso } o error funcional { ok: false, error, detalle? } (resultado_grande si pasaba de 4 KB)."
+          },
+          "404": {
+            "description": "tool_not_found (no existe o su módulo está apagado: mismo cuerpo) | not_found (conversación de otra organización)"
+          },
+          "409": {
+            "description": "ai_paused | cerebro_reasignado (el despacho es de otro despliegue)"
+          },
+          "413": {
+            "description": "payload_too_large (cuerpo de más de 16 KB)"
+          },
+          "422": {
+            "description": "invalid (sobre) | invalid_args (error.details.path) | despacho_desconocido (dispatchId que no es de esta conversación, no entregado o de más de 24 h)"
+          },
+          "504": {
+            "description": "tool_timeout (el manejador pasó de 8 s)"
           }
         }
       }

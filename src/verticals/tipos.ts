@@ -42,6 +42,8 @@ export const ICONOS_NAV = [
   "guia",
   "salud",
   "evento",
+  // 072-B — Para las entradas de módulo (`src/modulos/`).
+  "modulo",
 ] as const;
 export type IconoNav = (typeof ICONOS_NAV)[number];
 

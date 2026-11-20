@@ -232,6 +232,20 @@
       "when": 1795119036809,
       "tag": "0032_motor_nicho",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795130656534,
+      "tag": "0033_llamadas_de_herramienta",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795134113869,
+      "tag": "0034_llamadas_indices",
+      "breakpoints": true
     }
   ]
 }

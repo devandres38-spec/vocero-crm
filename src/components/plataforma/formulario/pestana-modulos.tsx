@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Lock, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { FormBlueprint, TechoForm } from "@/lib/platform/formulario-blueprint";
+import { MODULOS } from "@/modulos/catalogo";
 import { BotonIcono, FilaInterruptor, Seccion, mover, type Actualizar } from "./controles";
 
 const CANALES_OPCIONALES = [
@@ -55,8 +56,39 @@ export function PestanaModulos({ f, upd, techo }: { f: FormBlueprint; upd: Actua
           );
         })}
       </div>
+      {/* 072-B — Los módulos de código registrados (`src/modulos/`). */}
+      <p className="kicker mb-1 mt-6">Módulos de vertical</p>
+      <div className="divide-y">
+        {MODULOS.map((m) => (
+          <FilaInterruptor
+            key={m.clave}
+            titulo={m.etiqueta}
+            descripcion={m.descripcion}
+            nota={m.oculto ? "Interno" : undefined}
+            checked={(f.modules.verticales ?? []).includes(m.clave)}
+            onChange={(v) => upd("modules", { verticales: alternar(f.modules.verticales ?? [], m.clave, v) })}
+          />
+        ))}
+        {(f.modules.verticales ?? [])
+          .filter((clave) => !MODULOS.some((m) => m.clave === clave))
+          .map((clave) => (
+            <FilaInterruptor
+              key={clave}
+              titulo={clave}
+              descripcion="No está en el catálogo de esta versión: se conserva, pero el servidor lo rechazará al guardar."
+              nota="Desconocido"
+              checked
+              onChange={(v) => upd("modules", { verticales: alternar(f.modules.verticales ?? [], clave, v) })}
+            />
+          ))}
+      </div>
     </Seccion>
   );
+}
+
+function alternar(lista: string[], clave: string, encender: boolean): string[] {
+  const sin = lista.filter((x) => x !== clave);
+  return encender ? [...sin, clave] : sin;
 }
 
 /** Pestaña «Pipeline»: etapas abiertas reordenables + anclas fijas. */
