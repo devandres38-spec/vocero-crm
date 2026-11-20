@@ -98,6 +98,48 @@ export async function crearNota(
   return dto;
 }
 
+/**
+ * 073-A — Una nota interna que deja el sistema, no una persona (autor `null`,
+ * nadie la puede borrar desde la bandeja). La usan los incidentes del bot
+ * para que el equipo vea en la conversación por qué la IA no contestó.
+ *
+ * `organizationId` sale de quien llama (el worker del despacho, con la fila
+ * ya filtrada por organización). Nunca lanza: una nota que no se guarda no
+ * puede tumbar el despacho.
+ */
+export async function crearNotaDelSistema(
+  organizationId: string,
+  conversationId: string,
+  texto: string
+): Promise<NotaDto | null> {
+  try {
+    const [fila] = await getDb()
+      .insert(schema.conversationNote)
+      .values({
+        id: newId("conversationNote"),
+        organizationId,
+        conversationId,
+        authorUserId: null,
+        texto: texto.slice(0, NOTA_MAX),
+      })
+      .returning();
+    if (!fila) return null;
+    const nota: NotaDto = {
+      id: fila.id,
+      conversationId: fila.conversationId,
+      texto: fila.texto,
+      createdAt: fila.createdAt.toISOString(),
+      autor: null,
+      puedeBorrar: false,
+    };
+    publish(organizationId, { type: "note.new", data: { conversationId, note: nota } });
+    return nota;
+  } catch (err) {
+    console.error("[notas] no se pudo dejar la nota del sistema:", err);
+    return null;
+  }
+}
+
 export async function borrarNota(quien: Quien, conversationId: string, noteId: string): Promise<void> {
   const db = getDb();
   const [fila] = await db

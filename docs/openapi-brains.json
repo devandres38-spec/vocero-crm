@@ -224,10 +224,13 @@
             "description": "ai_paused | sandbox_violation | message_limit | cerebro_reasignado (también si el despacho no anotó despliegue)"
           },
           "422": {
-            "description": "invalid_body | despacho_desconocido (no existe, otra conversación, no en_vuelo/entregado, > 24 h) | fuera_de_ventana"
+            "description": "invalid_body | despacho_desconocido (no existe, otra conversación, no en_vuelo/entregado, > 24 h) | fuera_de_ventana | envio_permanente (073-A: el canal rechazó el envío y reintentar no lo cambia; el mensaje lleva el código de Meta si lo hubo)"
           },
           "403": {
             "description": "organizacion_suspendida"
+          },
+          "503": {
+            "description": "meta_unavailable (073-A: el canal no está disponible ahora; reintentable)"
           }
         }
       }

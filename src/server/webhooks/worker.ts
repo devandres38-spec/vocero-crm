@@ -8,6 +8,7 @@ import {
 } from "./eventos";
 import { procesarFuente } from "./procesar";
 import { purgarLlamadasViejas } from "@/server/brains/llamadas-retencion";
+import { purgarIncidentesViejos } from "@/server/incidentes";
 
 /**
  * 047 — El barrido de los eventos de webhook.
@@ -116,6 +117,12 @@ export async function barrido(ahora: Date = new Date()): Promise<number> {
         return 0;
       });
       if (llamadas > 0) console.log(`[webhooks] ${llamadas} llamada(s) a herramientas vieja(s) borrada(s)`);
+      // 073-A — Los incidentes del bot viven 90 días. Su fallo tampoco frena.
+      const incidentes = await purgarIncidentesViejos(ahora).catch((err: unknown) => {
+        console.error("[webhooks] la purga de incidentes del bot falló:", mensaje(err));
+        return 0;
+      });
+      if (incidentes > 0) console.log(`[webhooks] ${incidentes} incidente(s) del bot viejo(s) borrado(s)`);
     }
     return filas.length;
   } catch (err) {

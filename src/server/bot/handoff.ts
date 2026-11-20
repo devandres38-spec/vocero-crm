@@ -14,6 +14,11 @@ export const HANDOFF_REASONS = [
   "error",
   "ventana",
   "hostilidad",
+  // 073-A — Los pone el sistema (no el modelo): llave de IA sin saldo,
+  // opt-out (Ley 1581) y abuso/flood.
+  "sin_saldo",
+  "opt_out",
+  "abuso",
 ] as const;
 
 export type HandoffReason = (typeof HANDOFF_REASONS)[number];

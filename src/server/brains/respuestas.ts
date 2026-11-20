@@ -5,6 +5,7 @@ import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import type { AmbitoCerebro } from "@/server/brains/auth";
 import { cuerpoRespuestaCerebro, responderComoCerebro } from "@/server/bot/nucleo/mensajes";
+import { cuboHora, registrarIncidente } from "@/server/incidentes";
 
 /**
  * 070 (contrato §2.2) — `POST /api/brains/messages`: responder por un cerebro.
@@ -105,11 +106,21 @@ export async function responderPorElCerebro(
         .onConflictDoNothing();
       return Response.json({ ok: true, messageId: r.messageId }, { status: 201 });
     }
+    if (r.code === "envio_permanente") {
+      // 073-A (D3): lo que el canal rechazó para siempre queda registrado.
+      await registrarIncidente({
+        organizationId,
+        conversationId: body.conversationId,
+        kind: "envio_permanente",
+        detail: r.metaCode ? `${r.message} (Meta ${r.metaCode})` : r.message,
+        dedupeKey: `envio_permanente:${body.conversationId}:${cuboHora()}`,
+      });
+    }
     return respuestaDeFallo(r);
   });
 }
 
-function respuestaDeFallo(r: Extract<Awaited<ReturnType<typeof responderComoCerebro>>, { ok: false }>): Response {
+export function respuestaDeFallo(r: Extract<Awaited<ReturnType<typeof responderComoCerebro>>, { ok: false }>): Response {
   switch (r.code) {
     case "not_found":
       return apiError(404, "not_found", r.message);
@@ -128,5 +139,16 @@ function respuestaDeFallo(r: Extract<Awaited<ReturnType<typeof responderComoCere
       return apiError(403, "organizacion_suspendida", r.message);
     case "send_failed":
       return apiError(502, r.detalle ?? "send_failed", r.message);
+    // 073-A (D3, contrato brains-073 §1): el cerebro necesita saber si
+    // reintentar. Pasajero → 503; definitivo → 422 `envio_permanente`, con
+    // el código de Meta en el mensaje.
+    case "canal_no_disponible":
+      return apiError(503, "meta_unavailable", r.message);
+    case "envio_permanente":
+      return apiError(
+        422,
+        "envio_permanente",
+        r.metaCode ? `${r.message} (Meta ${r.metaCode})` : r.message
+      );
   }
 }

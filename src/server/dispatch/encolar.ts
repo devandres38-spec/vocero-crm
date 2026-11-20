@@ -1,6 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { esPlataforma } from "@/lib/tenancy";
+import { estadoIaDe } from "@/lib/ai/provider";
+import { cuboHora, registrarIncidente } from "@/server/incidentes";
 import { organizacionSuspendida } from "@/server/platform/estado";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
@@ -55,6 +57,8 @@ export async function despacharAlCerebro(
     if (!perfil?.enabled) return;
     // 069 — Una organización suspendida guarda lo que entra pero no despacha.
     if (esPlataforma() && (await organizacionSuspendida(organizationId))) return;
+    // 073-A (punto ciego n.º 1) — Sin llave de IA utilizable no se despacha.
+    if (esPlataforma() && !(await iaUtilizable(organizationId))) return;
 
     // 025 — El despacho anota qué entrante lo provoca: es lo que le debe al
     // cerebro, aunque después la conversación tenga una respuesta.
@@ -69,4 +73,35 @@ export async function despacharAlCerebro(
   } catch (err) {
     console.error("[despacho] no se pudo encolar el turno:", err);
   }
+}
+
+/**
+ * 073-A (punto ciego n.º 1) — ¿Puede pensar el cerebro de este negocio?
+ *
+ * En plataforma el cerebro piensa SOLO con la llave del negocio
+ * (`/api/brains/llm`, `soloOrganizacion`). Con la llave pausada (el
+ * proveedor dijo 402 sin saldo o 401) o sin configurar, despachar era peor
+ * que no hacerlo: cada mensaje entrante despertaba a Nea, el proxy contestaba
+ * 402 y la conversación terminaba en handoff con un motivo falso —la bandeja
+ * se llenaba de «Atención humana» por una sola causa—.
+ *
+ * Ahora el mensaje queda en la bandeja como cualquier otro sin despacho, y
+ * queda UN incidente por hora (`sin_saldo` o `sin_credencial`) para el dueño.
+ * En `single` no aplica: Nea puede tener su propia llave (`LLM_API_KEY`).
+ */
+async function iaUtilizable(organizationId: string): Promise<boolean> {
+  // Sin descifrar la llave: solo su estado (en plataforma el entorno no cuenta).
+  const estado = await estadoIaDe(organizationId);
+  if (estado.activa) return true;
+  const kind = estado.motivo === "sin_configurar" ? "sin_credencial" : "sin_saldo";
+  await registrarIncidente({
+    organizationId,
+    kind,
+    detail:
+      kind === "sin_saldo"
+        ? "La llave de IA está pausada (sin saldo o rechazada): los mensajes no se le despachan al agente."
+        : "No hay llave de IA configurada: los mensajes no se le despachan al agente.",
+    dedupeKey: `${kind}:${cuboHora()}`,
+  });
+  return false;
 }

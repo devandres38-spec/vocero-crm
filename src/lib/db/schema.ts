@@ -548,6 +548,11 @@ export const conversation = pgTable(
         "ventana",
         "hostilidad",
         "manual_reply",
+        // 073-A — los pone el sistema: llave de IA sin saldo, opt-out (Ley
+        // 1581) y abuso/flood. Solo TS: la columna es texto libre.
+        "sin_saldo",
+        "opt_out",
+        "abuso",
       ],
     }),
     lastInboundAt: timestamp("last_inbound_at"),
@@ -1666,5 +1671,45 @@ export const brainToolCall = pgTable(
     check("brain_tool_call_estado_ck", sql`${t.estado} in ('en_curso', 'hecha', 'fallida')`),
     // B-3 — Una llamada `hecha` siempre tiene la respuesta que se repite.
     check("brain_tool_call_hecha_ck", sql`${t.estado} <> 'hecha' or ${t.response} is not null`),
+  ]
+);
+
+/**
+ * 073-A — Lo que le pasó al bot y nadie vio: un despacho que caducó porque el
+ * cerebro no contestaba, una llave de IA sin saldo que frenó los despachos,
+ * un envío que el canal rechazó para siempre.
+ *
+ * Una fila por (organización, `dedupeKey`): un incidente que se repite suma
+ * `count` y mueve `lastAt` en vez de llenar la tabla (una llave sin saldo con
+ * 500 mensajes entrantes es UNA fila por hora). Se purga a los 90 días.
+ */
+export const botIncident = pgTable(
+  "bot_incident",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** La conversación afectada, si la hay (una llave sin saldo es de todo el negocio). */
+    conversationId: text("conversation_id").references(() => conversation.id, {
+      onDelete: "cascade",
+    }),
+    kind: text("kind", {
+      enum: ["despacho_caducado", "sin_saldo", "sin_credencial", "envio_permanente"],
+    }).notNull(),
+    detail: text("detail"),
+    count: integer("count").notNull().default(1),
+    dedupeKey: text("dedupe_key").notNull(),
+    firstAt: timestamp("first_at").notNull().defaultNow(),
+    lastAt: timestamp("last_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("bot_incident_dedupe_uq").on(t.organizationId, t.dedupeKey),
+    index("bot_incident_last_idx").on(t.lastAt),
+    index("bot_incident_conv_idx").on(t.conversationId),
+    check(
+      "bot_incident_kind_ck",
+      sql`${t.kind} in ('despacho_caducado', 'sin_saldo', 'sin_credencial', 'envio_permanente')`
+    ),
   ]
 );

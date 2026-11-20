@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { SIN_DESPACHO, despachoFallando } from "@/lib/brain-status";
 import { leerConfigDespacho } from "@/server/brains/config";
-import { hayMensajesSinDespachar, sinDespachar } from "@/server/brains/deliver";
+import { TIMEOUT_ENTREGA_MS, hayMensajesSinDespachar, sinDespachar } from "@/server/brains/deliver";
 import { dispatchDto } from "@/server/dispatch/estado";
 import { checkDispatch } from "@/server/doctor/checks";
 import { BACKOFF_MS, MAX_INTENTOS, esperaDeReintento } from "@/server/dispatch/outbox";
+import { VIDA_DESPACHO_MS } from "@/server/dispatch/worker";
 
 /**
  * 021 — Cuándo hay despacho, y qué se dice cuando no.
@@ -136,16 +137,25 @@ describe("despachoFallando — cuándo es una alarma", () => {
 });
 
 describe("reintentos", () => {
-  it("tres intentos en total: se espera tras el primero y tras el segundo", () => {
-    expect(MAX_INTENTOS).toBe(3);
+  it("073-A: seis intentos con 2 → 120 s de espera (sobrevive un redeploy del cerebro)", () => {
+    expect(MAX_INTENTOS).toBe(6);
     expect(BACKOFF_MS).toHaveLength(MAX_INTENTOS - 1);
-    expect(esperaDeReintento(1)).toBe(1000);
-    expect(esperaDeReintento(2)).toBe(4000);
+    expect(BACKOFF_MS).toEqual([2000, 5000, 15000, 45000, 120000]);
+    expect(esperaDeReintento(1)).toBe(2000);
+    expect(esperaDeReintento(5)).toBe(120000);
+  });
+
+  it("073-A: todo cabe en la vida del despacho, aun con el jitter y los timeouts de entrega", () => {
+    const esperas = BACKOFF_MS.reduce((a, b) => a + b * 1.3, 0);
+    const entregas = MAX_INTENTOS * TIMEOUT_ENTREGA_MS;
+    expect(esperas + entregas).toBeLessThan(VIDA_DESPACHO_MS);
+    // Y alcanza para un redeploy de Coolify de un minuto largo.
+    expect(BACKOFF_MS.reduce((a, b) => a + b, 0)).toBeGreaterThan(120_000);
   });
 
   it("un contador fuera de rango no revienta ni da una espera de cero", () => {
-    expect(esperaDeReintento(0)).toBe(1000);
-    expect(esperaDeReintento(99)).toBe(4000);
+    expect(esperaDeReintento(0)).toBe(2000);
+    expect(esperaDeReintento(99)).toBe(120000);
   });
 });
 

@@ -35,11 +35,22 @@ export type FalloRespuesta =
   | "message_limit"
   | "text_too_long"
   | "organizacion_suspendida"
-  | "send_failed";
+  | "send_failed"
+  /** 073-A — El canal no está disponible ahora (pasajero): reintentable. */
+  | "canal_no_disponible"
+  /** 073-A — El canal rechazó el envío y reintentar no lo cambia. */
+  | "envio_permanente";
 
 export type ResultadoRespuesta =
   | { ok: true; messageId: string; prueba: boolean }
-  | { ok: false; code: FalloRespuesta; message: string; detalle?: string };
+  | {
+      ok: false;
+      code: FalloRespuesta;
+      message: string;
+      detalle?: string;
+      /** 073-A — El código de Meta del rechazo, si lo hubo. */
+      metaCode?: number | null;
+    };
 
 export async function responderComoCerebro(input: {
   organizationId: string;
@@ -94,8 +105,18 @@ export async function responderComoCerebro(input: {
         case "text_too_long":
         case "organizacion_suspendida":
           return { ok: false, code: err.code, message: err.message };
+        // 073-A (D3): pasajero (5xx de Meta, red) vs. definitivo (todo lo
+        // demás: destinatario inválido, re-engagement, token caducado…).
+        case "meta_unavailable":
+          return { ok: false, code: "canal_no_disponible", message: err.message, detalle: err.code };
         default:
-          return { ok: false, code: "send_failed", message: err.message, detalle: err.code };
+          return {
+            ok: false,
+            code: "envio_permanente",
+            message: err.message,
+            detalle: err.code,
+            metaCode: err.metaCode ?? null,
+          };
       }
     }
     throw err;

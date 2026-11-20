@@ -1,8 +1,7 @@
-import { and, eq, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, lte, notInArray, or, sql, type SQL } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { getEnv } from "@/lib/env";
-import { publish } from "@/server/events/bus";
 
 /**
  * 021 — El outbox del despachador.
@@ -36,9 +35,16 @@ export function ventanaCoalesceMs(): number {
 
 /** Cuánto tiempo un worker se reserva una fila antes de que otro pueda tomarla. */
 export const LEASE_MS = 180_000;
-export const MAX_INTENTOS = 3;
-/** Espera tras el intento 1 y tras el 2. El tercero ya no reintenta. */
-export const BACKOFF_MS = [1000, 4000];
+/**
+ * 073-A (D3) — 6 intentos con 2 → 120 s de espera (~3 min, más los 20 s de
+ * cada entrega): un redeploy del cerebro en Coolify (15–60 s, a veces más)
+ * ya no caduca los despachos. Antes eran 3 intentos en ~5 s y el despacho
+ * caducaba en pleno reinicio. Todo cabe en `VIDA_DESPACHO_MS` (10 min).
+ * Solo reintenta lo reintentable (red, 429, 5xx): `clasificarRespuesta`.
+ */
+export const MAX_INTENTOS = 6;
+/** Espera tras cada intento fallido (el último ya no reintenta). */
+export const BACKOFF_MS = [2000, 5000, 15000, 45000, 120000];
 
 /** Pura: la espera base antes del siguiente intento. */
 export function esperaDeReintento(intentosHechos: number): number {
@@ -191,14 +197,20 @@ function esViolacionDeUnicidad(err: unknown): boolean {
  */
 export async function tomarPendientes(
   limite = 10,
-  ahora: Date = new Date()
+  ahora: Date = new Date(),
+  /** 073-A (D3) — Organizaciones que ya están en su tope de entregas en vuelo. */
+  excluirOrgs: readonly string[] = []
 ): Promise<FilaDespacho[]> {
   const db = getDb();
   const candidatos = await db
     .select()
     .from(schema.dispatch)
     .where(
-      or(
+      and(
+        excluirOrgs.length
+          ? notInArray(schema.dispatch.organizationId, [...excluirOrgs])
+          : undefined,
+        or(
         and(
           eq(schema.dispatch.status, "pendiente"),
           lte(schema.dispatch.notBefore, ahora)
@@ -207,6 +219,7 @@ export async function tomarPendientes(
         and(
           eq(schema.dispatch.status, "en_vuelo"),
           lte(schema.dispatch.leasedUntil, ahora)
+        )
         )
       )
     )
@@ -362,40 +375,4 @@ export async function descartarDespacho(
       updatedAt: new Date(),
     })
     .where(propietario(fila));
-}
-
-/**
- * El cerebro no pudo recibir el turno: la conversación pasa a un humano.
- *
- * Es el traspaso que ya existe —el mismo que deja `POST /api/bot/handoff` y el
- * mismo motivo (`error`) que usa un cerebro cuando no puede contestar—, y
- * publica el mismo evento, así que la bandeja lo ve en vivo. Solo escribe en
- * la transición: no pisa la hora ni el motivo de un traspaso anterior.
- */
-export async function pasarAHumano(
-  organizationId: string,
-  conversationId: string
-): Promise<void> {
-  const ahora = new Date();
-  const rows = await getDb()
-    .update(schema.conversation)
-    .set({
-      aiEnabled: false,
-      handoffAt: ahora,
-      handoffReason: "error",
-      updatedAt: ahora,
-    })
-    .where(
-      and(
-        eq(schema.conversation.id, conversationId),
-        eq(schema.conversation.organizationId, organizationId),
-        isNull(schema.conversation.handoffAt)
-      )
-    )
-    .returning({ id: schema.conversation.id });
-  if (!rows[0]) return;
-  publish(organizationId, {
-    type: "conversation.updated",
-    data: { conversation: { id: conversationId, handoffReason: "error" } },
-  });
 }

@@ -5,6 +5,39 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## Sin publicar
+
+### Bot de Producción, ronda 073-A — cero silencios y cero apagones
+
+**Aditiva**: la migración `0035_bot_incident` (tabla nueva) se aplica sola al
+arrancar. Contrato: [specs/073-bot-produccion/contracts/brains-073.md](specs/073-bot-produccion/contracts/brains-073.md).
+Actualizar **antes** que Nea.
+
+- **Un fallo pasajero ya no apaga la IA.** El despacho reintenta 6 veces con
+  2 → 120 s de espera (antes 3 en ~5 s): un redeploy del cerebro ya no caduca
+  los despachos. Si aun así caduca, ya no pasa la conversación a una persona
+  con `aiEnabled=false` para siempre: queda un **incidente** y una **nota
+  interna** («el agente no pudo contestar este mensaje…») y la IA sigue
+  activa para el siguiente mensaje.
+- **Sin head-of-line blocking.** El worker entrega hasta 4 despachos a la vez,
+  como mucho 2 del mismo negocio: un cerebro colgado no frena a los demás.
+- **Sin saldo no hay cascada.** En modo plataforma, con la llave de IA del
+  negocio pausada (sin saldo o rechazada) o sin configurar, los mensajes no
+  se le despachan al cerebro: quedan en la bandeja y se registra UN
+  incidente por hora (`sin_saldo` / `sin_credencial`). Antes cada mensaje
+  terminaba en un handoff con motivo «modelo».
+- **Entrega saliente.** `POST /api/brains/messages` responde **422
+  `envio_permanente`** (con el código de Meta) cuando el canal rechaza el
+  envío para siempre y **503 `meta_unavailable`** cuando es pasajero (antes,
+  502 para todo). `/api/bot/messages` (instancia raíz) no cambia. Un texto
+  que el canal rechaza queda en el hilo como **fallido**, visible para el
+  operador (las respuestas de la IA, solo si el rechazo es definitivo).
+- **Motivos de handoff** `sin_saldo`, `opt_out` y `abuso`, con su texto en la
+  bandeja y en Resultados.
+- **`bot_incident`**: despachos caducados, llaves sin saldo y envíos
+  rechazados, agrupados por hora; se purgan a los 90 días. El panel llega en
+  la 074.
+
 ## 2.13.1 — 2026-11-19
 
 Hotfixes del bot (antesala de la spec 073). **Sin migraciones ni cambios de

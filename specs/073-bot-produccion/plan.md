@@ -61,11 +61,11 @@
 
 **Entrega saliente** (`src/server/inbox/send.ts`, `src/server/bot/nucleo/mensajes.ts`, `src/server/brains/respuestas.ts`)
 - `SendError.metaCode?: number | null` (de `MetaApiError.code`).
-- `sendText`: fallo del canal (`meta_error`, `meta_unavailable`, `reconnect_required`…) → `persistOutbound({status: "failed", error})` y el `SendError` lleva `messageId`. Los fallos de validación previos (`text_too_long`, ventana, sandbox) no persisten nada (como hoy).
+- `sendText`: fallo del canal (`meta_error`, `meta_unavailable`, `reconnect_required`…) → `persistOutbound({status: "failed", error})` y el `SendError` lleva `messageId`. Los fallos de validación previos (`text_too_long`, ventana, sandbox) no persisten nada (como hoy). Una respuesta de la IA con fallo **pasajero** (`meta_unavailable`) tampoco: el cerebro la reintenta y cada intento dejaría otra burbuja fallida.
 - `responderComoCerebro`: `meta_unavailable` → código nuevo `canal_no_disponible`; resto de `send_failed` → `envio_permanente` + `bot_incident` `envio_permanente`.
 - `respuestas.ts` (`/api/brains/messages`): `envio_permanente` → **422**; `canal_no_disponible` → **503 `meta_unavailable`**. `/api/bot/messages` (raíz) conserva 502 para ambos (contrato `openapi.json` intacto).
 
-**Incidentes** (`src/server/bot/incidentes.ts`, migración `0035_bot_incident`)
+**Incidentes** (`src/server/incidentes.ts` —fuera de `server/bot`/`server/dispatch`, que el guardarraíl de notas vigila: el módulo solo ESCRIBE notas del sistema—, migración `0035_bot_incident`)
 - Tabla `bot_incident(id, organization_id, conversation_id null, kind, detail, count, first_at, last_at, dedupe_key)`, único `(organization_id, dedupe_key)`, índice por `last_at`.
 - `registrarIncidente()` = upsert que suma `count` y mueve `last_at`. Nunca lanza.
 - `purgarIncidentesViejos()` (90 días, en lotes) en el barrido de webhooks, junto a `purgarLlamadasViejas`.

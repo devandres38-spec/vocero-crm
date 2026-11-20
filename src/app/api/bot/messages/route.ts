@@ -58,7 +58,11 @@ export async function POST(req: Request) {
     // 070 (M-11): solo en modo plataforma; aquí conserva su código.
     case "organizacion_suspendida":
       return apiError(502, "organizacion_suspendida", r.message);
+    // 073-A: `/api/bot` (raíz) conserva su contrato: todo fallo del canal es
+    // 502 con el código interno (docs/openapi.json no cambia).
     case "send_failed":
+    case "canal_no_disponible":
+    case "envio_permanente":
       return apiError(502, r.detalle ?? "send_failed", r.message);
   }
 }

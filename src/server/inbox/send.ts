@@ -78,13 +78,27 @@ export class SendError extends Error {
     | "organizacion_suspendida";
   /** 008: presente cuando el fallo ocurrió TRAS persistir el mensaje (failed). */
   messageId?: string;
+  /** 073-A: el código de error de Meta (`131026`, `131047`…), si lo dio. */
+  metaCode?: number | null;
 
-  constructor(code: SendError["code"], message: string) {
+  constructor(code: SendError["code"], message: string, metaCode?: number | null) {
     super(message);
     this.name = "SendError";
     this.code = code;
+    this.metaCode = metaCode ?? null;
   }
 }
+
+/**
+ * 073-A (D3) — Fallos del CANAL al enviar (no de validación previa): el
+ * mensaje llegó hasta Meta/Zernio y no salió. `meta_unavailable` es pasajero.
+ */
+const FALLOS_DEL_CANAL: ReadonlySet<SendError["code"]> = new Set([
+  "meta_error",
+  "meta_unavailable",
+  "reconnect_required",
+  "not_connected",
+]);
 
 type SendResult = { messageId: string };
 
@@ -504,24 +518,51 @@ export async function sendText(input: {
 
   const cita = await resolverMensajeCitado(target, input.replyToMessageId);
 
-  const waMessageId = target.instagram
-    ? await callInstagramSend(target, text)
-    : target.messenger
-      ? await callMessengerSend(target, text)
-      : target.tiktok
-        ? await callTiktokSend(target, text)
-        : await callGraphSend(
-          credentials!,
-          conCita(
-            {
-              messaging_product: "whatsapp",
-              ...target.destinatario,
-              type: "text",
-              text: { body: text },
-            },
-            cita?.message.waMessageId
-          )
-        );
+  let waMessageId: string;
+  try {
+    waMessageId = target.instagram
+      ? await callInstagramSend(target, text)
+      : target.messenger
+        ? await callMessengerSend(target, text)
+        : target.tiktok
+          ? await callTiktokSend(target, text)
+          : await callGraphSend(
+            credentials!,
+            conCita(
+              {
+                messaging_product: "whatsapp",
+                ...target.destinatario,
+                type: "text",
+                text: { body: text },
+              },
+              cita?.message.waMessageId
+            )
+          );
+  } catch (err) {
+    // 073-A (D3): el texto que el canal rechazó queda en el hilo como
+    // `failed`, visible para el operador (como ya pasaba con los adjuntos).
+    // Una respuesta de la IA que falló por algo PASAJERO no: el cerebro la
+    // reintenta, y cada intento dejaría otra burbuja fallida.
+    if (
+      err instanceof SendError &&
+      FALLOS_DEL_CANAL.has(err.code) &&
+      !(input.aiGenerated && err.code === "meta_unavailable")
+    ) {
+      err.messageId = await persistOutbound({
+        organizationId: input.organizationId,
+        conversationId: input.conversationId,
+        waMessageId: null,
+        type: "text",
+        text,
+        status: "failed",
+        error: err.message,
+        aiGenerated: input.aiGenerated,
+        origin: input.aiGenerated ? "ai" : "operator",
+        cita,
+      });
+    }
+    throw err;
+  }
 
   const messageId = await persistOutbound({
     organizationId: input.organizationId,
@@ -785,9 +826,9 @@ export async function callGraphSend(
         );
       }
       if (err.status === 0 || err.status >= 500) {
-        throw new SendError("meta_unavailable", "Meta no está disponible ahora");
+        throw new SendError("meta_unavailable", "Meta no está disponible ahora", err.code);
       }
-      throw new SendError("meta_error", err.message);
+      throw new SendError("meta_error", err.message, err.code);
     }
     throw err;
   }
