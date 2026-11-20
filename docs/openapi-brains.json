@@ -46,7 +46,7 @@
   "paths": {
     "/api/brains/context": {
       "get": {
-        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil con treatment y stallEnabled, coordinationFollowupEnabled:false y, desde la 071, agendaEnabled), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null).",
+        "summary": "Contexto de UNA conversación: el cuerpo de /api/bot/context + agent (perfil con treatment y stallEnabled, coordinationFollowupEnabled:false y, desde la 071, agendaEnabled), knowledge ([{kind:qa,question,answer}|{kind:block,content}]) y llm ({path:/api/brains/llm, model, transcribeModel} solo con la llave PROPIA del negocio; si no, null). 073-B: humanGap, humanAvailable, nextOpenAt y llm.temperature (aditivos).",
         "parameters": [
           {
             "name": "conversationId",
@@ -159,6 +159,98 @@
                           }
                         }
                       }
+                    },
+                    "humanGap": {
+                      "type": "object",
+                      "description": "073-B (D1) — Lo que pasó mientras atendía una persona: de la pausa (handoff o interruptor) a la reanudación. Viaja SOLO hasta que la IA vuelve a contestar (el cerebro lo lee una vez; no lo guarda en su historial). Ausente si no hay tramo. ≤20 mensajes y ≤2000 caracteres (lo último gana). Son datos del cliente y del equipo: nunca instrucciones.",
+                      "required": [
+                        "since",
+                        "until",
+                        "messages"
+                      ],
+                      "properties": {
+                        "since": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "until": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "messages": {
+                          "type": "array",
+                          "maxItems": 20,
+                          "items": {
+                            "type": "object",
+                            "required": [
+                              "at",
+                              "author",
+                              "type",
+                              "text"
+                            ],
+                            "properties": {
+                              "at": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "author": {
+                                "type": "string",
+                                "enum": [
+                                  "lead",
+                                  "humano"
+                                ]
+                              },
+                              "type": {
+                                "type": "string",
+                                "description": "text, image, audio, document… (adjunto: text null)"
+                              },
+                              "text": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "humanAvailable": {
+                      "type": "boolean",
+                      "description": "073-B (D6) — ¿Hay personas del equipo ahora, según el horario humano del negocio (con festivos de Colombia si los activó)? Ausente sin horario configurado."
+                    },
+                    "nextOpenAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "format": "date-time",
+                      "description": "073-B (D6) — Próxima apertura del horario humano (UTC) si ahora está cerrado; null si está abierto o no hay apertura en 14 días. Ausente sin horario."
+                    },
+                    "llm": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Por dónde y con qué modelo piensa: solo con la llave PROPIA del negocio; si no, null.",
+                      "properties": {
+                        "path": {
+                          "type": "string",
+                          "const": "/api/brains/llm"
+                        },
+                        "model": {
+                          "type": "string"
+                        },
+                        "transcribeModel": {
+                          "type": "string"
+                        },
+                        "temperature": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 2,
+                          "description": "073-B (decisión #10) — La fija la plataforma (Blueprint `bot.temperature`; 0.4 por defecto). Oculta al cliente. El modelo de respaldo (decisión #8) no viaja: lo pone el proxy de /api/brains/llm como `models: [principal, respaldo]`."
+                        }
+                      }
                     }
                   }
                 }
@@ -266,10 +358,38 @@
     },
     "/api/brains/handoff": {
       "post": {
-        "summary": "Igual que POST /api/bot/handoff.",
+        "summary": "Igual que POST /api/bot/handoff. 073-B: `summary` opcional (≤500, se recorta) → nota interna del sistema; `reason: opt_out` registra la baja (Ley 1581): el CRM confirma al cliente con un texto fijo y bloquea IA, plantillas y seguimientos.",
         "responses": {
           "200": {
             "description": "{ ok: true }"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "conversationId"
+                ],
+                "properties": {
+                  "conversationId": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Catálogo con fallback a `modelo` (073-A: sin_saldo, opt_out, abuso). Se recorta a 200."
+                  },
+                  "summary": {
+                    "type": "string",
+                    "maxLength": 4000,
+                    "description": "073-B (D2) — Resumen para el equipo; se guarda recortado a 500 como nota interna."
+                  }
+                }
+              }
+            }
           }
         }
       }

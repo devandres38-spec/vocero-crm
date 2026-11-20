@@ -65,8 +65,10 @@ export async function responderComoCerebro(input: {
       aiEnabled: schema.conversation.aiEnabled,
       handoffAt: schema.conversation.handoffAt,
       isTest: schema.conversation.isTest,
+      optOutAt: schema.contact.optOutAt,
     })
     .from(schema.conversation)
+    .innerJoin(schema.contact, eq(schema.conversation.contactId, schema.contact.id))
     .where(
       and(
         eq(schema.conversation.organizationId, input.organizationId),
@@ -76,7 +78,9 @@ export async function responderComoCerebro(input: {
     .limit(1);
   const conv = convs[0];
   if (!conv) return { ok: false, code: "not_found", message: "Conversación no encontrada" };
-  if (!conv.aiEnabled || conv.handoffAt) {
+  // 073-B (D6, Ley 1581): quien pidió la baja no recibe nada automático —ni
+  // respuestas ni seguimientos del cerebro—, aunque se haya reanudado la IA.
+  if (!conv.aiEnabled || conv.handoffAt || conv.optOutAt) {
     return { ok: false, code: "ai_paused", message: "La IA está en pausa en esta conversación" };
   }
   if (conv.isTest) {

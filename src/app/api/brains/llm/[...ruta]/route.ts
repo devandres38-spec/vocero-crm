@@ -1,6 +1,7 @@
 import { apiError } from "@/lib/api";
 import { leerCuerpoAcotado, withBrain } from "@/server/brains/http";
 import { pensarPorElCerebro } from "@/server/bot/llm-proxy";
+import { ajustesDelNegocio } from "@/server/ajustes-bot";
 
 export const dynamic = "force-dynamic";
 // Un modelo puede tardar en contestar: el default cortaría un turno sano.
@@ -50,6 +51,8 @@ export const POST = withBrain<{ params: Promise<{ ruta: string[] }> }>(async (re
     cuerpoCrudo: cuerpo,
     contentType: "application/json",
     soloOrganizacion: true,
+    // 073-B (decisión #8): el respaldo que fija la plataforma.
+    modeloDeRespaldo: (await ajustesDelNegocio(ambito.organizationId)).bot.fallbackModel,
   });
   if (!r.ok) return apiError(r.status, r.code, r.message);
   return new Response(r.cuerpo, { status: r.status, headers: { "Content-Type": r.contentType } });

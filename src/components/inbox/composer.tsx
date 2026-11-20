@@ -17,6 +17,7 @@ import {
   Mic,
   Paperclip,
   Send,
+  ShieldOff,
   X,
 } from "lucide-react";
 import type { ConversationDto, MessageDto, TemplateDto } from "@/lib/types";
@@ -596,6 +597,31 @@ export function Composer({
     );
   }
 
+  // 073-B (D6, Ley 1581) — Pidió no recibir más mensajes: con la ventana
+  // cerrada no hay nada que ofrecer (las plantillas están bloqueadas).
+  const baja = conversation.contact.optOutAt ?? null;
+  if (baja && !conversation.windowOpen && !human?.open) {
+    return withDropZone(
+      <div className="px-[18px] py-3.5">
+        {pestanas}
+        <div
+          data-optout="closed"
+          className="flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-3 text-sm text-warning-text"
+        >
+          <ShieldOff className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.7} />
+          <div>
+            <p className="font-medium">Este contacto pidió no recibir más mensajes.</p>
+            <p className="opacity-80">
+              Por la Ley 1581 no se le envían plantillas ni mensajes automáticos. Podrás
+              contestarle si vuelve a escribir.
+            </p>
+          </div>
+        </div>
+      </div>,
+      true
+    );
+  }
+
   if (!conversation.windowOpen && !human) {
     return withDropZone(
       <div className="px-[18px] py-3.5">
@@ -631,6 +657,19 @@ export function Composer({
     <div className="relative px-[18px] pb-3.5 pt-2">
       {pestanas}
 
+      {baja && (
+        <div
+          data-optout="open"
+          className="mb-2.5 flex items-start gap-2 rounded-md border border-warning-soft bg-warning-tint p-2.5 text-xs text-warning-text"
+        >
+          <ShieldOff className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={1.7} />
+          <p>
+            <span className="font-semibold">Pidió no recibir más mensajes (Ley 1581).</span>{" "}
+            Puedes contestarle a mano mientras la ventana siga abierta; la IA, las plantillas y
+            los seguimientos están bloqueados.
+          </p>
+        </div>
+      )}
       {soloPersona && (
         <div
           data-window="human"

@@ -1,4 +1,4 @@
-import { apiRoot } from "@/lib/ai/presets";
+import { apiRoot, OPENROUTER_BASE_URL } from "@/lib/ai/presets";
 import { resolveAiProvider, resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
 
@@ -22,6 +22,25 @@ import { marcarEstadoPorRespuesta } from "@/server/ai/credentials";
  * modelo eligió el negocio (`llm.model`).
  */
 
+/**
+ * 073-B (decisión #8) — Pura: el cuerpo con `models: [principal, respaldo]`
+ * si el proveedor es OpenRouter, hay respaldo distinto del principal y el
+ * cerebro no mandó su propia lista. Cualquier otra cosa: el cuerpo tal cual
+ * (el proxy sigue sin interpretar lo que no le toca).
+ */
+export function conRespaldo(cuerpoCrudo: string, respaldo: string | null, baseUrl: string): string {
+  if (!respaldo) return cuerpoCrudo;
+  try {
+    if (new URL(baseUrl).host !== new URL(OPENROUTER_BASE_URL).host) return cuerpoCrudo;
+    const datos = JSON.parse(cuerpoCrudo) as Record<string, unknown>;
+    if (!datos || typeof datos !== "object" || Array.isArray(datos)) return cuerpoCrudo;
+    if (typeof datos.model !== "string" || datos.models !== undefined || datos.model === respaldo) return cuerpoCrudo;
+    return JSON.stringify({ ...datos, models: [datos.model, respaldo] });
+  } catch {
+    return cuerpoCrudo;
+  }
+}
+
 /** Cuánto se espera a que el proveedor piense antes de rendirse. */
 export const LLM_PROXY_TIMEOUT_MS = 120_000;
 
@@ -40,6 +59,12 @@ export async function pensarPorElCerebro(input: {
    * respaldo `OPENROUTER_*` del entorno.
    */
   soloOrganizacion?: boolean;
+  /**
+   * 073-B (decisión #8) — Modelo de respaldo que fija la plataforma. Solo con
+   * OpenRouter: se pide `models: [principal, respaldo]` y OpenRouter cae al
+   * segundo si el primero no está disponible. Oculto al cliente.
+   */
+  modeloDeRespaldo?: string | null;
 }): Promise<ResultadoProxy> {
   const r = input.soloOrganizacion
     ? await resolveAiProviderDeOrganizacion(input.organizationId)
@@ -67,7 +92,7 @@ export async function pensarPorElCerebro(input: {
         Authorization: `Bearer ${provider.token}`,
         "Content-Type": input.contentType ?? "application/json",
       },
-      body: input.cuerpoCrudo,
+      body: conRespaldo(input.cuerpoCrudo, input.modeloDeRespaldo ?? null, provider.baseUrl),
       signal: controller.signal,
     });
     const cuerpo = await res.text();

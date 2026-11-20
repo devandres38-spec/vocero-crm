@@ -19,7 +19,10 @@ const h = vi.hoisted(() => ({
   inserts: [] as { table: unknown; values: Record<string, unknown> }[],
   /** Auditoría 073-A: el INSERT del mensaje fallido revienta. */
   insertFalla: false,
+  pausar: vi.fn(async () => true),
 }));
+
+vi.mock("@/server/inbox/pausa", () => ({ pausarPorRespuestaHumana: h.pausar }));
 
 vi.mock("@/lib/meta/client", async (importOriginal) => {
   const original = await importOriginal<typeof import("@/lib/meta/client")>();
@@ -164,6 +167,7 @@ beforeEach(() => {
   h.selectRows.length = 0;
   h.inserts.length = 0;
   h.insertFalla = false;
+  h.pausar.mockClear();
 });
 
 describe("sendText ante un rechazo del canal (073-A)", () => {
@@ -322,5 +326,47 @@ describe("auditoría 073-A — envío", () => {
     expect((err as InstanceType<typeof SendError>).messageId).toBeUndefined();
     expect(espia).toHaveBeenCalled();
     espia.mockRestore();
+  });
+});
+
+describe("073-B (D1) — responder desde la Bandeja pausa la IA", () => {
+  it("operador: el texto sale y la IA se pausa con manual_reply", async () => {
+    conectado();
+    h.graphRequest.mockResolvedValue({ messages: [{ id: "wamid.1" }] });
+    h.selectRows.push([CONVERSACION_WA]);
+    const { sendText } = await import("@/server/inbox/send");
+    await sendText({ conversationId: "cv_1", organizationId: "org_1", text: "Hola, te atiendo yo" });
+    expect(h.pausar).toHaveBeenCalledWith("org_1", "cv_1");
+  });
+
+  it("la IA: no se pausa a sí misma", async () => {
+    conectado();
+    h.graphRequest.mockResolvedValue({ messages: [{ id: "wamid.2" }] });
+    h.selectRows.push([CONVERSACION_WA]);
+    const { sendText } = await import("@/server/inbox/send");
+    await sendText({ conversationId: "cv_1", organizationId: "org_1", text: "hola", aiGenerated: true });
+    expect(h.pausar).not.toHaveBeenCalled();
+  });
+
+  it("un fallo al pausar no tumba un mensaje que ya salió", async () => {
+    conectado();
+    h.graphRequest.mockResolvedValue({ messages: [{ id: "wamid.3" }] });
+    h.selectRows.push([CONVERSACION_WA]);
+    h.pausar.mockRejectedValueOnce(new Error("base caída"));
+    const espia = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { sendText } = await import("@/server/inbox/send");
+    await expect(
+      sendText({ conversationId: "cv_1", organizationId: "org_1", text: "hola" })
+    ).resolves.toMatchObject({ messageId: expect.any(String) });
+    espia.mockRestore();
+  });
+
+  it("si falla el envío, no se pausa (la persona no llegó a contestar)", async () => {
+    conectado();
+    h.graphRequest.mockRejectedValue(new MetaApiError("x", { status: 400, code: 131026 }));
+    h.selectRows.push([CONVERSACION_WA]);
+    const { sendText } = await import("@/server/inbox/send");
+    await sendText({ conversationId: "cv_1", organizationId: "org_1", text: "hola" }).catch(() => null);
+    expect(h.pausar).not.toHaveBeenCalled();
   });
 });

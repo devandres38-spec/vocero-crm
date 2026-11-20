@@ -22,6 +22,8 @@ vi.mock("@/lib/db", async (importOriginal) => {
   const consulta = () => {
     const q = {
       from: () => q,
+      // 073-B: el gate de baja une `contact`.
+      innerJoin: () => q,
       where: () => q,
       limit: () => q,
       then: (ok: (v: unknown[]) => unknown) => Promise.resolve(cola.shift() ?? []).then(ok),

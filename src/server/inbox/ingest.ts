@@ -28,6 +28,9 @@ import { despachoActivo } from "@/server/brains/config";
 import { despachoActivoPara } from "@/server/brains/destino";
 import { esPlataforma } from "@/lib/tenancy";
 import { despacharAlCerebro } from "@/server/dispatch/encolar";
+import { pausarPorRespuestaHumana } from "@/server/inbox/pausa";
+import { pideBaja } from "@/lib/baja";
+import { registrarBaja } from "@/server/bajas";
 import {
   aCitaDto,
   citaDelWebhook,
@@ -412,22 +415,9 @@ async function ingestManualEcho(
     .where(eq(schema.conversation.id, conversation.id));
 
   // Pausa automática de la IA, idempotente y atómica (solo si no hay handoff).
-  const paused = await db
-    .update(schema.conversation)
-    .set({
-      aiEnabled: false,
-      handoffAt: new Date(),
-      handoffReason: "manual_reply",
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(schema.conversation.id, conversation.id),
-        sql`${schema.conversation.handoffAt} is null`
-      )
-    )
-    .returning();
-  if (paused[0]) {
+  // 073-B (D1): el mismo helper que la Bandeja web.
+  const paused = await pausarPorRespuestaHumana(organizationId, conversation.id);
+  if (paused) {
     console.log(
       `[webhook] respuesta manual del dueño en ${conversation.id} — IA pausada (manual_reply)`
     );
@@ -565,6 +555,12 @@ export async function ingestInboundMessage(input: {
     type: "conversation.updated",
     data: { conversation: { id: conversation.id } },
   });
+
+  // 073-B (D6, Ley 1581) — Una baja inequívoca se registra aquí (confirmación
+  // fija + pausa) y no le llega al cerebro. Lo dudoso lo decide el agente.
+  if (input.type === "text" && pideBaja(input.text)) {
+    if (await registrarBaja({ organizationId, conversationId: conversation.id, origen: "detector" })) return;
+  }
 
   // 036 — Quien contesta es el cerebro conectado; sin él, una persona. El
   // 025: `message.id` es lo que el despacho le debe al cerebro.

@@ -86,6 +86,8 @@ const NOMBRE_SECCION: Record<SeccionBlueprint, string> = {
   brain: "Cerebro",
   vertical: "Nicho",
   fichaFields: "Campos de la ficha",
+  bot: "Bot (topes y modelo)",
+  humanHours: "Horario humano",
   owner: "Dueño",
 };
 

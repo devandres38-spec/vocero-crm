@@ -166,7 +166,12 @@ export function serializeConversation(
   return {
     id: c.id,
     channel: c.channel,
-    contact: { id: contact.id, name: contact.name, phone: contact.phone },
+    contact: {
+      id: contact.id,
+      name: contact.name,
+      phone: contact.phone,
+      optOutAt: contact.optOutAt?.toISOString() ?? null,
+    },
     stageName,
     aiEnabled: c.aiEnabled,
     handoffAt: c.handoffAt?.toISOString() ?? null,
@@ -201,12 +206,30 @@ export async function updateConversation(
   patch: { aiEnabled?: boolean; reactivate?: boolean; markRead?: boolean }
 ) {
   const db = getDb();
-  const set: Record<string, unknown> = { updatedAt: new Date() };
+  const ahora = new Date();
+  const set: Record<string, unknown> = { updatedAt: ahora };
   if (patch.aiEnabled !== undefined) set.aiEnabled = patch.aiEnabled;
   if (patch.reactivate) {
     set.handoffAt = null;
     set.handoffReason = null;
     set.aiEnabled = patch.aiEnabled ?? true;
+  }
+  const c = schema.conversation;
+  // Como literal de SQL (el driver no serializa un Date dentro de `sql`).
+  const ts = sql`${ahora.toISOString()}::timestamp`;
+  if (set.aiEnabled === false) {
+    // 073-B (D1): desde cuándo atiende una persona (si ya estaba apagada, no
+    // se mueve).
+    set.aiPausedAt = sql`coalesce(${c.aiPausedAt}, ${ts})`;
+  } else if (set.aiEnabled === true) {
+    // 073-B (D1): al reanudar, el tramo que atendió una persona queda
+    // anotado para que el cerebro lo lea UNA vez (`humanGap`). Solo si
+    // estaba pausada: reanudar una conversación activa no abre ningún tramo.
+    set.humanGapFrom = sql`case when ${c.aiEnabled} = false or ${c.handoffAt} is not null
+      then coalesce(${c.handoffAt}, ${c.aiPausedAt}, ${ts}) else ${c.humanGapFrom} end`;
+    set.humanGapTo = sql`case when ${c.aiEnabled} = false or ${c.handoffAt} is not null
+      then ${ts} else ${c.humanGapTo} end`;
+    set.aiPausedAt = null;
   }
   if (patch.markRead) set.unreadCount = 0;
 

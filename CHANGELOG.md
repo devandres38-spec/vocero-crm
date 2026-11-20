@@ -7,6 +7,37 @@ imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
 ## Sin publicar
 
+### Bot de Producción, ronda 073-B — Humano↔Bot y seguridad
+
+**Aditiva**: la migración `0036_bot_humano` (columnas nuevas, nulables) se
+aplica sola al arrancar. Contrato: [brains-073 §3–§6](specs/073-bot-produccion/contracts/brains-073.md).
+Actualizar **antes** que Nea.
+
+- **Responder desde la Bandeja pausa la IA** (texto, adjuntos, ubicación,
+  contactos y plantillas), con el mismo motivo «Respondiste» que el eco del
+  teléfono. Para que vuelva, «Reactivar IA».
+- **El agente sabe qué pasó mientras atendías.** Al reactivar la IA, el
+  cerebro recibe una sola vez lo que se dijeron el cliente y el equipo
+  (`humanGap`) y retoma desde ahí.
+- **Resumen al pasarte la conversación**: el agente deja una nota interna con
+  qué quiere el cliente y qué falta. Filtro nuevo **«Atención humana»** en la
+  Bandeja.
+- **Anti-flood**: como mucho 25 turnos de IA por hora y 80 al día por
+  conversación, y 500 al día por negocio (la plataforma los ajusta por plan
+  con el Blueprint `bot.limits`). Al pasarse queda una nota y un incidente
+  `abuso`; la IA sigue encendida.
+- **Baja (Ley 1581)**: «no me escriban más», «denme de baja»… se detectan
+  solas (o las decide el agente si son dudosas). El cliente recibe una
+  confirmación, la conversación pasa a «Atención humana» y quedan bloqueados la
+  IA, las plantillas y los seguimientos. Puedes contestarle a mano dentro de la
+  ventana (con aviso). Solo «Reactivar contacto» lo revierte.
+- **Horario de atención humana** (Agente → «Horario de atención humana»), con
+  festivos de Colombia opcionales: fuera de horario el agente no promete que
+  un asesor conteste ya.
+- **Plataforma**: Blueprint `bot` (`limits`, `temperature`, `fallbackModel`) y
+  `humanHours`. La temperatura viaja al cerebro (0.4 por defecto) y el modelo
+  de respaldo lo agrega el proxy de `/api/brains/llm` con OpenRouter.
+
 ### Bot de Producción, ronda 073-A — cero silencios y cero apagones
 
 **Aditiva**: la migración `0035_bot_incident` (tabla nueva) se aplica sola al

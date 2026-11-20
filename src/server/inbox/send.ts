@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
+import { pausarPorRespuestaHumana } from "@/server/inbox/pausa";
 import { graphRequest, MetaApiError, normalizeRecipient } from "@/lib/meta/client";
 import { destinatarioMeta, type Destinatario } from "@/lib/meta/destinatario";
 import { publish } from "@/server/events/bus";
@@ -587,6 +588,8 @@ export async function sendText(input: {
     cita,
   });
 
+  // 073-B (D1): una persona contestó desde la Bandeja → la IA se pausa.
+  if (!input.aiGenerated) await pausaDelOperador(input.organizationId, input.conversationId);
   return { messageId };
 }
 
@@ -687,6 +690,7 @@ export async function sendMediaMessage(input: {
       media: asset,
       cita,
     });
+    await pausaDelOperador(input.organizationId, input.conversationId);
     return { messageId };
   } catch (err) {
     let sendErr: SendError;
@@ -806,7 +810,21 @@ export async function sendStructured(
     media: asset,
     cita,
   });
+  await pausaDelOperador(input.organizationId, input.conversationId);
   return { messageId };
+}
+
+/**
+ * 073-B (D1, decisión #1) — Lo que sale de la Bandeja lo escribió una
+ * persona: la IA se pausa con `manual_reply`, como con el eco del teléfono.
+ * Nunca lanza: el mensaje ya salió y eso no se deshace por una pausa.
+ */
+async function pausaDelOperador(organizationId: string, conversationId: string): Promise<void> {
+  try {
+    await pausarPorRespuestaHumana(organizationId, conversationId);
+  } catch (err) {
+    console.error("[send] no pude pausar la IA tras la respuesta del operador:", err);
+  }
 }
 
 /**

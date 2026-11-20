@@ -253,6 +253,13 @@
       "when": 1795146374086,
       "tag": "0035_bot_incident",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1795150703148,
+      "tag": "0036_bot_humano",
+      "breakpoints": true
     }
   ]
 }

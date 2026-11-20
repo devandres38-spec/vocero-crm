@@ -96,6 +96,63 @@ export async function avisarCaidaDelCerebro(input: {
   );
 }
 
+const TEXTO_DEL_TOPE: Record<"conversacion_hora" | "conversacion_dia" | "organizacion_dia", string> = {
+  conversacion_hora: "turnos por hora en esta conversación",
+  conversacion_dia: "turnos al día en esta conversación",
+  organizacion_dia: "turnos al día en todo el negocio",
+};
+
+/**
+ * 073-B (D4, decisión #5) — El tope anti-flood frenó el despacho. Incidente
+ * `abuso` y, la primera vez de cada hora (o día) en esta conversación, una
+ * nota interna. La IA NO se apaga: vuelve a contestar cuando baje el ritmo.
+ */
+export async function avisarTopeAntiFlood(input: {
+  organizationId: string;
+  conversationId: string;
+  alcance: "conversacion_hora" | "conversacion_dia" | "organizacion_dia";
+  tope: number;
+  ahora?: Date;
+}): Promise<void> {
+  const ahora = input.ahora ?? new Date();
+  const cubo = input.alcance === "conversacion_hora" ? cuboHora(ahora) : ahora.toISOString().slice(0, 10);
+  const nuevo = await registrarIncidente({
+    organizationId: input.organizationId,
+    conversationId: input.conversationId,
+    kind: "abuso",
+    detail: `Tope anti-flood: ${input.tope} ${TEXTO_DEL_TOPE[input.alcance]}.`,
+    dedupeKey: `abuso:${input.alcance}:${input.conversationId}:${cubo}`,
+    ahora,
+  });
+  if (!nuevo) return;
+  await crearNotaDelSistema(
+    input.organizationId,
+    input.conversationId,
+    `⚠️ El agente de IA dejó de contestar aquí por ahora: se alcanzó el tope de ${input.tope} ` +
+      `${TEXTO_DEL_TOPE[input.alcance]} (protección contra mensajes masivos). ` +
+      "La IA sigue activa y vuelve a contestar cuando baje el ritmo; mientras tanto, revisa si alguien del equipo debe responder."
+  );
+}
+
+/** 073-B (D2) — El resumen que el agente deja al pasar la conversación. */
+export async function notaDeHandoff(input: {
+  organizationId: string;
+  conversationId: string;
+  resumen: string;
+}): Promise<void> {
+  const resumen = input.resumen.trim().slice(0, 500);
+  if (!resumen) return;
+  try {
+    await crearNotaDelSistema(
+      input.organizationId,
+      input.conversationId,
+      `🤖 Resumen del agente al pasarte la conversación: ${resumen}`
+    );
+  } catch (err) {
+    console.error("[handoff] no pude dejar la nota del resumen:", err);
+  }
+}
+
 /** Retención: 90 días, en lotes acotados (como `purgarLlamadasViejas`). */
 export const RETENCION_INCIDENTES_MS = 90 * 24 * 60 * 60 * 1000;
 const LOTE_PURGA = 1000;

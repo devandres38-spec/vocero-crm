@@ -2,7 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { esPlataforma } from "@/lib/tenancy";
 import { estadoIaDe } from "@/lib/ai/provider";
-import { cuboHora, registrarIncidente } from "@/server/incidentes";
+import { avisarTopeAntiFlood, cuboHora, registrarIncidente } from "@/server/incidentes";
+import { ajustesDelNegocio } from "@/server/ajustes-bot";
+import { contarDespachos, topeAlcanzado } from "@/server/dispatch/antiflood";
 import { organizacionSuspendida } from "@/server/platform/estado";
 import { encolarDespacho } from "@/server/dispatch/outbox";
 import { iniciarWorker, programarTanda } from "@/server/dispatch/worker";
@@ -31,8 +33,10 @@ export async function despacharAlCerebro(
         aiEnabled: schema.conversation.aiEnabled,
         handoffAt: schema.conversation.handoffAt,
         isTest: schema.conversation.isTest,
+        optOutAt: schema.contact.optOutAt,
       })
       .from(schema.conversation)
+      .innerJoin(schema.contact, eq(schema.conversation.contactId, schema.contact.id))
       .where(
         and(
           eq(schema.conversation.id, conversationId),
@@ -48,6 +52,9 @@ export async function despacharAlCerebro(
     // ingesta, pero una conversación de prueba no sale del CRM por ningún
     // camino.
     if (!conv.aiEnabled || conv.handoffAt || conv.isTest) return;
+    // 073-B (D6, Ley 1581) — Quien pidió la baja no recibe IA, aunque una
+    // persona haya reanudado la conversación.
+    if (conv.optOutAt) return;
 
     const [perfil] = await getDb()
       .select({ enabled: schema.agentProfile.enabled })
@@ -59,6 +66,8 @@ export async function despacharAlCerebro(
     if (esPlataforma() && (await organizacionSuspendida(organizationId))) return;
     // 073-A (punto ciego n.º 1) — Sin llave de IA utilizable no se despacha.
     if (esPlataforma() && !(await iaUtilizable(organizationId))) return;
+    // 073-B (D4, decisión #5) — Tope anti-flood, contado en `dispatch`.
+    if (!(await dentroDelTope(organizationId, conversationId))) return;
 
     // 025 — El despacho anota qué entrante lo provoca: es lo que le debe al
     // cerebro, aunque después la conversación tenga una respuesta.
@@ -103,5 +112,22 @@ async function iaUtilizable(organizationId: string): Promise<boolean> {
         : "No hay llave de IA configurada: los mensajes no se le despachan al agente.",
     dedupeKey: `${kind}:${cuboHora()}`,
   });
+  return false;
+}
+
+/**
+ * 073-B (D4) — ¿Le queda turno a esta conversación y a este negocio? Los
+ * topes los fija la plataforma (`metadata.bot.limits`, Blueprint); sin nada
+ * guardado, 25/h y 80/día por conversación y 500/día por negocio.
+ */
+async function dentroDelTope(organizationId: string, conversationId: string): Promise<boolean> {
+  const ahora = new Date();
+  const [{ bot }, conteo] = await Promise.all([
+    ajustesDelNegocio(organizationId),
+    contarDespachos(organizationId, conversationId, ahora),
+  ]);
+  const exceso = topeAlcanzado(conteo, bot.limits);
+  if (!exceso) return true;
+  await avisarTopeAntiFlood({ organizationId, conversationId, alcance: exceso.alcance, tope: exceso.tope, ahora });
   return false;
 }

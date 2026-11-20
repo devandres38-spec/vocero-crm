@@ -30,8 +30,47 @@ Lectura recomendada para el cerebro: `422` (que no sea `fuera_de_ventana`) y
 
 Un CRM anterior los convierte en `modelo` (fallback de siempre, nunca 422).
 
-## 073-B (previsto, se fija al arrancar la ronda)
+## 073-B (fijado 2026-11-20)
 
-- `GET /api/brains/context` → `humanGap?: { since, messages: [{ at, author: "lead"|"humano", text }] }`, `humanHours?: { available, nextOpenAt }`.
-- `POST /api/brains/handoff` → `summary?: string` (≤500).
-- Perfil/config del cerebro → `llm.temperature?`, `llm.fallbackModel?`.
+Documentado también en `docs/openapi-brains.json`. Todo opcional: un cerebro
+que no lo lea se porta como en 073-A.
+
+### §3 `GET /api/brains/context` — campos nuevos
+
+| Campo | Forma | Cuándo viaja |
+|---|---|---|
+| `humanGap` | `{ since, until, messages: [{ at, author: "lead"\|"humano", type, text \| null }] }` | Hubo un tramo atendido por una persona (de `handoffAt`/pausa manual a la reanudación) y la IA **todavía no** contestó después de reanudar. ≤20 mensajes, ≤2000 caracteres (lo último gana). Sin notas internas ni mensajes fallidos. El cerebro lo inyecta una vez y **no** lo guarda en su historial. |
+| `humanAvailable` | `boolean` | El negocio configuró su horario humano (Ajustes → Agente o Blueprint `humanHours`). |
+| `nextOpenAt` | `string (ISO UTC) \| null` | Con `humanAvailable`; `null` si está abierto o no abre en 14 días. |
+| `llm.temperature` | `number` (0–2) | Siempre que `llm` no sea `null`. La fija la plataforma (Blueprint `bot.temperature`, default 0.4). |
+
+> El contrato previo decía `humanHours: { available, nextOpenAt }`; se fijó
+> en `humanAvailable`/`nextOpenAt` de primer nivel, como se pidió al arrancar
+> la ronda.
+
+El modelo de respaldo (`bot.fallbackModel`) **no** viaja al cerebro: el proxy
+de `/api/brains/llm` lo agrega como `models: [principal, respaldo]` cuando el
+proveedor es OpenRouter y el cuerpo no trae su propia lista.
+
+### §4 `POST /api/brains/handoff` (y `/api/bot/handoff`)
+
+- `summary?: string` — se recorta a 500 (no se rechaza) y queda como nota
+  interna del sistema «Resumen del agente…». Llega aunque la conversación ya
+  estuviera pausada.
+- `reason: "opt_out"` — además de pausar, el CRM registra la baja
+  (`contact.optOutAt`, origen `agente`), le envía al cliente la confirmación
+  fija **una vez** y deja una nota interna. El cerebro no debe escribir nada
+  más en ese turno.
+
+### §5 Bloqueos nuevos (sin cambio de forma)
+
+- `POST /api/brains/messages` con el contacto dado de baja → `409 ai_paused`
+  (también cubre los seguimientos del cerebro).
+- El despacho no sale con el contacto dado de baja ni por encima del tope
+  anti-flood (25/h y 80/día por conversación, 500/día por negocio por defecto;
+  Blueprint `bot.limits`). Al superar el tope: incidente `abuso` + nota interna;
+  la IA sigue encendida.
+
+### §6 Herramientas reservadas
+
+`solicitar_baja` se suma a `RESERVADOS` (ningún módulo puede llamarse así).

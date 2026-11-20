@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { resolveAiProviderDeOrganizacion } from "@/lib/ai/provider";
 import { OPENROUTER_BASE_URL } from "@/lib/ai/presets";
@@ -6,6 +6,8 @@ import { contextoDeConversacion } from "@/server/bot/nucleo/contexto";
 import { serializeBotProfile } from "@/server/bot/profile";
 import { herramientasEfectivas } from "@/server/brains/herramientas";
 import { modulosDeOrganizacion } from "@/server/modulos/consulta";
+import { ajustesDelNegocio } from "@/server/ajustes-bot";
+import { camposDeHorario, tramoHumano } from "@/server/brains/humano";
 
 /**
  * 070 (contrato §2.1) — El contexto que lee una Nea `multiorg`: el cuerpo de
@@ -90,7 +92,7 @@ export async function contextoDelCerebro(
   if (!base) return null;
 
   const db = getDb();
-  const [perfiles, kb, llm, modulos] = await Promise.all([
+  const [perfiles, kb, llm, modulos, ajustes, conv] = await Promise.all([
     db
       .select()
       .from(schema.agentProfile)
@@ -103,6 +105,12 @@ export async function contextoDelCerebro(
       .orderBy(asc(schema.kbEntry.createdAt)),
     llmDelCerebro(organizationId),
     modulosDeOrganizacion(organizationId),
+    ajustesDelNegocio(organizationId),
+    db
+      .select({ from: schema.conversation.humanGapFrom, to: schema.conversation.humanGapTo })
+      .from(schema.conversation)
+      .where(and(eq(schema.conversation.organizationId, organizationId), eq(schema.conversation.id, conversationId)))
+      .limit(1),
   ]);
   const perfil = perfiles[0];
   const extra = { coordinationFollowupEnabled: false, agendaEnabled: modulos.agenda };
@@ -110,5 +118,18 @@ export async function contextoDelCerebro(
 
   const moduleTools = herramientasEfectivas(modulos.modules).map((e) => e.anuncio);
 
-  return { ...base, agent, knowledge: conocimientoDe(kb), llm, ...(moduleTools.length > 0 ? { moduleTools } : {}) };
+  // 073-B — Aditivos (contrato brains-073 §3): el tramo humano (solo hasta
+  // que la IA vuelva a contestar), el horario de las personas y la
+  // `temperature` que fija la plataforma.
+  const humanGap = await tramoHumano(organizationId, conversationId, conv[0]?.from ?? null, conv[0]?.to ?? null);
+
+  return {
+    ...base,
+    agent,
+    knowledge: conocimientoDe(kb),
+    llm: llm ? { ...llm, temperature: ajustes.bot.temperature } : null,
+    ...(moduleTools.length > 0 ? { moduleTools } : {}),
+    ...(humanGap ? { humanGap } : {}),
+    ...camposDeHorario(ajustes),
+  };
 }

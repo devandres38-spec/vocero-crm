@@ -6,6 +6,8 @@ import { upsertFicha } from "@/server/bot/ficha";
 import { toHandoffReason } from "@/server/bot/handoff";
 import { moverEtapaPorElCerebro } from "@/server/bot/stage";
 import { publish } from "@/server/events/bus";
+import { registrarBaja } from "@/server/bajas";
+import { notaDeHandoff } from "@/server/incidentes";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
 import { graphRequest } from "@/lib/meta/client";
 
@@ -113,6 +115,15 @@ const handoffSchema = z.object({
     .max(4000)
     .optional()
     .transform((r) => (r === undefined ? r : r.slice(0, 200))),
+  /**
+   * 073-B (D2) — Resumen breve para el equipo; queda como nota interna. Como
+   * el motivo, uno largo se RECORTA (500) en vez de costar el handoff.
+   */
+  summary: z
+    .string()
+    .max(4000)
+    .optional()
+    .transform((r) => (r === undefined ? r : r.slice(0, 500))),
 });
 
 /** Handoff: pausa la IA. Idempotente (solo escribe en la transición). */
@@ -140,13 +151,20 @@ export async function pasarAHumanoPorElCerebro(
   const conv = rows[0];
   if (!conv) return apiError(404, "not_found", "Conversación no encontrada");
 
+  const motivo = toHandoffReason(body.data.reason);
+  // 073-B (D6) — El agente detectó una baja (herramienta `solicitar_baja`):
+  // el CRM la registra, confirma al cliente con el texto fijo y pausa.
+  if (motivo === "opt_out") {
+    await registrarBaja({ organizationId, conversationId: conv.id, origen: "agente" });
+  }
+
   if (!conv.handoffAt) {
     await db
       .update(schema.conversation)
       .set({
         aiEnabled: false,
         handoffAt: new Date(),
-        handoffReason: toHandoffReason(body.data.reason),
+        handoffReason: motivo,
         updatedAt: new Date(),
       })
       .where(
@@ -159,6 +177,11 @@ export async function pasarAHumanoPorElCerebro(
       type: "conversation.updated",
       data: { conversation: { id: conv.id } },
     });
+  }
+  // 073-B (D2): el resumen llega aunque la conversación ya estuviera pausada
+  // (un handoff encolado que entra tarde sigue sirviéndole al equipo).
+  if (body.data.summary?.trim()) {
+    await notaDeHandoff({ organizationId, conversationId: conv.id, resumen: body.data.summary });
   }
   return Response.json({ ok: true });
 }

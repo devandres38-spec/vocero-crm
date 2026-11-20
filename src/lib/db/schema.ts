@@ -351,6 +351,15 @@ export const contact = pgTable(
      * (`getOrCreateConversation`); después manda el interruptor de la Bandeja.
      */
     aiPaused: boolean("ai_paused").notNull().default(false),
+    /**
+     * 073-B (D6, Ley 1581) — La persona pidió no recibir más mensajes. Bloquea
+     * la IA, las plantillas y los seguimientos; una persona del equipo aún
+     * puede contestarle dentro de la ventana. No se revierte sola: solo con
+     * la reactivación explícita de la Bandeja.
+     */
+    optOutAt: timestamp("opt_out_at"),
+    /** Quién la registró: el detector del CRM, el agente o una persona. */
+    optOutSource: text("opt_out_source", { enum: ["detector", "agente", "operador"] }),
     archivedAt: timestamp("archived_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -555,6 +564,15 @@ export const conversation = pgTable(
         "abuso",
       ],
     }),
+    /** 073-B (D1) — Desde cuándo la IA está apagada a mano (sin handoff). */
+    aiPausedAt: timestamp("ai_paused_at"),
+    /**
+     * 073-B (D1) — El último tramo que atendió una persona: de la pausa a la
+     * reanudación. El cerebro lo lee UNA vez (`humanGap` del contexto) para
+     * no contestar como si nada hubiera pasado.
+     */
+    humanGapFrom: timestamp("human_gap_from"),
+    humanGapTo: timestamp("human_gap_to"),
     lastInboundAt: timestamp("last_inbound_at"),
     lastMessageAt: timestamp("last_message_at"),
     unreadCount: integer("unread_count").notNull().default(0),
@@ -1695,7 +1713,8 @@ export const botIncident = pgTable(
       onDelete: "cascade",
     }),
     kind: text("kind", {
-      enum: ["despacho_caducado", "sin_saldo", "sin_credencial", "envio_permanente"],
+      // 073-B — `abuso`: el tope anti-flood frenó el despacho.
+      enum: ["despacho_caducado", "sin_saldo", "sin_credencial", "envio_permanente", "abuso"],
     }).notNull(),
     detail: text("detail"),
     count: integer("count").notNull().default(1),
@@ -1709,7 +1728,7 @@ export const botIncident = pgTable(
     index("bot_incident_conv_idx").on(t.conversationId),
     check(
       "bot_incident_kind_ck",
-      sql`${t.kind} in ('despacho_caducado', 'sin_saldo', 'sin_credencial', 'envio_permanente')`
+      sql`${t.kind} in ('despacho_caducado', 'sin_saldo', 'sin_credencial', 'envio_permanente', 'abuso')`
     ),
   ]
 );
