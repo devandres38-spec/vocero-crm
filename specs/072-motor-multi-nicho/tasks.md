@@ -127,7 +127,7 @@ Docker ni E2E en local.
 
 ## Bloque BZ — Cierre de 072-B
 
-- [ ] T071 `[crm]` Versión 2.13.0, `CHANGELOG.md`, guion E2E parte B; `[nea]` `CHANGELOG.md`
+- [x] T071 `[crm]` Versión 2.13.0, `CHANGELOG.md`, guion E2E parte B; `[nea]` `CHANGELOG.md`
 - [ ] T072 `[CI]` build + Vitest + pytest con Postgres
 - [ ] T073 `[staging]` SC-5: `diagnostico_eco` por Nea `multiorg`; `diagnostico_marca` repetido no duplica; negocio sin módulo → 404 en `/m/diagnostico`, `/api/m/diagnostico/*` y `/api/brains/tools/*`
 - [ ] T074 Merge `--no-ff` de 072-B a `main` en ambos repos (con aprobación); ROADMAP y `specs/README.md` → ✅
@@ -212,5 +212,24 @@ Pruebas existentes cambiadas A PROPÓSITO:
   buscar la conversación (en A).
 - `brains-rutas-tipos-next.test.ts`: suma la ruta dinámica `tools/[name]`.
 
-Pendiente (BZ): versión 2.13.0, CHANGELOG de ambos repos, guion E2E parte
-B, CI y staging (SC-5), merge.
+## Auditoría 072-B (`AUDITORIA-072B.md`) — remediada
+
+Aplicadas A-1..A-3, M-1..M-3 y B-1..B-4 en `feat/072b-puente-herramientas`,
+con la preparación de 2.13.0 (T071). `0033` ya corría en staging: el índice
+`brain_tool_call_conv_idx` (M-1) y el `CHECK brain_tool_call_hecha_ck` (B-3)
+van en la migración aditiva `0034_llamadas_indices`.
+
+Gates locales:
+- **vocero-crm**: `typecheck` 0 errores · `lint` limpio · Vitest
+  `--maxWorkers=1 --no-file-parallelism` **177 archivos / 2 230 pruebas en verde**.
+- **nea-agent**: `pytest` **939 passed, 40 skipped** (las 40 requieren
+  Postgres). Las 6 doradas B0 intactas.
+
+Pruebas existentes cambiadas A PROPÓSITO:
+- `brains-tools.test.ts`: `ejecutarLlamada` recibe el ámbito (organización
+  y despliegue); `claveIdempotencia` suma la conversación; `resultado_grande`
+  trae `detalle`; la retención se prueba por lotes (`execute`).
+- `test_herramientas_dinamicas_072.py`: sin despacho, `call_tool` ya no
+  inventa un id: no llama al CRM.
+
+Pendiente (BZ): CI y staging (SC-5), merge.

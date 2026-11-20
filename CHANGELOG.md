@@ -5,6 +5,52 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.13.0 — 2026-11-19
+
+Motor Multi-Nicho, ronda B (spec 072): **módulos aislados y puente de
+herramientas del cerebro**. **Aditiva**: las migraciones
+`0033_llamadas_de_herramienta` (tabla nueva `brain_tool_call`) y
+`0034_llamadas_indices` (un índice y un `CHECK` sobre esa tabla) se aplican
+solas al arrancar. **Un negocio sin módulos encendidos —todos los de `single`
+y todos los que ya existían— ve exactamente lo de 2.12.0**, y su cerebro
+recibe el mismo contexto.
+
+- **Módulos** (`src/modulos/<clave>/`): capacidades con código propio que la
+  agencia enciende por negocio (`modules.modules` en el Blueprint o el MCP).
+  Un módulo aporta páginas en `/m/<clave>`, APIs en `/api/m/<clave>`, una
+  entrada del menú, widgets del Inicio, secciones de la ficha lateral (con
+  carga diferida) y herramientas para el cerebro. Apagado, todo eso da 404.
+- **Puente de herramientas**: con un módulo encendido, `GET /api/brains/context`
+  trae `moduleTools` y el cerebro las ejecuta con
+  `POST /api/brains/tools/{name}`: módulos recalculados en cada llamada,
+  despacho de verdad (de esta conversación, de este cerebro, de las últimas
+  24 h), IA en pausa → 409, 16 KB de cuerpo, 8 s de ejecución, 4 KB de
+  resultado, y las de escritura idempotentes por conversación, despacho,
+  nombre y argumentos (30 días de memoria).
+- **Módulo de prueba `diagnostico`** (oculto, solo la agencia lo enciende):
+  `diagnostico_eco` y `diagnostico_marca` (deja una nota interna), para probar
+  el puente de punta a punta en staging.
+- Contrato: `specs/072-motor-multi-nicho/contracts/brains-072.md` §3–§4 y
+  `docs/openapi-brains.json`. Guía: `docs/plataforma-cerebro.md` §5.
+
+### Auditoría 072-B (antes de publicar)
+
+- **Idempotencia**: la clave incluye la conversación y los argumentos ya
+  validados, y el `dispatchId` se comprueba igual que al responder (422
+  `despacho_desconocido`, 409 `cerebro_reasignado`). Una repetición que llega
+  justo cuando la primera termina recibe su respuesta, no un «en curso» vacío,
+  y una ejecución colgada que otra ya retomó no pisa su resultado.
+- **Base**: índice en `brain_tool_call.conversation_id` (borrar una
+  conversación ya no recorre la tabla) y `CHECK` de que una llamada hecha guarda
+  su respuesta. La purga borra en lotes de 1 000 y un fallo de una purga no
+  frena el barrido de webhooks.
+- `resultado_grande` trae un detalle para que el modelo no insista.
+
+### Actualizar desde 2.12
+
+Redesplegar, en cualquier orden respecto de Nea: una Nea sin la 072-B ignora
+`moduleTools`; una con ella las ofrece solo en negocios con módulos.
+
 ## 2.12.0 — 2026-11-19
 
 Motor Multi-Nicho, ronda A (spec 072). **Aditiva**: la migración
