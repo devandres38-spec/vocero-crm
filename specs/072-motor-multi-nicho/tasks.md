@@ -128,9 +128,9 @@ Docker ni E2E en local.
 ## Bloque BZ — Cierre de 072-B
 
 - [x] T071 `[crm]` Versión 2.13.0, `CHANGELOG.md`, guion E2E parte B; `[nea]` `CHANGELOG.md`
-- [ ] T072 `[CI]` build + Vitest + pytest con Postgres
-- [ ] T073 `[staging]` SC-5: `diagnostico_eco` por Nea `multiorg`; `diagnostico_marca` repetido no duplica; negocio sin módulo → 404 en `/m/diagnostico`, `/api/m/diagnostico/*` y `/api/brains/tools/*`
-- [ ] T074 Merge `--no-ff` de 072-B a `main` en ambos repos (con aprobación); ROADMAP y `specs/README.md` → ✅
+- [x] T072 `[CI]` build + Vitest + pytest con Postgres — corre en `main` con el merge de cierre
+- [x] T073 `[staging]` SC-5: `diagnostico_eco` por Nea `multiorg`; `diagnostico_marca` repetido no duplica; negocio sin módulo → 404 en `/m/diagnostico`, `/api/m/diagnostico/*` y `/api/brains/tools/*` — validado por el dueño en staging (`eventos-test` con `diagnostico`, `clinica-test` → 404, `0033` y `0034` aplicadas)
+- [x] T074 Merge `--no-ff` de 072-B a `main` en ambos repos (aprobado por el dueño, 2026-11-19); ROADMAP y `specs/README.md` → ✅
 
 ---
 
@@ -232,4 +232,7 @@ Pruebas existentes cambiadas A PROPÓSITO:
 - `test_herramientas_dinamicas_072.py`: sin despacho, `call_tool` ya no
   inventa un id: no llama al CRM.
 
-Pendiente (BZ): CI y staging (SC-5), merge.
+Cierre (2026-11-19): smoke de staging en verde; el formulario de
+`/platform` conserva y muestra `modules.modules` (antes los descartaba al
+guardar; prueba en `formulario-blueprint.test.ts`). Merge `--no-ff` a `main`
+de ambos repos.
