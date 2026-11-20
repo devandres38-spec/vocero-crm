@@ -5,6 +5,26 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
+## 2.13.1 — 2026-11-19
+
+Hotfixes del bot (antesala de la spec 073). **Sin migraciones ni cambios de
+contrato** (`/api/bot/*`, `/api/brains/*` y el despacho quedan igual).
+Actualizar es redesplegar.
+
+- **Montos en COP al editar la ficha.** Corregir a mano un campo numérico con
+  `600.000` guardaba `600` (`Number()` lee el punto como decimal). Ahora usa
+  el mismo lector que la ficha del negocio (`aNumero`, formato `es-CO`):
+  `600.000` → 600000, `1.250.000,50` → 1250000.5.
+- **Laboratorio: el score ya no premia que el agente no conteste.** Un caso
+  `agent_failed` cuenta como 0 en el denominador; antes quedaba fuera y 4
+  fallidos + 2 verdes daban 100. `judge_failed` (falla el juez, no el
+  agente) sigue fuera.
+- **«Escribiendo…» solo en WhatsApp.** En Instagram, Messenger o TikTok
+  `POST /api/bot/typing` y `/api/brains/typing` buscaban credenciales de
+  WhatsApp y llamaban a la Graph API con el id de un mensaje de otro canal.
+  Ahora contestan `200 {"ok": false}` sin tocar Meta (best-effort, como
+  siempre; sin `reason` nuevo).
+
 ## 2.13.0 — 2026-11-19
 
 Motor Multi-Nicho, ronda B (spec 072): **módulos aislados y puente de

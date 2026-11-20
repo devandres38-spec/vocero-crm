@@ -49,6 +49,17 @@ describe("parseFichaValue", () => {
     expect(parseFichaValue("depende", true)).toBe("depende");
   });
 
+  it("2.13.1 — lee los montos en COP (el punto es de miles)", () => {
+    // Antes `Number("600.000")` daba 600: el presupuesto quedaba mil veces
+    // más chico sin que nadie lo notara.
+    expect(parseFichaValue("600.000", 500000)).toBe(600000);
+    expect(parseFichaValue("$ 1.250.000", 0)).toBe(1250000);
+    expect(parseFichaValue("1.250.000,50", 0)).toBe(1250000.5);
+    expect(parseFichaValue("2,5", 1)).toBe(2.5);
+    expect(parseFichaValue("0.125", 1)).toBe(0.125);
+    expect(parseFichaValue("", 5000)).toBe("");
+  });
+
   it("un dato nuevo entra como texto", () => {
     expect(parseFichaValue("42", undefined)).toBe("42");
   });
