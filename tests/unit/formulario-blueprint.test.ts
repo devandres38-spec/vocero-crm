@@ -162,3 +162,42 @@ describe("Fix-C — editar: solo lo que cambió", () => {
     expect(blueprintParaEnviar(f, "editar", techo, base).blueprint.knowledge).toEqual({ mode: "exact", entries: [] });
   });
 });
+
+describe("072-B — `modules.modules` (módulos de vertical) en el formulario", () => {
+  const conModulos = (modules: string[]) =>
+    ({ version: 1, organization: { name: "Eventos Test", slug: "eventos-test" }, modules: { agenda: true, channels: ["whatsapp"], modules } }) as OrganizationBlueprint;
+
+  it("importar y volver a exportar conserva `modules.modules` (válido para el servidor)", () => {
+    const f = formularioDesdeBlueprint(conModulos(["diagnostico"]), defaults, techo);
+    expect(f.modules.verticales).toEqual(["diagnostico"]);
+    const s = seccionesDelFormulario(f, "editar", techo);
+    expect(s.modules).toEqual({ agenda: true, channels: ["whatsapp"], modules: ["diagnostico"] });
+    expect(valido({ version: 1, ...s })).toEqual([]);
+    // Y la vuelta completa no cambia nada.
+    const otra = formularioDesdeBlueprint({ version: 1, ...s } as OrganizationBlueprint, defaults, techo);
+    expect(seccionesDelFormulario(otra, "editar", techo).modules).toEqual(s.modules);
+  });
+
+  it("sin el Blueprint, salen de los módulos efectivos del negocio", () => {
+    const bp = { version: 1, organization: { name: "Eventos Test", slug: "eventos-test" } } as OrganizationBlueprint;
+    const f = formularioDesdeBlueprint(bp, defaults, techo, {
+      agenda: true,
+      atribucion: false,
+      channels: ["whatsapp"],
+      verticales: ["diagnostico"],
+    });
+    expect((seccionesDelFormulario(f, "editar", techo).modules as { modules?: string[] } | undefined)?.modules).toEqual(["diagnostico"]);
+  });
+
+  it("apagarlos todos manda la lista vacía (si no, el merge los conservaría)", () => {
+    const f = formularioDesdeBlueprint(conModulos(["diagnostico"]), defaults, techo);
+    f.modules.verticales = [];
+    expect((seccionesDelFormulario(f, "editar", techo).modules as { modules?: string[] } | undefined)?.modules).toEqual([]);
+  });
+
+  it("un negocio que nunca tuvo módulos no manda la clave (como antes)", () => {
+    const f = formularioInicial(defaults, techo);
+    f.organization.name = "Nuevo";
+    expect(seccionesDelFormulario(f, "crear", techo).modules).not.toHaveProperty("modules");
+  });
+});
