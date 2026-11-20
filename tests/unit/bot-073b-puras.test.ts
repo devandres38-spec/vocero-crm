@@ -145,13 +145,17 @@ describe("anti-flood", () => {
 
 describe("ajustes del bot (plataforma)", () => {
   it("defaults y lo guardado", () => {
-    expect(leerAjustesBot(undefined)).toEqual({ limits: L0(), temperature: 0.4, fallbackModel: null });
+    // 074: + playgroundPerDay (40 por defecto, decisión #9).
+    expect(leerAjustesBot(undefined)).toEqual({ limits: L0(), temperature: 0.4, fallbackModel: null, playgroundPerDay: 40 });
     expect(leerAjustesBot({ limits: { perConversationHour: 10 }, temperature: 0.2, fallbackModel: "z-ai/glm-4.6" })).toEqual({
       limits: { ...L0(), perConversationHour: 10 },
       temperature: 0.2,
       fallbackModel: "z-ai/glm-4.6",
+      playgroundPerDay: 40,
     });
-    expect(leerAjustesBot({ temperature: 9 })).toEqual({ limits: L0(), temperature: 0.4, fallbackModel: null });
+    expect(leerAjustesBot({ temperature: 9 })).toEqual({ limits: L0(), temperature: 0.4, fallbackModel: null, playgroundPerDay: 40 });
+    expect(leerAjustesBot({ playgroundPerDay: 100 }).playgroundPerDay).toBe(100);
+    expect(fusionarBot({ playgroundPerDay: 100 }, { playgroundPerDay: null })).toEqual({});
   });
 
   it("merge del Blueprint: ausente no toca, null quita", () => {

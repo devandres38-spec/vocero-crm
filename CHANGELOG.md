@@ -5,7 +5,48 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
-## 2.14.0 — 2026-11-20
+## Sin publicar
+
+Se numera **2.15.0** al cerrar la Spec 074 tras su auditoría. Migración
+aditiva `0038_kb_produccion` (se aplica sola al arrancar). Actualizar **el CRM
+antes que Nea**. Contrato:
+[brains-074](specs/074-kb-playground-observabilidad/contracts/brains-074.md).
+
+### Spec 074 — KB de producción, «Probar mi agente», observabilidad BYOK y Laboratorio v2
+
+- **Base de conocimiento editable de verdad** (Ajustes → Agente): cada entrada
+  se edita en su sitio (corregir un precio ya no exige borrarla), tiene título
+  y categoría (general, servicios, precios, horarios, pagos, políticas,
+  preguntas frecuentes), se puede apagar sin perderla, fijar arriba y
+  reordenar; hay buscador y filtro por categoría. Al agente solo le llega lo
+  activo, lo fijado primero y en el orden del negocio (`/api/bot/profile`,
+  `/api/brains/context`, Laboratorio).
+- **Enlaces verificados**: hasta 10 enlaces oficiales (`https://`) — Maps,
+  catálogo, web, link de pago — que el agente comparte tal cual y como los
+  únicos que puede dar. Viajan en `resources` (contexto del cerebro, omitido
+  si no hay; y `/api/bot/profile`, que antes iba siempre vacío).
+- **Presupuesto en tokens**: la tarjeta muestra los tokens estimados de la KB
+  activa + enlaces contra 8.000, con aviso desde el 75 %.
+- **«Probar mi agente»** (modo plataforma, dueño/admin): chat con el mismo
+  agente que contesta a los clientes (`/vocero/ensayo` de Nea), con la llave
+  del negocio, sin escribirle a nadie ni crear nada en la Bandeja. Historial
+  de la sesión, botón para reiniciar y pruebas restantes del día. Tope de
+  **40 mensajes por día y negocio** (Blueprint `bot.playgroundPerDay`),
+  contado en la base; si el agente no contesta, la prueba no se cobra.
+- **Ficha de ensayo** (`X-Vocero-Ensayo`): con ella el cerebro solo puede
+  pensar y leer huecos de la agenda (sin registrar oferta); cualquier otra
+  ruta de `/api/brains/*` responde 403 `ensayo_solo_lectura`.
+- **Uso del modelo (`llm_usage`)**: una fila por llamada que pasa por el CRM
+  (conversaciones, pruebas, notas de voz, juez del Laboratorio) con tokens de
+  entrada / en caché / de salida, latencia y estado. Sin textos ni datos del
+  cliente. Se guarda 90 días.
+- **Salud del agente** (Ajustes → Agente, dueño/admin): llamadas, errores,
+  tokens y latencia de los últimos 7 días, e incidentes recientes del bot con
+  filtro por tipo.
+- **Laboratorio v2**: el juez evalúa con `temperature: 0` y la pantalla
+  muestra el número real de casos de la corrida.
+
+
 
 Cierra la serie **Bot de Producción (073)**: rondas A, B y C con sus parches de
 auditoría. Migraciones aditivas `0035`–`0037` (se aplican solas al arrancar).

@@ -52,6 +52,7 @@ const prefixes = {
   brainToolCall: "btc",
   // 073-A — Incidentes del bot (despachos caídos, llave sin saldo, envíos rechazados).
   botIncident: "inc",
+  llmUsage: "llu",
 } as const;
 
 export type IdKind = keyof typeof prefixes;

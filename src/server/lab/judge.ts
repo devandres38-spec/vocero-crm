@@ -2,6 +2,7 @@ import { z } from "zod";
 import { chatJson } from "@/lib/ai";
 import { esPlataforma } from "@/lib/tenancy";
 import { buildJudgePrompt } from "@/server/ai/prompts";
+import { registrarUsoLlm, usoDesdeRespuesta } from "@/server/llm-usage";
 
 /** Veredicto estructurado del juez (FR-032, contrato ai.md). */
 export const Verdict = z.object({
@@ -50,7 +51,23 @@ export async function judgeCase(input: {
     ],
     // 070 — En modo plataforma el juez paga con la llave del NEGOCIO, nunca
     // con la del entorno.
-    { judge: true, organizationId: input.organizationId, soloOrganizacion: esPlataforma() }
+    {
+      judge: true,
+      organizationId: input.organizationId,
+      soloOrganizacion: esPlataforma(),
+      // 074 (D9, FR-15) — Un juez que cambia de opinión entre corridas no
+      // mide nada: determinista.
+      temperature: 0,
+      // 074 (D9) — Lo que cuesta el juez, en `llm_usage` como `lab`.
+      onUso: (u) =>
+        void registrarUsoLlm({
+          organizationId: input.organizationId,
+          source: "lab",
+          statusCode: u.status,
+          latencyMs: u.latencyMs,
+          ...usoDesdeRespuesta(u.cuerpo, u.model),
+        }),
+    }
   );
   if (!result.ok) {
     // Diagnóstico operativo: el caso queda visible como judge_failed y aquí

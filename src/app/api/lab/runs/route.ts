@@ -19,7 +19,7 @@ async function iaDelNegocio(organizationId: string): Promise<boolean> {
 async function hayCerebro(organizationId: string): Promise<boolean> {
   return esPlataforma() ? despachoActivoPara(organizationId) : leerConfigDespacho().active;
 }
-import { RunConflictError, startRun } from "@/server/lab/runner";
+import { RunConflictError, startRun, totalDeCasos } from "@/server/lab/runner";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +76,8 @@ export const POST = withAuth(async (session) => {
   }
   try {
     const runId = await startRun(session.organizationId);
-    return Response.json({ runId }, { status: 202 });
+    // 074 (FR-15): el total real de casos de ESTA corrida.
+    return Response.json({ runId, total: totalDeCasos(runId) }, { status: 202 });
   } catch (err) {
     if (err instanceof RunConflictError) {
       return apiError(

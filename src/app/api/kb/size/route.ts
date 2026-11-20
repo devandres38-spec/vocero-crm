@@ -1,28 +1,21 @@
-import { asc } from "drizzle-orm";
 import { withAuth } from "@/lib/api";
-import { getDb, schema } from "@/lib/db";
-import { scoped } from "@/lib/db/tenant";
-import { renderKb } from "@/server/ai/prompts";
+import { tamanoKb } from "@/lib/kb";
+import { kbDelNegocio, recursosDe } from "@/server/kb";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Tamaño estimado del knowledge base (FR-020). v1 inyecta el KB completo al
- * prompt; umbral de aviso heurístico: ~24.000 caracteres (≈6k tokens).
+ * Tamaño estimado del knowledge base (FR-020).
+ *
+ * 074 (D8, E3) — En tokens estimados (`chars/4`) de lo que de verdad llega al
+ * cerebro: las entradas ACTIVAS más los enlaces verificados, contra un
+ * presupuesto de 8.000 tokens con aviso desde el 75 %. `chars`, `warnAt` y
+ * `warning` siguen viajando (`warnAt` ahora en tokens).
  */
-const WARN_CHARS = 24_000;
-
 export const GET = withAuth(async (session) => {
-  const db = getDb();
-  const entries = await db
-    .select()
-    .from(schema.kbEntry)
-    .where(scoped(schema.kbEntry.organizationId, session.organizationId))
-    .orderBy(asc(schema.kbEntry.createdAt));
-  const chars = renderKb(entries).length;
-  return Response.json({
-    chars,
-    warnAt: WARN_CHARS,
-    warning: chars >= WARN_CHARS,
-  });
+  const [entries, resources] = await Promise.all([
+    kbDelNegocio(session.organizationId),
+    recursosDe(session.organizationId),
+  ]);
+  return Response.json(tamanoKb(entries, resources));
 });

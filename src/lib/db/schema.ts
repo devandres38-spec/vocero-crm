@@ -891,6 +891,11 @@ export const agentProfile = pgTable(
     treatment: text("treatment").notNull().default("tu"),
     /** 071 — Cerrar con amabilidad las conversaciones sin rumbo (el cerebro decide cuándo). */
     stallEnabled: boolean("stall_enabled").notNull().default(true),
+    /**
+     * 074 (D8) — Enlaces oficiales verificados del negocio (Maps, catálogo,
+     * web, pago): los ÚNICOS que el agente puede compartir. ≤10, `https://`.
+     */
+    resources: jsonb("resources").$type<{ label: string; url: string }[]>().notNull().default([]),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -911,10 +916,45 @@ export const kbEntry = pgTable(
     question: text("question"),
     answer: text("answer"),
     content: text("content"),
+    /** 074 (D8) — Título opcional: el cerebro lo lee como cabecera de la entrada. */
+    title: text("title"),
+    /** 074 (D8) — `KB_CATEGORIAS` de `src/lib/kb.ts`. */
+    category: text("category").notNull().default("general"),
+    /** 074 (D8) — Apagada no llega al cerebro (promos vencidas, borradores). */
+    enabled: boolean("enabled").notNull().default(true),
+    /** 074 (D8) — Fijada va primero. */
+    pinned: boolean("pinned").notNull().default(false),
+    sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
-  (t) => [index("kb_org_idx").on(t.organizationId)]
+  (t) => [
+    index("kb_org_idx").on(t.organizationId),
+    index("kb_org_orden_idx").on(t.organizationId, t.enabled, t.pinned, t.sortOrder),
+    check(
+      "kb_entry_category_ck",
+      sql`${t.category} in ('general', 'servicios', 'precios', 'horarios', 'pagos', 'politicas', 'faq')`
+    ),
+  ]
+);
+
+/**
+ * 074 (D9, decisión #9) — Cuántos mensajes de «Probar mi agente» lleva cada
+ * negocio en el día (zona del negocio). Contado en la base con un incremento
+ * condicionado: dos réplicas no pueden pasarse del tope.
+ */
+export const agentPlaygroundDay = pgTable(
+  "agent_playground_day",
+  {
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** AAAA-MM-DD en la zona del negocio. */
+    day: text("day").notNull(),
+    count: integer("count").notNull().default(0),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.day] })]
 );
 
 export const template = pgTable(
@@ -1735,5 +1775,37 @@ export const botIncident = pgTable(
       "bot_incident_kind_ck",
       sql`${t.kind} in ('despacho_caducado', 'sin_saldo', 'sin_credencial', 'envio_permanente', 'abuso')`
     ),
+  ]
+);
+
+/**
+ * 074 (D9, P-10) — Una fila por llamada al modelo que pasa por el CRM
+ * (`pensarPorElCerebro`) o que hace el juez del Laboratorio. Para ver gasto
+ * BYOK, latencia y errores. SIN texto de prompts ni datos personales. Vive 90
+ * días (purga por lotes en el barrido de webhooks).
+ */
+export const llmUsage = pgTable(
+  "llm_usage",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    /** El despacho del turno, si el cerebro lo dijo (`X-Vocero-Dispatch`). Sin FK: el despacho se purga antes. */
+    dispatchId: text("dispatch_id"),
+    source: text("source", { enum: ["turn", "ensayo", "lab", "transcribe"] }).notNull(),
+    model: text("model"),
+    /** HTTP del proveedor; 0 = sin respuesta (timeout o red). */
+    statusCode: integer("status_code").notNull(),
+    promptTokens: integer("prompt_tokens"),
+    cachedTokens: integer("cached_tokens"),
+    completionTokens: integer("completion_tokens"),
+    latencyMs: integer("latency_ms").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("llm_usage_org_created_idx").on(t.organizationId, t.createdAt),
+    index("llm_usage_created_idx").on(t.createdAt),
+    check("llm_usage_source_ck", sql`${t.source} in ('turn', 'ensayo', 'lab', 'transcribe')`),
   ]
 );

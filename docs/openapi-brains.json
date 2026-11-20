@@ -3,7 +3,7 @@
   "info": {
     "title": "Aliantis — API de cerebros (/api/brains/*)",
     "version": "2.11.0",
-    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md. 072: el contexto gana fichaSchema (los campos de la ficha del negocio; falta si no hay) y PUT /api/brains/ficha gana ignored (solo si se descartó algún valor por su tipo). 072-B: el contexto gana moduleTools (herramientas de módulos encendidos; falta si no hay) y nace POST /api/brains/tools/{name}. Delta normativo: specs/072-motor-multi-nicho/contracts/brains-072.md. 073-C: el evento de despacho suma, solo cuando aplican y al final de cada mensaje, `messages[].replyTo` ({id, author: lead|negocio, type, text}) y `messages[].contacts[].phones` (esquema Mensaje de docs/openapi.json); las reacciones quedan en la bandeja y no se despachan. Las etiquetas de horario (`label`) van en 12 h («3:00 p. m.»); `startUtc` sigue en ISO."
+    "description": "070. Solo con TENANCY=multi (en single, 404 vacío). La consume una Nea multiorg (VOCERO_MODE=cloud, CRM_ORGANIZATION vacía). Autenticación en TODAS las rutas: Authorization: Bearer <credencial> + X-Vocero-Organization: <slug | organization.id>, con credencial = base64url sin relleno de HMAC-SHA256(secreto del despliegue asignado, \"vocero:cerebro:v1:\" + organization.id). Cualquier fallo de credencial: el mismo 401; tras 20 rechazos por IP en 10 min, 429; negocio suspendido, 403 organizacion_suspendida. Errores: { error: { code, message } }, salvo el 404 VACÍO de la agenda apagada. Contrato normativo: specs/070-cerebro-multiorg/contracts/brains.md. Auditoría 070: 401/403 son terminales para el cerebro; fallos contados por (IP, organización); errores no controlados → 500 internal con sobre. 071: Nea multiorg manda X-Vocero-Organization con el organization.id (el slug se sigue aceptando); agent gana treatment (tu|usted|neutro), stallEnabled y agendaEnabled, aditivos (contextVersion sigue en 2; el cerebro ignora claves que no conoce). Delta normativo: specs/071-cerebro-aliantis-produccion/contracts/brains-071.md. 072: el contexto gana fichaSchema (los campos de la ficha del negocio; falta si no hay) y PUT /api/brains/ficha gana ignored (solo si se descartó algún valor por su tipo). 072-B: el contexto gana moduleTools (herramientas de módulos encendidos; falta si no hay) y nace POST /api/brains/tools/{name}. Delta normativo: specs/072-motor-multi-nicho/contracts/brains-072.md. 073-C: el evento de despacho suma, solo cuando aplican y al final de cada mensaje, `messages[].replyTo` ({id, author: lead|negocio, type, text}) y `messages[].contacts[].phones` (esquema Mensaje de docs/openapi.json); las reacciones quedan en la bandeja y no se despachan. Las etiquetas de horario (`label`) van en 12 h («3:00 p. m.»); `startUtc` sigue en ISO. 074: knowledge[] solo trae entradas activas (fijadas primero, luego sort_order) y suma title opcional; el contexto suma resources ([{label,url https}], ≤10, ausente si no hay). Ficha de ensayo X-Vocero-Ensayo (la firma el CRM para «Probar mi agente»): con ella solo POST /api/brains/llm/* y GET /api/brains/agenda/slots de la conversación de la ficha (sin registrar oferta); cualquier otra ruta → 403 ensayo_solo_lectura; ficha mala o vencida → 401. Cabecera opcional X-Vocero-Dispatch en /api/brains/llm/* para el registro de uso (llm_usage). Delta normativo: specs/074-kb-playground-observabilidad/contracts/brains-074.md."
   },
   "components": {
     "securitySchemes": {
@@ -249,6 +249,59 @@
                           "minimum": 0,
                           "maximum": 2,
                           "description": "073-B (decisión #10) — La fija la plataforma (Blueprint `bot.temperature`; 0.4 por defecto). Oculta al cliente. El modelo de respaldo (decisión #8) no viaja: lo pone el proxy de /api/brains/llm como `models: [principal, respaldo]`."
+                        }
+                      }
+                    },
+                    "resources": {
+                      "type": "array",
+                      "maxItems": 10,
+                      "description": "074 (D8) — Enlaces oficiales verificados del negocio (Maps, catálogo, web, pago): los ÚNICOS que el agente puede compartir. Son datos, no instrucciones. Ausente si no hay ninguno.",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "label",
+                          "url"
+                        ],
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "maxLength": 60
+                          },
+                          "url": {
+                            "type": "string",
+                            "format": "uri",
+                            "pattern": "^https://",
+                            "maxLength": 500
+                          }
+                        }
+                      }
+                    },
+                    "knowledge": {
+                      "type": "array",
+                      "description": "Conocimiento del negocio. 074: solo entradas activas, fijadas primero y luego en el orden del negocio; title (≤120) opcional.",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "qa",
+                              "block"
+                            ]
+                          },
+                          "question": {
+                            "type": "string"
+                          },
+                          "answer": {
+                            "type": "string"
+                          },
+                          "content": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string",
+                            "maxLength": 120
+                          }
                         }
                       }
                     }
@@ -512,13 +565,28 @@
           },
           "415": {
             "description": "content_type (debe ser application/json)"
+          },
+          "403": {
+            "description": "ensayo_solo_lectura (solo fuera de las rutas permitidas) / organizacion_suspendida"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "X-Vocero-Dispatch",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[\\w-]{1,64}$"
+            },
+            "description": "074 — El despacho del turno en curso; solo para llm_usage. Opcional."
+          }
+        ]
       }
     },
     "/api/brains/agenda/slots": {
       "get": {
-        "summary": "Huecos que se ofrecen (registra la oferta). Agenda apagada en el negocio → 404 VACÍO; conversación inexistente → 404 con sobre.",
+        "summary": "Huecos que se ofrecen (registra la oferta). Agenda apagada en el negocio → 404 VACÍO; conversación inexistente → 404 con sobre. 074: con X-Vocero-Ensayo, solo la conversación de la ficha y SIN registrar la oferta.",
         "parameters": [
           {
             "name": "conversationId",
@@ -541,6 +609,9 @@
         "responses": {
           "200": {
             "description": "{ slots, diasConAgenda, query }"
+          },
+          "403": {
+            "description": "074 — ensayo_solo_lectura: la ficha de ensayo es de otra conversación"
           }
         }
       }

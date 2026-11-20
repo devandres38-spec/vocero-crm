@@ -1,9 +1,10 @@
-import { asc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { apiError } from "@/lib/api";
 import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
 import { serializeBotProfile, type BotLlm } from "@/server/bot/profile";
 import { resolveAiProvider } from "@/lib/ai/provider";
+import { kbParaElCerebro, recursosDe } from "@/server/kb";
 
 export const dynamic = "force-dynamic";
 
@@ -34,15 +35,12 @@ export async function GET(req: Request) {
     return apiError(404, "no_profile", "La instancia no tiene perfil de agente");
   }
 
-  const kb = await db
-    .select()
-    .from(schema.kbEntry)
-    .where(eq(schema.kbEntry.organizationId, organizationId))
-    .orderBy(asc(schema.kbEntry.createdAt));
+  // 074 (D8): solo lo activo, en el orden del dueño, y sus enlaces verificados.
+  const [kb, resources] = await Promise.all([kbParaElCerebro(organizationId), recursosDe(organizationId)]);
 
   // 036 — Con qué piensa el cerebro que no trae llave: el proxy del CRM.
   const ia = await resolveAiProvider(organizationId);
   const llm: BotLlm = ia.ok && ia.provider.model ? { path: "/api/bot/llm", model: ia.provider.model } : null;
 
-  return Response.json(serializeBotProfile(profile, kb, llm));
+  return Response.json(serializeBotProfile(profile, kb, llm, resources));
 }

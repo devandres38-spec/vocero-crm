@@ -1,6 +1,7 @@
 import { apiError } from "@/lib/api";
 import { requireBrain, type AmbitoCerebro } from "@/server/brains/auth";
 import { requireBrainAgenda } from "@/server/brains/agenda";
+import { rutaPermitidaEnEnsayo } from "@/server/brains/ensayo-ficha";
 
 /**
  * Auditoría 070 (A-7) — El envoltorio de TODA ruta de `/api/brains/*`.
@@ -23,6 +24,23 @@ async function seguro(ruta: string, fn: () => Promise<Response>): Promise<Respon
   }
 }
 
+/**
+ * 074 (D9) — Con ficha de ensayo solo se piensa y se leen huecos; cualquier
+ * otra ruta es 403 aunque la credencial sea buena (un ensayo no escribe).
+ */
+function bloqueoDeEnsayo(req: Request, ambito: AmbitoCerebro): Response | null {
+  if (!ambito.ensayo) return null;
+  let ruta = "";
+  try {
+    ruta = new URL(req.url).pathname;
+  } catch {
+    ruta = "";
+  }
+  return rutaPermitidaEnEnsayo(ruta, req.method.toUpperCase())
+    ? null
+    : apiError(403, "ensayo_solo_lectura", "Un ensayo solo puede pensar y consultar huecos");
+}
+
 function nombreDe(req: Request): string {
   try {
     return new URL(req.url).pathname;
@@ -42,6 +60,8 @@ export function withBrain<C>(handler: Manejador<C>) {
   return async (req: Request, ctx: C): Promise<Response> => {
     const g = await requireBrain(req);
     if (!g.ok) return g.response;
+    const bloqueo = bloqueoDeEnsayo(req, g.ambito);
+    if (bloqueo) return bloqueo;
     return seguro(nombreDe(req), () => handler(req, g.ambito, ctx));
   };
 }
@@ -52,6 +72,8 @@ export function withBrainAgenda<C>(handler: Manejador<C>) {
   return async (req: Request, ctx: C): Promise<Response> => {
     const g = await requireBrainAgenda(req);
     if (!g.ok) return g.response;
+    const bloqueo = bloqueoDeEnsayo(req, g.ambito);
+    if (bloqueo) return bloqueo;
     return seguro(nombreDe(req), () => handler(req, g.ambito, ctx));
   };
 }

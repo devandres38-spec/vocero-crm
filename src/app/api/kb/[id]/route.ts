@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { kbCategoriaSchema, kbTituloSchema } from "@/lib/kb";
 
 /** 069 (D5) — Configuración del negocio: la puede cambiar un acceso de soporte de nivel `configuracion`. */
 const SOPORTE_CONFIGURACION = { soporte: "configuracion" } as const;
@@ -11,11 +12,24 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ id: string }> };
 
-const patchSchema = z.object({
-  question: z.string().trim().min(1).max(500).optional(),
-  answer: z.string().trim().min(1).max(4000).optional(),
-  content: z.string().trim().min(1).max(8000).optional(),
-});
+/**
+ * 074 (D8) — Edición en su sitio: el texto y la organización de la entrada
+ * (título, categoría, activa, fijada, orden). Corregir un precio ya no exige
+ * borrar. `title: null` o vacío quita el título.
+ */
+const patchSchema = z
+  .object({
+    question: z.string().trim().min(1).max(500).optional(),
+    answer: z.string().trim().min(1).max(4000).optional(),
+    content: z.string().trim().min(1).max(8000).optional(),
+    title: kbTituloSchema.nullable().optional(),
+    category: kbCategoriaSchema.optional(),
+    enabled: z.boolean().optional(),
+    pinned: z.boolean().optional(),
+    sortOrder: z.number().int().min(-100_000).max(100_000).optional(),
+  })
+  .strict()
+  .refine((d) => Object.keys(d).length > 0, { message: "sin_cambios" });
 
 export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   const { id } = await ctx.params;
@@ -25,7 +39,11 @@ export const PATCH = withAuth(async (session, req: Request, ctx: Params) => {
   const db = getDb();
   const updated = await db
     .update(schema.kbEntry)
-    .set({ ...body.data, updatedAt: new Date() })
+    .set({
+      ...body.data,
+      ...(body.data.title !== undefined ? { title: body.data.title?.trim() || null } : {}),
+      updatedAt: new Date(),
+    })
     .where(
       scoped(
         schema.kbEntry.organizationId,

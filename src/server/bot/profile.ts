@@ -1,5 +1,5 @@
 import type { schema } from "@/lib/db";
-import { renderKb } from "@/server/ai/prompts";
+import { renderKb, type Recurso } from "@/lib/kb";
 import { herramientasEfectivas, rolDe, tratoDe } from "@/lib/agent-roles";
 
 type AgentProfile = typeof schema.agentProfile.$inferSelect;
@@ -28,7 +28,16 @@ type KbEntry = typeof schema.kbEntry.$inferSelect;
  */
 export type BotLlm = { path: string; model: string } | null;
 
-export function serializeBotProfile(profile: AgentProfile, kb: KbEntry[], llm: BotLlm = null) {
+/**
+ * 074 (D8) — `kb` llega YA filtrada y ordenada (`kbParaElCerebro`) y
+ * `resources` son los enlaces verificados del negocio (antes, siempre `[]`).
+ */
+export function serializeBotProfile(
+  profile: AgentProfile,
+  kb: KbEntry[],
+  llm: BotLlm = null,
+  resources: Recurso[] = []
+) {
   return {
     profile: {
       name: profile.name,
@@ -42,7 +51,7 @@ export function serializeBotProfile(profile: AgentProfile, kb: KbEntry[], llm: B
       stallEnabled: profile.stallEnabled ?? true,
     },
     kb: renderKb(kb),
-    resources: [] as { label: string; url: string }[],
+    resources,
     llm,
   };
 }

@@ -1,6 +1,7 @@
 import { apiError } from "@/lib/api";
 import { requireBotKey, resolveInstanceOrg } from "@/server/bot/auth";
 import { pensarPorElCerebro } from "@/server/bot/llm-proxy";
+import { dispatchIdDeCabecera } from "@/server/llm-usage";
 
 export const dynamic = "force-dynamic";
 // Un modelo puede tardar en contestar: el default cortaría un turno sano.
@@ -32,6 +33,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ ruta: s
     ruta: ruta.map(encodeURIComponent).join("/"),
     cuerpoCrudo: await req.text(),
     contentType: req.headers.get("content-type"),
+    // 074 (E8): el despacho del turno, si el cerebro lo manda.
+    dispatchId: dispatchIdDeCabecera(req.headers.get("x-vocero-dispatch")),
   });
   if (!r.ok) return apiError(r.status, r.code, r.message);
   return new Response(r.cuerpo, { status: r.status, headers: { "Content-Type": r.contentType } });

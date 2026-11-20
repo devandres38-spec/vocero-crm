@@ -44,11 +44,20 @@ export function fechaValida(value: string): boolean {
  * Los huecos que se le ofrecen al cliente. REGISTRA la oferta: es lo que
  * después habilita la reserva.
  */
-export async function huecosParaElCerebro(req: Request, organizationId: string): Promise<Response> {
+export async function huecosParaElCerebro(
+  req: Request,
+  organizationId: string,
+  opciones: { ensayo?: { conversationId: string } } = {}
+): Promise<Response> {
   const url = new URL(req.url);
   const conversationId = url.searchParams.get("conversationId");
   if (!conversationId) {
     return apiError(422, "invalid_body", "Falta conversationId");
+  }
+  // 074 (D9, E7) — Un ensayo solo lee huecos de SU conversación sintética.
+  const ensayo = opciones.ensayo;
+  if (ensayo && conversationId !== ensayo.conversationId) {
+    return apiError(403, "ensayo_solo_lectura", "La ficha de ensayo es de otra conversación");
   }
   // `date` es opcional; vacío cuenta como ausente. Mal formada o inexistente
   // en el calendario (2026-02-31) → 422, nunca un 500 ni el reparto callado.
@@ -61,18 +70,20 @@ export async function huecosParaElCerebro(req: Request, organizationId: string):
     );
   }
 
-  const rows = await getDb()
-    .select({ id: schema.conversation.id })
-    .from(schema.conversation)
-    .where(
-      scoped(
-        schema.conversation.organizationId,
-        organizationId,
-        eq(schema.conversation.id, conversationId)
+  if (!ensayo) {
+    const rows = await getDb()
+      .select({ id: schema.conversation.id })
+      .from(schema.conversation)
+      .where(
+        scoped(
+          schema.conversation.organizationId,
+          organizationId,
+          eq(schema.conversation.id, conversationId)
+        )
       )
-    )
-    .limit(1);
-  if (!rows[0]) return apiError(404, "not_found", "Conversación no encontrada");
+      .limit(1);
+    if (!rows[0]) return apiError(404, "not_found", "Conversación no encontrada");
+  }
 
   const limit = clamp(url.searchParams.get("limit"), LIMITS.limit);
   const perDay = clamp(url.searchParams.get("perDay"), LIMITS.perDay);
@@ -108,7 +119,8 @@ export async function huecosParaElCerebro(req: Request, organizationId: string):
   // consulta por día que no encontró nada NO borra lo ya ofrecido: el cliente
   // que pregunta por el sábado y oye «ese día no abrimos» todavía puede
   // quedarse con el viernes que se le dio antes.
-  if (!date || slots.length > 0) {
+  // 074 (E7): un ensayo no registra oferta (su conversación no existe).
+  if (!ensayo && (!date || slots.length > 0)) {
     await replaceOffers(
       organizationId,
       conversationId,
