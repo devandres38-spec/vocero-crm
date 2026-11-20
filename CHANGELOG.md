@@ -12,6 +12,16 @@ auditoría. Migraciones aditivas `0035`–`0037` (se aplican solas al arrancar).
 Actualizar **el CRM antes que Nea**. Contrato:
 [brains-073](specs/073-bot-produccion/contracts/brains-073.md).
 
+### Parche final de la auditoría 073-C
+
+- La Bandeja nombra las reacciones («Reacción») en vez de «Contenido».
+- Las citas del contexto del cerebro (`next`/`last`) llevan la hora en 12 h
+  («hoy lunes, 14 de septiembre, 10:30 a. m.»), como las demás etiquetas; el
+  día sigue completo y relativo.
+- `replyTo.text` de una foto o documento citado trae su pie de foto.
+- Teléfonos de una tarjeta de contacto: un `phone` vacío ya no tapa al
+  `wa_id`, y cada uno se acota a 40 caracteres.
+
 ### Bot de Producción, ronda 073-C — calidad conversacional, comprobantes y Colombia
 
 - **Reacciones** (👍) a la bandeja, sin despertar al agente ni abrir la

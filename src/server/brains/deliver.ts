@@ -9,6 +9,7 @@ import {
   CABECERA_EVENTO,
   CABECERA_FIRMA,
   CABECERA_ORG,
+  replyToTexto,
   type EventoOlvido,
   type EventoDespacho,
   type MensajeParaEvento,
@@ -107,8 +108,10 @@ async function citadosDe(
       direction: schema.message.direction,
       type: schema.message.type,
       text: schema.message.text,
+      caption: schema.mediaAsset.caption,
     })
     .from(schema.message)
+    .leftJoin(schema.mediaAsset, eq(schema.mediaAsset.id, schema.message.mediaAssetId))
     .where(
       scoped(
         schema.message.organizationId,
@@ -122,7 +125,7 @@ async function citadosDe(
       id: c.id,
       author: c.direction === "in" ? "lead" : "negocio",
       type: c.type,
-      text: c.text ? c.text.slice(0, 500) : null,
+      ...replyToTexto(c.text, c.caption),
     });
   }
   return out;

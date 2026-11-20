@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { armarEvento, tarjetasDe } from "@/server/brains/contract";
+import { armarEvento, replyToTexto, tarjetasDe } from "@/server/brains/contract";
+import { mediaLabel } from "@/components/inbox/helpers";
 import { idiomaDePlantillaPara } from "@/lib/template-languages";
-import { hora12, labelInTz } from "@/lib/time/slots";
+import { hora12, hora12InTz, labelInTz } from "@/lib/time/slots";
 import { formatPhone } from "@/lib/utils";
 
 /** 073-C — Calidad conversacional y Colombia (lado CRM). */
@@ -69,6 +70,37 @@ describe("evento de despacho: replyTo y teléfonos (aditivos)", () => {
       ],
     });
     expect(e.messages[0]!.contacts).toEqual([{ name: "Luis Pérez", phones: ["+57 300 111 2233"] }, { name: "Sofi" }]);
+  });
+});
+
+describe("parche final de la auditoría 073-C", () => {
+  it("un teléfono vacío no tapa al wa_id y se acota a 40", () => {
+    const payload = [
+      { name: { formatted_name: "Luis" }, phones: [{ phone: "   ", wa_id: "573001112233" }, { phone: "9".repeat(80) }] },
+    ];
+    expect(tarjetasDe(payload)).toEqual([{ name: "Luis", phones: ["573001112233", "9".repeat(40)] }]);
+  });
+
+  it("replyTo de una foto con pie usa el caption", () => {
+    expect(replyToTexto(null, "así quedó")).toEqual({ text: "así quedó" });
+    expect(replyToTexto("  ", "pie")).toEqual({ text: "pie" });
+    expect(replyToTexto("hola", "pie")).toEqual({ text: "hola" });
+    expect(replyToTexto(null, null)).toEqual({ text: null });
+    expect(replyToTexto(null, "x".repeat(900)).text).toHaveLength(500);
+    const deliver = leer("src", "server", "brains", "deliver.ts");
+    expect(deliver).toMatch(/leftJoin\(schema\.mediaAsset/);
+    expect(deliver).toMatch(/replyToTexto\(c\.text, c\.caption\)/);
+  });
+
+  it("la reacción tiene etiqueta en la bandeja", () => {
+    expect(mediaLabel("reaction")).toBe("Reacción");
+  });
+
+  it("la hora de las citas en contexto va en 12 h", () => {
+    expect(hora12InTz("2026-11-23T20:30:00Z", "America/Bogota", "es-CO")).toBe("3:30 p. m.");
+    expect(hora12InTz("2026-11-23T05:05:00Z", "America/Bogota", "es-CO")).toBe("12:05 a. m.");
+    expect(hora12InTz("2026-11-23T20:30:00Z", "America/Bogota", "en-US")).toBe("3:30 PM");
+    expect(hora12InTz("no-es-fecha", "America/Bogota")).toBe("");
   });
 });
 

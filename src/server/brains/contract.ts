@@ -196,6 +196,15 @@ function mensajeDelEvento(m: MensajeParaEvento): MensajeDelEvento {
 }
 
 /**
+ * 073-C — El texto de un mensaje citado (`replyTo.text`, ≤ 500): el texto, o
+ * el pie del adjunto si el citado es una foto/documento con caption.
+ */
+export function replyToTexto(text: string | null, caption: string | null | undefined): { text: string | null } {
+  const valor = text?.trim() ? text : caption?.trim() ? caption : null;
+  return { text: valor ? valor.slice(0, 500) : null };
+}
+
+/**
  * 073-C (D5) — Las tarjetas de contacto con sus teléfonos
  * (`contacts[].phones[].phone` de Meta, hasta 3 por tarjeta).
  */
@@ -214,9 +223,14 @@ export function tarjetasDe(payload: unknown): { name: string; phones: string[] }
     if (!tieneNombre) continue;
     const phones = Array.isArray((tarjeta as { phones?: unknown }).phones)
       ? ((tarjeta as { phones: unknown[] }).phones
-          .map((p) => (p && typeof p === "object" ? (p as { phone?: unknown; wa_id?: unknown }).phone ?? (p as { wa_id?: unknown }).wa_id : null))
-          .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
-          .map((p) => p.trim())
+          .map((p) => {
+            if (!p || typeof p !== "object") return "";
+            const { phone, wa_id } = p as { phone?: unknown; wa_id?: unknown };
+            const limpio = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+            // `phone` vacío no tapa a `wa_id`; y nada de un vCard gigante.
+            return (limpio(phone) || limpio(wa_id)).slice(0, 40);
+          })
+          .filter((p) => p.length > 0)
           .slice(0, 3))
       : [];
     out.push({ name: nombres[i]!, phones });

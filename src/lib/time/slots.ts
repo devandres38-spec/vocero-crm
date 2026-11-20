@@ -249,6 +249,21 @@ export function hora12(hora24: number, minuto: string, locale = "es"): string {
   return `${h % 12 || 12}:${minuto.padStart(2, "0")} ${sufijo}`;
 }
 
+/** La hora en la zona del negocio, en 12 h: "3:00 p. m." (solo presentación). */
+export function hora12InTz(startUtc: string, tz: string, locale = getRegion().locale): string {
+  const d = new Date(startUtc);
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const hora = parts.find((p) => p.type === "hour")?.value ?? "0";
+  const minuto = parts.find((p) => p.type === "minute")?.value ?? "00";
+  return hora12(Number(hora), minuto, locale);
+}
+
 /** Solo la hora en la zona del negocio: "10:00". */
 export function timeInTz(startUtc: string, tz: string, locale = getRegion().locale): string {
   const d = new Date(startUtc);

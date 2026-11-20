@@ -101,4 +101,7 @@ el de antes.
   empieza por «Posible comprobante de pago — validar en banco antes de
   confirmar.» (decisión #4).
 - Una respuesta prometiendo un asesor sin `handoff` registra el handoff con
-  `reason: "modelo"`.
+  `reason: "modelo"`. Una pregunta («¿te paso con un asesor?») o una oferta
+  condicional («si quieres…») no es promesa y no lo dispara.
+- Las citas de `next`/`last` del contexto llevan la hora en 12 h en `label`
+  (el día sigue completo y relativo: «hoy lunes, 14 de septiembre, 10:30 a. m.»).

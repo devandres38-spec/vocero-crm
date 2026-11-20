@@ -1,7 +1,7 @@
 # Tasks: Bot de Producción (073)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-073.md](contracts/brains-073.md)
-**Estado**: D1–D7, D10 y las 10 respuestas de producto aprobadas (2026-11-19). 073-A implementada, auditada y parcheada (TA1–TA8). 073-B implementada, auditada y parcheada (TB1–TB6). **073-C implementada (C1–C6)**, versión 2.14.0; pendiente CI, staging y auditoría final (C65–C67).
+**Estado**: D1–D7, D10 y las 10 respuestas de producto aprobadas (2026-11-19). 073-A implementada, auditada y parcheada (TA1–TA8). 073-B implementada, auditada y parcheada (TB1–TB6). **073-C implementada (C1–C6)**, versión 2.14.0; auditoría final aprobada con parche (C67); pendiente CI y staging (C65–C66).
 
 Convenciones: `[P]` paralelizable · `[crm]` `vocero-crm` · `[nea]` `nea-agent` ·
 `[local]` gate en este equipo · `[CI]` · `[staging]`.
@@ -180,4 +180,4 @@ Nada de `next build`, Docker ni E2E en local.
 - [x] C64 Subir `feat/073-bot-produccion` (sin merge) y reportar
 - [ ] C65 `[CI]` build + E2E
 - [ ] C66 `[staging]` comprobante Nequi, `<think>` de GLM, respuesta larga en Instagram, reacción, cita citada
-- [ ] C67 Auditoría final 073-C
+- [x] C67 Auditoría final 073-C (CRM aprobado; parche final de Nea y pulido menor del CRM aplicados 2026-11-20)
