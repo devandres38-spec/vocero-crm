@@ -293,8 +293,26 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
   }
 
   for (const msg of value.messages ?? []) {
+    // 073-C (D5): una reacción queda en la bandeja (el equipo la ve) pero no
+    // es un turno: no se le despacha al cerebro ni abre la ventana.
+    if (msg.type === "reaction") {
+      const emoji = msg.reaction?.emoji?.trim();
+      const resolvedReaccion = emoji ? resolveIdentity(msg, value.contacts) : null;
+      if (!emoji || !resolvedReaccion) continue; // quitar una reacción no deja rastro
+      await ingestInboundMessage({
+        organizationId,
+        identity: resolvedReaccion,
+        waMessageId: msg.id,
+        type: "reaction",
+        text: emoji,
+        timestamp: msg.timestamp,
+        replyToWaMessageId: msg.reaction?.message_id ?? null,
+        despachar: false,
+      });
+      continue;
+    }
     if (!SUPPORTED_TYPES.has(msg.type) && !BUTTON_REPLY_TYPES.has(msg.type)) {
-      continue; // reacciones, etc.: ignorar
+      continue; // otros tipos: ignorar
     }
     const contenido = contenidoEntrante(msg);
     if (!contenido) {
@@ -454,6 +472,11 @@ export async function ingestInboundMessage(input: {
   threadRef?: string | null;
   /** 016/018: el anuncio que abrió la conversación, ya normalizado por el canal. */
   anuncio?: AnuncioDeOrigen | null;
+  /**
+   * 073-C (D5): `false` = solo a la bandeja (una reacción): ni despacho al
+   * cerebro ni ventana de 24 h.
+   */
+  despachar?: boolean;
 }): Promise<void> {
   const db = getDb();
   const { organizationId } = input;
@@ -528,10 +551,11 @@ export async function ingestInboundMessage(input: {
     ? await attachMediaAsset(organizationId, message.id, input.media)
     : null;
 
+  const esTurno = input.despachar !== false;
   await db
     .update(schema.conversation)
     .set({
-      lastInboundAt: waTimestamp,
+      ...(esTurno ? { lastInboundAt: waTimestamp } : {}),
       lastMessageAt: waTimestamp,
       unreadCount: sql`${schema.conversation.unreadCount} + 1`,
       updatedAt: new Date(),
@@ -555,6 +579,8 @@ export async function ingestInboundMessage(input: {
     type: "conversation.updated",
     data: { conversation: { id: conversation.id } },
   });
+
+  if (!esTurno) return;
 
   // 073-B (D6, Ley 1581) — Una baja inequívoca se registra aquí (confirmación
   // fija + pausa) y no le llega al cerebro. Lo dudoso lo decide el agente.

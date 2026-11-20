@@ -137,7 +137,7 @@ describe("filterFreeSlots", () => {
     });
     const tiempos = libres.map((s) => Date.parse(s.startUtc));
     expect([...tiempos].sort((a, b) => a - b)).toEqual(tiempos);
-    expect(libres[0]!.label).toContain("09:00");
+    expect(libres[0]!.label).toContain("9:00 a. m."); // 073-C: 12 h
   });
 
   it("agenda llena ⇒ lista vacía, no error", () => {

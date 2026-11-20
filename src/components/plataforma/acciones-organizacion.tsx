@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { MailPlus, Pause, Play } from "lucide-react";
@@ -47,6 +48,8 @@ function Error({ texto }: { texto: string | null }) {
 
 /** Pestaña «Invitaciones»: generar un enlace de un uso y gestionar las pendientes. */
 export function InvitacionesOrganizacion({ id, invitaciones }: { id: string; invitaciones: Invitacion[] }) {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const router = useRouter();
   const { llamar, error, ocupado } = useLlamada(id);
   const [email, setEmail] = useState("");
@@ -107,7 +110,7 @@ export function InvitacionesOrganizacion({ id, invitaciones }: { id: string; inv
                     <span className="ml-2 rounded bg-warning-tint px-1.5 py-0.5 text-[11px] text-warning-text">Vencida</span>
                   ) : (
                     <span className="ml-2 text-xs text-text-3">
-                      vence {new Date(i.expiresAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                      vence {new Date(i.expiresAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
                     </span>
                   )}
                 </span>

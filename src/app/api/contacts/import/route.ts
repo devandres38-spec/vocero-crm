@@ -41,7 +41,7 @@ export const POST = withAuth(async (session, req: Request) => {
     return apiError(
       422,
       "nothing_to_import",
-      "Ningún renglón trae un teléfono válido"
+      "Ninguna fila trae un teléfono válido"
     );
   }
 

@@ -74,3 +74,31 @@ proveedor es OpenRouter y el cuerpo no trae su propia lista.
 ### §6 Herramientas reservadas
 
 `solicitar_baja` se suma a `RESERVADOS` (ningún módulo puede llamarse así).
+
+## 073-C (fijado 2026-11-20)
+
+### §7 Evento de despacho — campos nuevos (aditivos)
+
+Documentados en `docs/openapi.json` (esquema `Mensaje`). Van al final de cada
+mensaje y solo cuando aplican: un despacho sin cita ni tarjetas es byte a byte
+el de antes.
+
+| Campo | Forma | Cuándo |
+|---|---|---|
+| `messages[].replyTo` | `{ id, author: "lead"\|"negocio", type, text \| null }` (`text` ≤ 500) | El cliente respondió citando un mensaje que está en la conversación. |
+| `messages[].contacts[].phones` | `string[]` (≤ 3 por tarjeta) | La tarjeta de contacto trae teléfonos. |
+
+- Las **reacciones** (👍) se guardan en la bandeja como `type: "reaction"` y
+  **no** se despachan (ni extienden la ventana de 24 h). Un cerebro que aun así
+  reciba una (CRM anterior) debe ignorarla.
+- Las **etiquetas** de horario (`label` de slots y citas) van en 12 h
+  («lun 23 nov, 3:00 p. m.»). Lo que es dato (`startUtc`, `start_utc`) sigue
+  en ISO: el cerebro reserva con eso, nunca con la etiqueta.
+
+### §8 Lo que Nea garantiza desde 073-C (sin cambio de contrato)
+
+- Un posible comprobante de pago termina en `handoff` con `summary` que
+  empieza por «Posible comprobante de pago — validar en banco antes de
+  confirmar.» (decisión #4).
+- Una respuesta prometiendo un asesor sin `handoff` registra el handoff con
+  `reason: "modelo"`.

@@ -234,7 +234,19 @@ export function labelInTz(startUtc: string, tz: string, locale = getRegion().loc
   for (const p of parts) map[p.type] = p.value;
   const weekday = (map.weekday ?? "").replace(/\.$/, "");
   const month = (map.month ?? "").replace(/\.$/, "");
-  return `${weekday} ${map.day} ${month}, ${map.hour}:${map.minute}`;
+  return `${weekday} ${map.day} ${month}, ${hora12(Number(map.hour), map.minute ?? "00", locale)}`;
+}
+
+/**
+ * 073-C (D7) — La hora como se dice en Colombia: «3:00 p. m.». Solo
+ * presentación (etiquetas para el cliente y la UI); lo que viaja como dato
+ * (`startUtc`, `time`) sigue en ISO / 24 h.
+ */
+export function hora12(hora24: number, minuto: string, locale = "es"): string {
+  const h = hora24 % 24;
+  const espanol = locale.toLowerCase().startsWith("es");
+  const sufijo = espanol ? (h < 12 ? "a. m." : "p. m.") : h < 12 ? "AM" : "PM";
+  return `${h % 12 || 12}:${minuto.padStart(2, "0")} ${sufijo}`;
 }
 
 /** Solo la hora en la zona del negocio: "10:00". */

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,8 @@ const EVENT_LABEL: Record<string, string> = {
 };
 
 export function AdsClient() {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const [capi, setCapi] = useState<Capi | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [activity, setActivity] = useState<ActivityRow[] | null>(null);
@@ -286,7 +289,7 @@ export function AdsClient() {
                         </Badge>
                       </td>
                       <td className="py-2 pr-3 whitespace-nowrap text-muted-foreground">
-                        {new Date(row.at).toLocaleString()}
+                        {new Date(row.at).toLocaleString(locale)}
                       </td>
                       <td className="py-2 text-xs text-muted-foreground">
                         {row.error ?? row.fbTraceId ?? "—"}

@@ -15,11 +15,12 @@ export type TemplateLanguageGroup = "es" | "pt-en" | "otros";
 type Entry = { code: string; name: string; group: TemplateLanguageGroup };
 
 const ESPANOL: Entry[] = [
-  { code: "es_MX", name: "Español (México)", group: "es" },
+  // 073-C (D7): Colombia primero (la región por defecto de la plataforma).
+  { code: "es_CO", name: "Español (Colombia)", group: "es" },
   { code: "es", name: "Español (general)", group: "es" },
+  { code: "es_MX", name: "Español (México)", group: "es" },
   { code: "es_AR", name: "Español (Argentina)", group: "es" },
   { code: "es_CL", name: "Español (Chile)", group: "es" },
-  { code: "es_CO", name: "Español (Colombia)", group: "es" },
   { code: "es_CR", name: "Español (Costa Rica)", group: "es" },
   { code: "es_EC", name: "Español (Ecuador)", group: "es" },
   { code: "es_ES", name: "Español (España)", group: "es" },
@@ -94,7 +95,21 @@ export const TEMPLATE_LANGUAGE_GROUPS: { id: TemplateLanguageGroup; label: strin
   { id: "otros", label: "Otros idiomas" },
 ];
 
-export const DEFAULT_TEMPLATE_LANGUAGE = "es_MX";
+/** 073-C (D7): sin región que diga otra cosa, Colombia. */
+export const DEFAULT_TEMPLATE_LANGUAGE = "es_CO";
+
+/**
+ * 073-C (D7) — El idioma de plantilla que corresponde a la región del negocio
+ * (`es-CO` → `es_CO`; `pt-BR` → `pt_BR`). Si Meta no tiene esa variante, la
+ * general del idioma (`es`, `pt_BR`…); si tampoco, el de por defecto.
+ */
+export function idiomaDePlantillaPara(locale: string | null | undefined): string {
+  const [idioma = "", pais = ""] = String(locale ?? "").replace("_", "-").split("-");
+  const exacto = pais ? `${idioma.toLowerCase()}_${pais.toUpperCase()}` : idioma.toLowerCase();
+  if (isTemplateLanguage(exacto)) return exacto;
+  if (isTemplateLanguage(idioma.toLowerCase())) return idioma.toLowerCase();
+  return DEFAULT_TEMPLATE_LANGUAGE;
+}
 
 const BY_CODE = new Map(TEMPLATE_LANGUAGES.map((l) => [l.code, l.name]));
 

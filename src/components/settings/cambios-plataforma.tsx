@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getRegion } from "@/lib/region";
 import type { CambioPlataforma } from "@/server/platform/cambios";
 
 const ACCION: Record<string, string> = {
@@ -52,7 +53,7 @@ export function CambiosPlataforma({ cambios }: { cambios: CambioPlataforma[] }) 
                 </p>
                 <p className="text-xs text-text-3">
                   {c.actor} · por {VIA[c.via] ?? c.via} ·{" "}
-                  {new Date(c.createdAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+                  {new Date(c.createdAt).toLocaleString(getRegion().locale, { dateStyle: "medium", timeStyle: "short" })}
                 </p>
               </li>
             ))}

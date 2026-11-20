@@ -20,7 +20,8 @@ describe("idiomas de plantilla", () => {
 
   it("el español va primero y el de México es el predeterminado", () => {
     expect(TEMPLATE_LANGUAGES[0]?.code).toBe(DEFAULT_TEMPLATE_LANGUAGE);
-    expect(DEFAULT_TEMPLATE_LANGUAGE).toBe("es_MX");
+    // 073-C (D7): Colombia por defecto.
+    expect(DEFAULT_TEMPLATE_LANGUAGE).toBe("es_CO");
     expect(TEMPLATE_LANGUAGE_GROUPS[0]?.id).toBe("es");
   });
 

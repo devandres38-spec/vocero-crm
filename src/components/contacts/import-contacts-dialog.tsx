@@ -86,7 +86,7 @@ export function ImportContactsDialog({
         <h3 className="mb-1 font-semibold">Importar contactos</h3>
         <p className="mb-4 text-xs text-text-3">
           Un archivo CSV con una columna <strong>nombre</strong> y una{" "}
-          <strong>telefono</strong> en el primer renglón. El teléfono puede ir
+          <strong>telefono</strong> en la primera fila. El teléfono puede ir
           con código de país{pais.codigo ? ` (${pais.codigo} para ${pais.nombre})` : ""} o
           como número local de {pais.nombre}. A quien ya exista no se le duplica
           ni se le cambia el nombre.
@@ -126,7 +126,7 @@ export function ImportContactsDialog({
               <div className="mt-4 space-y-3">
                 <p className="text-sm">
                   <strong>{preview.valid.length}</strong> de {preview.total}{" "}
-                  renglones de <span className="text-text-3">{fileName}</span>{" "}
+                  filas de <span className="text-text-3">{fileName}</span>{" "}
                   se pueden importar.
                 </p>
 
@@ -156,13 +156,13 @@ export function ImportContactsDialog({
                     <summary className="cursor-pointer">
                       {preview.problems.length}{" "}
                       {preview.problems.length === 1
-                        ? "renglón se queda fuera"
-                        : "renglones se quedan fuera"}
+                        ? "fila se queda fuera"
+                        : "filas se quedan fuera"}
                     </summary>
                     <ul className="mt-2 max-h-32 space-y-0.5 overflow-y-auto">
                       {preview.problems.map((p) => (
                         <li key={p.line}>
-                          Renglón {p.line}
+                          Fila {p.line}
                           {p.name ? ` (${p.name})` : ""}: {PROBLEM_LABELS[p.reason]}
                         </li>
                       ))}

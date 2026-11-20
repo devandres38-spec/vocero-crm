@@ -1,7 +1,7 @@
 # Tasks: Bot de Producción (073)
 
 **Input**: [spec.md](spec.md) · [plan.md](plan.md) · [contracts/brains-073.md](contracts/brains-073.md)
-**Estado**: D1–D7, D10 y las 10 respuestas de producto aprobadas (2026-11-19). 073-A implementada, auditada y parcheada (TA1–TA8). **073-B implementada (B0–B6)** y subida sin merge; pendiente CI, staging y auditoría (B64–B66). 073-C sin empezar.
+**Estado**: D1–D7, D10 y las 10 respuestas de producto aprobadas (2026-11-19). 073-A implementada, auditada y parcheada (TA1–TA8). 073-B implementada, auditada y parcheada (TB1–TB6). **073-C implementada (C1–C6)**, versión 2.14.0; pendiente CI, staging y auditoría final (C65–C67).
 
 Convenciones: `[P]` paralelizable · `[crm]` `vocero-crm` · `[nea]` `nea-agent` ·
 `[local]` gate en este equipo · `[CI]` · `[staging]`.
@@ -130,11 +130,54 @@ Nada de `next build`, Docker ni E2E en local.
 - [ ] B65 `[staging]` SC-B1…SC-B5
 - [ ] B66 Auditoría 073-B
 
-# Ronda 073-C — Calidad conversacional y Colombia (esquema)
+# Parche de auditoría 073-B (2026-11-20)
 
-- [ ] C1 `[nea]` Imágenes (marcador en pasado, máx. 3) y comprobantes (handoff + nota)
-- [ ] C2 `[crm][nea]` `replyTo`, teléfonos de vCard, reacciones, partición por canal, respuesta obsoleta
-- [ ] C3 `[nea]` Memoria (20 mensajes, separador temporal) y `stall` sin agenda
-- [ ] C4 `[nea]` Validador post-turno (promesas, fugas, `<think>`), `confirmacion.py`, `dia_confirmado`
-- [ ] C5 `[nea]` `hostility.py`/`stall.py`/chasis Colombia (`DELTAS_073`)
-- [ ] C6 `[crm]` `es_CO`, `formatPhone`, 12 h en presentación, placeholders y textos
+- [x] TB1 `[nea]` CRÍTICO: `_tool_loop` corta en el acto tras `solicitar_baja`; `_handoff` no pisa `opt_out`
+- [x] TB2 `[nea]` MEDIO: `summary` en la cola (`contenido_de_handoff`/`leer_handoff`, compatible con texto plano)
+- [x] TB3 `[nea]` BAJO: `_caption_line` con `entre_comillas`
+- [x] TB4 `[crm]` ALTO: `pausarPorRespuestaHumana(org, conv, desde)` con el `createdAt` del mensaje; reanudar con `coalesce(least(handoffAt, aiPausedAt), ahora)`
+- [x] TB5 `[crm]` ALTO: índice parcial `dispatch_org_created_idx` (migración `0037`)
+- [x] TB6 Pruebas (`tests/test_auditoria_073b.py`; `bot-073b-flujo`, `envio-fallido-073a`) y commit separado
+
+---
+
+# Ronda 073-C — Calidad conversacional, comprobantes y Colombia
+
+## Bloque C1 — Multimedia y comprobantes (D5, P-5/P-6) `[nea]`
+- [x] C11 Marcador de imagen en PASADO en el historial (`media.en_pasado`); en presente solo en el turno que la trae
+- [x] C12 Máximo 3 imágenes por turno (las demás se anuncian)
+- [x] C13 `app/comprobantes.py`: captura + pago, o «ya pagué» → handoff obligatorio con nota «Posible comprobante — validar en banco» (decisión #4); regla en el chasis
+- [x] C14 Adjuntos de Zernio con texto: el texto es el pie (ya no salta `describe_item`); sin `transcribeModel` no se piden notas de voz (`puede_transcribir`)
+- [x] C15 Reacciones: ignoradas por el turno (handler propio, nunca `_fallback`)
+
+## Bloque C2 — Despacho y entrega (D5, P-11) `[crm][nea]`
+- [x] C21 `[crm]` `messages[].replyTo` y `contacts[].phones` (aditivos, al final); `docs/openapi.json`
+- [x] C22 `[nea]` `reply_to` → «[El lead responde citando…]»; teléfonos de la vCard en el marcador
+- [x] C23 `[crm]` Reacciones a la bandeja sin despacho ni ventana; fuera de la ráfaga
+- [x] C24 `[nea]` `app/partir.py`: por párrafos/oraciones/palabras según el canal (4096/2000/1000), sin cortar URL
+- [x] C25 `[nea]` `app/obsoleta.py` + `DispatchJob.has_newer`: respuesta sin efectos descartada si ya hay un despacho más nuevo
+
+## Bloque C3 — Memoria y cierre sin rumbo (D6, P-7) `[nea]`
+- [x] C31 `app/memoria.py`: ventana de 20 (`HISTORY_WINDOW`) con presupuesto de caracteres; separador «— N días después —» solo con hueco > 6 h (mensajes `system` entre el historial: el prefijo sigue cacheable)
+- [x] C32 `stall`: sin agenda no corta por `max_mensajes`; stickers como relleno por tipo; relleno colombiano
+
+## Bloque C4 — Guardarraíles y GLM (D7) `[nea]`
+- [x] C41 `app/validador.py`: `<think>` limpio; nombres de herramientas/`<tool_call>`, notas parciales y cita prometida sin reservar → corrección sin herramientas; asesor prometido sin `handoff` → handoff `modelo`
+- [x] C42 `confirmacion.py`: URL sin puntuación final, Maps y dirección conservados en la plantilla, «a la 1», `separ`/`reprogram`; profesional en la etiqueta (`etiqueta_con_profesional`)
+- [x] C43 `dia_confirmado` validado (cita textual de la conversación reciente) en `book_session`/`reschedule_session`
+- [x] C44 `dias.py`: «festivo», «puente», «de hoy en ocho»
+
+## Bloque C5 — Colombia y neutralidad LATAM `[crm][nea]`
+- [x] C51 `[nea]` `hostility.py`: léxico colombiano; acusaciones de robo/estafa solo si se afirman (no en preguntas); negativos *parce*, *qué chimba*
+- [x] C52 `[nea]` Chasis y herramientas sin mexicanismos → `DELTAS_073_CHASIS` (una edición; B0 sin regenerar)
+- [x] C53 `[nea]` Hora del negocio en 12 h (`hora_12`) · `[crm]` `labelInTz` en 12 h (`hora12`); `startUtc` intacto
+- [x] C54 `[crm]` `idiomaDePlantillaPara(locale)` (`es_CO` por defecto), `formatPhone` con libphonenumber, textos y placeholders (`150.000`, `valor`, `registrar`, `Almuerzo`, `cupos`, `fila`), `toLocaleString` con la región
+
+## Bloque C6 — Cierre 2.14.0
+- [x] C61 `openapi.json`, `openapi-brains.json`, `contracts/brains-073.md` §7–§8, CHANGELOG
+- [x] C62 Versión **2.14.0** (`package.json`, `docker-compose.yml`, `fly.toml`, `railway.toml`, `render.yaml`, `README.md`)
+- [x] C63 `[local]` Gates de ambos repos verdes; 6 dorados B0 intactos
+- [x] C64 Subir `feat/073-bot-produccion` (sin merge) y reportar
+- [ ] C65 `[CI]` build + E2E
+- [ ] C66 `[staging]` comprobante Nequi, `<think>` de GLM, respuesta larga en Instagram, reacción, cita citada
+- [ ] C67 Auditoría final 073-C

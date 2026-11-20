@@ -51,6 +51,7 @@ function columnasDelMensaje() {
     fileName: schema.mediaAsset.fileName,
     payload: schema.mediaAsset.payload,
     assetId: schema.mediaAsset.id,
+    replyToWaMessageId: schema.message.replyToWaMessageId,
   };
 }
 
@@ -65,7 +66,8 @@ function paraEvento(m: {
   fileName: string | null;
   payload: unknown;
   assetId: string | null;
-}): MensajeParaEvento {
+  replyToWaMessageId?: string | null;
+}, citados: Map<string, NonNullable<MensajeParaEvento["replyTo"]>> = new Map()): MensajeParaEvento {
   return {
     id: m.id,
     createdAt: m.createdAt,
@@ -80,7 +82,50 @@ function paraEvento(m: {
           payload: m.payload,
         }
       : null,
+    ...(m.replyToWaMessageId && citados.has(m.replyToWaMessageId)
+      ? { replyTo: citados.get(m.replyToWaMessageId)! }
+      : {}),
   };
+}
+
+/**
+ * 073-C (D5) — Los mensajes citados por la ráfaga, en una consulta (por
+ * `wa_message_id`, de ESTA conversación).
+ */
+async function citadosDe(
+  organizationId: string,
+  conversationId: string,
+  filas: { replyToWaMessageId?: string | null }[]
+): Promise<Map<string, NonNullable<MensajeParaEvento["replyTo"]>>> {
+  const ids = [...new Set(filas.map((f) => f.replyToWaMessageId).filter((x): x is string => Boolean(x)))];
+  const out = new Map<string, NonNullable<MensajeParaEvento["replyTo"]>>();
+  if (!ids.length) return out;
+  const citados = await getDb()
+    .select({
+      id: schema.message.id,
+      waMessageId: schema.message.waMessageId,
+      direction: schema.message.direction,
+      type: schema.message.type,
+      text: schema.message.text,
+    })
+    .from(schema.message)
+    .where(
+      scoped(
+        schema.message.organizationId,
+        organizationId,
+        and(eq(schema.message.conversationId, conversationId), inArray(schema.message.waMessageId, ids))
+      )
+    );
+  for (const c of citados) {
+    if (!c.waMessageId) continue;
+    out.set(c.waMessageId, {
+      id: c.id,
+      author: c.direction === "in" ? "lead" : "negocio",
+      type: c.type,
+      text: c.text ? c.text.slice(0, 500) : null,
+    });
+  }
+  return out;
 }
 
 /**
@@ -132,11 +177,15 @@ export async function rafagaDe(
   );
   const rafaga = ordenados
     .slice(ultimaSalida + 1)
-    .filter((m) => m.direction === "in");
+    // 073-C (D5): una reacción no es algo que contestar.
+    .filter((m) => m.direction === "in" && m.type !== "reaction");
 
   const enRafaga = new Set(rafaga.map((m) => m.id));
   const faltan = [...new Set(debidos)].filter((id) => !enRafaga.has(id));
-  if (!faltan.length) return rafaga.map(paraEvento);
+  if (!faltan.length) {
+    const citados = await citadosDe(organizationId, conversationId, rafaga);
+    return rafaga.map((m) => paraEvento(m, citados));
+  }
 
   // La comparación de horas se hace en Postgres, que guarda microsegundos: en
   // JS dos mensajes del mismo milisegundo no tienen orden.
@@ -168,7 +217,9 @@ export async function rafagaDe(
     .orderBy(schema.message.createdAt);
   // Los atrasados son, por definición, anteriores al último saliente; la
   // ráfaga, posterior. Concatenar ya los deja en orden.
-  return [...atrasados, ...rafaga].map(paraEvento);
+  const todos = [...atrasados, ...rafaga];
+  const citados = await citadosDe(organizationId, conversationId, todos);
+  return todos.map((m) => paraEvento(m, citados));
 }
 
 /**

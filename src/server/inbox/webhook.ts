@@ -124,6 +124,8 @@ export type WebhookMessage = {
   context?: { from?: string; id?: string };
   /** 016: origen del anuncio, cuando la conversación nació de uno. */
   referral?: WebhookReferral;
+  /** 073-C (D5): una reacción (👍) a un mensaje; `emoji` vacío = la quitó. */
+  reaction?: { message_id?: string; emoji?: string };
 };
 
 export type WebhookStatus = {

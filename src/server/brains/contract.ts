@@ -37,8 +37,17 @@ export type MensajeDelEvento = {
   fileName?: string;
   /** 031 — Solo si `type` es `location`. */
   location?: UbicacionDelEvento;
-  /** 031 — Solo si `type` es `contacts`: los nombres de las tarjetas. */
-  contacts?: { name: string }[];
+  /**
+   * 031 — Solo si `type` es `contacts`: los nombres de las tarjetas.
+   * 073-C (D5): `phones` solo si la tarjeta trae alguno (aditivo).
+   */
+  contacts?: { name: string; phones?: string[] }[];
+  /**
+   * 073-C (D5) — El mensaje que el cliente citó al responder, si se conoce.
+   * `author`: `lead` (otro mensaje suyo) o `negocio` (la IA o el equipo).
+   * Va al final y solo cuando aplica: el cuerpo gemelo no cambia.
+   */
+  replyTo?: { id: string; author: "lead" | "negocio"; type: string; text: string | null };
 };
 
 /**
@@ -99,6 +108,8 @@ export type MensajeParaEvento = {
     /** 031 — `media_asset.payload`: la ubicación o las tarjetas tal como llegaron. */
     payload?: unknown;
   } | null;
+  /** 073-C (D5) — El mensaje citado, ya resuelto. */
+  replyTo?: MensajeDelEvento["replyTo"] | null;
 };
 
 /**
@@ -175,10 +186,43 @@ function mensajeDelEvento(m: MensajeParaEvento): MensajeDelEvento {
     if (ubicacion) evento.location = ubicacion;
   }
   if (m.type === "contacts") {
-    const nombres = nombresDeTarjetas(m.media?.payload);
-    if (nombres.length) evento.contacts = nombres.map((name) => ({ name }));
+    const tarjetas = tarjetasDe(m.media?.payload);
+    if (tarjetas.length) {
+      evento.contacts = tarjetas.map((t) => (t.phones.length ? { name: t.name, phones: t.phones } : { name: t.name }));
+    }
   }
+  if (m.replyTo) evento.replyTo = m.replyTo;
   return evento;
+}
+
+/**
+ * 073-C (D5) — Las tarjetas de contacto con sus teléfonos
+ * (`contacts[].phones[].phone` de Meta, hasta 3 por tarjeta).
+ */
+export function tarjetasDe(payload: unknown): { name: string; phones: string[] }[] {
+  if (!Array.isArray(payload)) return [];
+  const nombres = nombresDeTarjetas(payload);
+  const out: { name: string; phones: string[] }[] = [];
+  let i = 0;
+  for (const tarjeta of payload) {
+    if (!tarjeta || typeof tarjeta !== "object") continue;
+    const name = (tarjeta as { name?: { formatted_name?: unknown; first_name?: unknown } }).name;
+    const tieneNombre =
+      name &&
+      ((typeof name.formatted_name === "string" && name.formatted_name.trim()) ||
+        (typeof name.first_name === "string" && name.first_name.trim()));
+    if (!tieneNombre) continue;
+    const phones = Array.isArray((tarjeta as { phones?: unknown }).phones)
+      ? ((tarjeta as { phones: unknown[] }).phones
+          .map((p) => (p && typeof p === "object" ? (p as { phone?: unknown; wa_id?: unknown }).phone ?? (p as { wa_id?: unknown }).wa_id : null))
+          .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+          .map((p) => p.trim())
+          .slice(0, 3))
+      : [];
+    out.push({ name: nombres[i]!, phones });
+    i++;
+  }
+  return out;
 }
 
 /**

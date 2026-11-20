@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LifeBuoy } from "lucide-react";
@@ -24,7 +25,7 @@ type Acceso = {
   vigente: boolean;
 };
 
-const fecha = (iso: string) => new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+const fecha = (iso: string, locale: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" });
 
 /** Pura: la insignia de un acceso de soporte. */
 export function estadoAcceso(a: Pick<Acceso, "vigente" | "revokedAt">): { texto: string; variante: "warning" | "secondary" | "destructive" } {
@@ -53,6 +54,8 @@ export function GestorSoporte({
   organizaciones: { id: string; name: string; slug: string | null }[];
   accesos: Acceso[];
 }) {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const router = useRouter();
   const [org, setOrg] = useState(orgInicial ?? organizaciones[0]?.id ?? "");
   const [level, setLevel] = useState<"lectura" | "configuracion">("lectura");
@@ -158,7 +161,7 @@ export function GestorSoporte({
                       <Badge variant={estado.variante}>{estado.texto}</Badge>
                     </p>
                     <p className="text-xs text-text-3">
-                      {a.actor} · «{a.reason}» · {fecha(a.createdAt)} → {fecha(a.expiresAt)}
+                      {a.actor} · «{a.reason}» · {fecha(a.createdAt, locale)} → {fecha(a.expiresAt, locale)}
                     </p>
                   </div>
                   {a.vigente && (

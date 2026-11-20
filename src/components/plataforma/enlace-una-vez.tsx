@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { COPIA_MANUAL, copiarAlPortapapeles } from "@/lib/clipboard";
@@ -9,6 +10,8 @@ import { COPIA_MANUAL, copiarAlPortapapeles } from "@/lib/clipboard";
  * Se dice claramente, para que nadie cierre la pantalla sin copiarlo.
  */
 export function EnlaceUnaVez({ url, expiresAt }: { url: string; expiresAt?: string }) {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const [copiado, setCopiado] = useState<boolean | null>(null);
   return (
     <div className="space-y-2 rounded-md border border-warning-soft bg-warning-tint p-3">
@@ -26,7 +29,7 @@ export function EnlaceUnaVez({ url, expiresAt }: { url: string; expiresAt?: stri
         {copiado === false && <span className="text-xs text-danger-text">{COPIA_MANUAL}</span>}
         {expiresAt && (
           <span className="text-xs text-text-3">
-            Vence: {new Date(expiresAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+            Vence: {new Date(expiresAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short" })}
           </span>
         )}
       </div>

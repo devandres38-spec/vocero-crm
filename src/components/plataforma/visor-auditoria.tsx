@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,8 @@ export function VisorAuditoria({
   organizaciones: { id: string; name: string }[];
   acciones: string[];
 }) {
+  // 073-C (D7): fechas en el idioma de la región del negocio, no del navegador.
+  const { locale } = useRegion();
   const [org, setOrg] = useState("");
   const [accion, setAccion] = useState("");
   const [via, setVia] = useState("");
@@ -154,7 +157,7 @@ export function VisorAuditoria({
                     title={e.createdAt}
                     className="ml-auto text-xs tabular-nums text-text-3"
                   >
-                    {fecha.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "medium" })}
+                    {fecha.toLocaleString(locale, { dateStyle: "medium", timeStyle: "medium" })}
                   </time>
                 </div>
                 <details className="group mt-1">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRegion } from "@/lib/region-context";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/lib/templates";
 import {
   DEFAULT_TEMPLATE_LANGUAGE,
+  idiomaDePlantillaPara,
   TEMPLATE_LANGUAGE_GROUPS,
   TEMPLATE_LANGUAGES,
   templateLanguageName,
@@ -85,7 +87,7 @@ const STARTERS: {
     title: "Retomar la conversación",
     name: "retomar_conversacion",
     category: "MARKETING",
-    body: "Hola {{1}}, ¿sigues interesado en {{2}}? Esta semana tenemos lugares disponibles. Responde a este mensaje y te ayudamos.",
+    body: "Hola {{1}}, ¿sigues interesado en {{2}}? Esta semana tenemos cupos disponibles. Responde a este mensaje y te ayudamos.",
     examples: ["Ana", "la limpieza dental"],
   },
 ];
@@ -348,7 +350,9 @@ function CreateForm({
   onCancel: () => void;
 }) {
   const [name, setName] = useState("");
-  const [language, setLanguage] = useState(DEFAULT_TEMPLATE_LANGUAGE);
+  // 073-C (D7): el idioma de la región del negocio (es-CO → es_CO).
+  const { locale: localeRegion } = useRegion();
+  const [language, setLanguage] = useState(() => idiomaDePlantillaPara(localeRegion) || DEFAULT_TEMPLATE_LANGUAGE);
   const [category, setCategory] = useState<Category>("UTILITY");
   const [body, setBody] = useState("");
   const [examples, setExamples] = useState<string[]>([]);

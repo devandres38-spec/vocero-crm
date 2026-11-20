@@ -62,12 +62,12 @@ export function AmountDialog({
           inputMode="decimal"
           autoFocus
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="12,500.00"
+          placeholder="150.000"
           className="mt-1"
         />
         {invalido ? (
           <p className="mt-1 text-xs text-danger-text">
-            No reconozco ese número. Escríbelo como 12500 o 12,500.00
+            No reconozco ese número. Escríbelo como 150000 o 150.000
           </p>
         ) : (
           <p className="mt-1 text-xs text-text-3">

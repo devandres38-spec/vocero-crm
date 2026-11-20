@@ -141,7 +141,7 @@ export function BlockDialog({
             id="bloqueo-nota"
             value={notes}
             maxLength={120}
-            placeholder="Comida con proveedor"
+            placeholder="Almuerzo con proveedor"
             onChange={(e) => setNotes(e.target.value)}
           />
         </div>

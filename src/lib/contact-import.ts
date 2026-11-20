@@ -167,14 +167,14 @@ export function readImportFile(
     return {
       ok: false,
       error:
-        "No encontré las columnas. El archivo necesita una columna «nombre» y una «telefono» en el primer renglón.",
+        "No encontré las columnas. El archivo necesita una columna «nombre» y una «telefono» en la primera fila.",
     };
   }
   const body = table.slice(1);
   if (body.length > IMPORT_MAX_ROWS) {
     return {
       ok: false,
-      error: `El archivo trae ${body.length} renglones; el máximo por importación es ${IMPORT_MAX_ROWS}.`,
+      error: `El archivo trae ${body.length} filas; el máximo por importación es ${IMPORT_MAX_ROWS}.`,
     };
   }
   const rows = body.map((r) => ({

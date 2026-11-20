@@ -5,7 +5,37 @@ sigue el SemVer del [README](README.md#versiones): una menor trae funciones
 nuevas y actualizar es redesplegar. Desde 1.4.0, cada tag `vX.Y.Z` publica la
 imagen `ghcr.io/kevinrivm/vocero-crm:X.Y.Z`.
 
-## Sin publicar
+## 2.14.0 — 2026-11-20
+
+Cierra la serie **Bot de Producción (073)**: rondas A, B y C con sus parches de
+auditoría. Migraciones aditivas `0035`–`0037` (se aplican solas al arrancar).
+Actualizar **el CRM antes que Nea**. Contrato:
+[brains-073](specs/073-bot-produccion/contracts/brains-073.md).
+
+### Bot de Producción, ronda 073-C — calidad conversacional, comprobantes y Colombia
+
+- **Reacciones** (👍) a la bandeja, sin despertar al agente ni abrir la
+  ventana de 24 h.
+- **El agente sabe a qué responde el cliente**: el despacho lleva `replyTo`
+  (el mensaje citado) y los teléfonos de las tarjetas de contacto.
+- **Horarios en 12 h** en las etiquetas de la agenda («3:00 p. m.»); los
+  datos (`startUtc`) siguen en ISO.
+- **Colombia por defecto**: plantillas nuevas en `es_CO` (o el idioma de la
+  región del negocio), teléfonos legibles («+57 300 123 4567»), fechas con el
+  idioma de la región en toda la app, y textos sin mexicanismos (`valor` en
+  vez de `importe`, `fila` en vez de `renglón`, `cupos disponibles`,
+  `Almuerzo con proveedor`, montos como «150.000»).
+- Del lado de Nea (actualizarla después): comprobantes de pago siempre a una
+  persona, validador anti-alucinación (incluido `<think>` de GLM), respuestas
+  partidas por canal, memoria de 20 mensajes, léxico colombiano.
+
+### Parche de auditoría 073-B
+
+- La pausa por respuesta humana arranca en el mensaje que la provocó: el
+  primer mensaje del asesor ya no se pierde del `humanGap`.
+- Índice `dispatch_org_created_idx` (migración `0037`) para el conteo
+  anti-flood.
+
 
 ### Bot de Producción, ronda 073-B — Humano↔Bot y seguridad
 
