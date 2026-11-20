@@ -548,18 +548,24 @@ export async function sendText(input: {
       FALLOS_DEL_CANAL.has(err.code) &&
       !(input.aiGenerated && err.code === "meta_unavailable")
     ) {
-      err.messageId = await persistOutbound({
-        organizationId: input.organizationId,
-        conversationId: input.conversationId,
-        waMessageId: null,
-        type: "text",
-        text,
-        status: "failed",
-        error: err.message,
-        aiGenerated: input.aiGenerated,
-        origin: input.aiGenerated ? "ai" : "operator",
-        cita,
-      });
+      // Auditoría 073-A: guardar la burbuja fallida nunca puede tapar el
+      // fallo original del canal, que es el que decide el código HTTP.
+      try {
+        err.messageId = await persistOutbound({
+          organizationId: input.organizationId,
+          conversationId: input.conversationId,
+          waMessageId: null,
+          type: "text",
+          text,
+          status: "failed",
+          error: err.message,
+          aiGenerated: input.aiGenerated,
+          origin: input.aiGenerated ? "ai" : "operator",
+          cita,
+        });
+      } catch (fallo) {
+        console.error("[send] no pude guardar el mensaje fallido:", fallo);
+      }
     }
     throw err;
   }
@@ -803,6 +809,19 @@ export async function sendStructured(
   return { messageId };
 }
 
+/**
+ * Auditoría 073-A — El `SendError` de un fallo del canal (no de auth), igual
+ * en los cuatro canales. Lo que se arregla esperando —red (0), límite de tasa
+ * (429), caída del proveedor (5xx)— sale como `meta_unavailable` (503
+ * reintentable); lo demás, `meta_error`. Siempre con el código de Meta.
+ */
+export function falloDelCanal(err: MetaApiError, noDisponible: string): SendError {
+  if (err.status === 0 || err.status === 429 || err.status >= 500) {
+    return new SendError("meta_unavailable", noDisponible, err.code);
+  }
+  return new SendError("meta_error", err.message, err.code);
+}
+
 /** Llama a Graph /messages y traduce errores de Meta a SendError. */
 export async function callGraphSend(
   credentials: Credentials,
@@ -825,10 +844,7 @@ export async function callGraphSend(
           "El token de WhatsApp expiró: reconecta el número en Configuración"
         );
       }
-      if (err.status === 0 || err.status >= 500) {
-        throw new SendError("meta_unavailable", "Meta no está disponible ahora", err.code);
-      }
-      throw new SendError("meta_error", err.message, err.code);
+      throw falloDelCanal(err, "Meta no está disponible ahora");
     }
     throw err;
   }
@@ -877,13 +893,7 @@ async function callInstagramSend(
           "El token de Instagram expiró o fue revocado: reconecta la cuenta"
         );
       }
-      if (err.status === 0 || err.status >= 500) {
-        throw new SendError(
-          "meta_unavailable",
-          "Instagram no está disponible en este momento; intenta de nuevo"
-        );
-      }
-      throw new SendError("meta_error", err.message);
+      throw falloDelCanal(err, "Instagram no está disponible en este momento; intenta de nuevo");
     }
     throw err;
   }
@@ -932,13 +942,7 @@ async function callMessengerSend(
           "El token de la página expiró o fue revocado: reconecta Messenger"
         );
       }
-      if (err.status === 0 || err.status >= 500) {
-        throw new SendError(
-          "meta_unavailable",
-          "Messenger no está disponible en este momento; intenta de nuevo"
-        );
-      }
-      throw new SendError("meta_error", err.message);
+      throw falloDelCanal(err, "Messenger no está disponible en este momento; intenta de nuevo");
     }
     throw err;
   }
@@ -969,13 +973,7 @@ async function callTiktokSend(target: SendTarget, text: string): Promise<string>
           "La llave de Zernio expiró o fue revocada: reconecta TikTok"
         );
       }
-      if (err.status === 0 || err.status >= 500) {
-        throw new SendError(
-          "meta_unavailable",
-          "TikTok no está disponible en este momento; intenta de nuevo"
-        );
-      }
-      throw new SendError("meta_error", err.message);
+      throw falloDelCanal(err, "TikTok no está disponible en este momento; intenta de nuevo");
     }
     throw err;
   }

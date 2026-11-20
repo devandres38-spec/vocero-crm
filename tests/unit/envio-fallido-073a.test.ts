@@ -17,6 +17,8 @@ const h = vi.hoisted(() => ({
   selectRows: [] as unknown[][],
   /** Cada INSERT: la tabla y los valores. */
   inserts: [] as { table: unknown; values: Record<string, unknown> }[],
+  /** Auditoría 073-A: el INSERT del mensaje fallido revienta. */
+  insertFalla: false,
 }));
 
 vi.mock("@/lib/meta/client", async (importOriginal) => {
@@ -116,6 +118,7 @@ vi.mock("@/lib/db", async (importOriginal) => {
           },
         ]);
         c.values = (v: Record<string, unknown>) => {
+          if (h.insertFalla && v.status === "failed") throw new Error("base caída");
           values = v;
           h.inserts.push({ table, values: v });
           return c;
@@ -160,6 +163,7 @@ beforeEach(() => {
   h.getCredentialsByOrg.mockReset();
   h.selectRows.length = 0;
   h.inserts.length = 0;
+  h.insertFalla = false;
 });
 
 describe("sendText ante un rechazo del canal (073-A)", () => {
@@ -257,5 +261,66 @@ describe("respuesta del cerebro: pasajero vs. definitivo (contrato brains-073 §
     expect(respuestaDeFallo({ ok: false, code: "text_too_long", message: "x" }).status).toBe(422);
     expect(respuestaDeFallo({ ok: false, code: "ai_paused", message: "x" }).status).toBe(409);
     expect(respuestaDeFallo({ ok: false, code: "organizacion_suspendida", message: "x" }).status).toBe(403);
+  });
+});
+
+describe("auditoría 073-A — envío", () => {
+  it("429 de Meta es pasajero: meta_unavailable (503 reintentable) y sin burbuja de la IA", async () => {
+    conectado();
+    h.graphRequest.mockRejectedValue(new MetaApiError("Rate limit hit", { status: 429, code: 130429 }));
+    h.selectRows.push([CONVERSACION_WA]);
+    const { sendText } = await import("@/server/inbox/send");
+
+    await expect(
+      sendText({ conversationId: "cv_1", organizationId: "org_1", text: "hola", aiGenerated: true })
+    ).rejects.toMatchObject({ code: "meta_unavailable", metaCode: 130429 });
+    expect(insertsDeMensajes()).toEqual([]);
+  });
+
+  it("falloDelCanal: igual en los cuatro canales, siempre con el código de Meta", async () => {
+    const { falloDelCanal } = await import("@/server/inbox/send");
+    const casos: [number, string][] = [
+      [0, "meta_unavailable"],
+      [429, "meta_unavailable"],
+      [500, "meta_unavailable"],
+      [503, "meta_unavailable"],
+      [400, "meta_error"],
+      [404, "meta_error"],
+    ];
+    for (const [status, code] of casos) {
+      const err = falloDelCanal(new MetaApiError("x", { status, code: 42 }), "no disponible");
+      expect(err).toMatchObject({ code, metaCode: 42 });
+    }
+  });
+
+  it("Instagram, Messenger y TikTok traducen con falloDelCanal (no con su copia)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const fuente = readFileSync(join(process.cwd(), "src", "server", "inbox", "send.ts"), "utf8");
+    for (const canal of ["Instagram", "Messenger", "TikTok"]) {
+      expect(fuente).toContain(`falloDelCanal(err, "${canal} no está disponible`);
+    }
+    expect(fuente).not.toMatch(/err\.status === 0 \|\| err\.status >= 500/);
+  });
+
+  it("si guardar la burbuja fallida revienta, sale el SendError original del canal", async () => {
+    conectado();
+    h.insertFalla = true;
+    h.graphRequest.mockRejectedValue(
+      new MetaApiError("Recipient phone number not in allowed list", { status: 400, code: 131026 })
+    );
+    h.selectRows.push([CONVERSACION_WA]);
+    const espia = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { sendText, SendError } = await import("@/server/inbox/send");
+
+    const err = await sendText({ conversationId: "cv_1", organizationId: "org_1", text: "hola" }).catch(
+      (e: unknown) => e
+    );
+
+    expect(err).toBeInstanceOf(SendError);
+    expect(err).toMatchObject({ code: "meta_error", metaCode: 131026 });
+    expect((err as InstanceType<typeof SendError>).messageId).toBeUndefined();
+    expect(espia).toHaveBeenCalled();
+    espia.mockRestore();
   });
 });

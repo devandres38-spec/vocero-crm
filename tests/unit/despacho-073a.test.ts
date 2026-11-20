@@ -19,6 +19,9 @@ const h = vi.hoisted(() => ({
   // worker
   cola: [] as { id: string; organizationId: string; conversationId: string }[],
   excluidas: [] as string[][],
+  /** Auditoría 073-A: el reclamo número N (1-based) revienta. */
+  reclamoFalla: 0,
+  reclamos: 0,
   entregar: vi.fn(),
 }));
 
@@ -48,6 +51,8 @@ vi.mock("@/server/dispatch/outbox", () => ({
   encolarDespacho: h.encolar,
   tomarPendientes: vi.fn(async (_limite: number, _ahora: Date, excluir: readonly string[] = []) => {
     h.excluidas.push([...excluir]);
+    h.reclamos++;
+    if (h.reclamos === h.reclamoFalla) throw new Error("base caída");
     const i = h.cola.findIndex((f) => !excluir.includes(f.organizationId));
     if (i < 0) return [];
     return h.cola.splice(i, 1);
@@ -73,6 +78,8 @@ beforeEach(() => {
   for (const f of [h.estadoIa, h.registrar, h.encolar, h.entregar]) f.mockClear();
   h.cola.length = 0;
   h.excluidas.length = 0;
+  h.reclamos = 0;
+  h.reclamoFalla = 0;
   detenerWorker();
 });
 
@@ -193,6 +200,37 @@ describe("worker: entregas en paralelo sin head-of-line blocking", () => {
 
     expect(await tanda()).toBe(3);
     expect(h.entregar).toHaveBeenCalledTimes(3);
+    espia.mockRestore();
+  });
+
+  it("auditoría 073-A: si la base falla al reclamar, la tanda espera a los carriles en vuelo", async () => {
+    encolar(1, "org_A");
+    let soltar: () => void = () => {};
+    const colgado = new Promise<void>((r) => (soltar = r));
+    let terminado = false;
+    h.entregar.mockImplementation(async () => {
+      await colgado;
+      terminado = true;
+      return { ok: true };
+    });
+    // El 1.º reclamo toma el despacho; el 2.º (otro carril) revienta.
+    h.reclamoFalla = 2;
+    const espia = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    let resuelta = false;
+    const corriendo = tanda().then((n) => {
+      resuelta = true;
+      return n;
+    });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(resuelta).toBe(false);
+    // `corriendo` sigue puesto: otra tanda no arranca encima.
+    expect(await tanda()).toBe(0);
+
+    soltar();
+    expect(await corriendo).toBe(1);
+    expect(terminado).toBe(true);
+    expect(espia).toHaveBeenCalledWith("[despacho] no se pudo reclamar:", expect.any(Error));
     espia.mockRestore();
   });
 });

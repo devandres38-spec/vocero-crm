@@ -38,6 +38,15 @@ Actualizar **antes** que Nea.
   rechazados, agrupados por hora; se purgan a los 90 días. El panel llega en
   la 074.
 
+#### Parche de auditoría 073-A
+
+- Un `429` del canal es pasajero (`meta_unavailable`, 503 reintentable) en
+  los cuatro canales, y todos pasan el código de Meta (`falloDelCanal`).
+- Si guardar la burbuja fallida revienta, el error original del canal sigue
+  llegando a quien envió.
+- Un fallo de la base al reclamar un despacho retira solo ese carril: la
+  tanda espera a los que siguen en vuelo antes de soltar el turno.
+
 ## 2.13.1 — 2026-11-19
 
 Hotfixes del bot (antesala de la spec 073). **Sin migraciones ni cambios de

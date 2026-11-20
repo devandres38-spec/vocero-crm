@@ -160,7 +160,16 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
 
   const carril = async (): Promise<void> => {
     for (;;) {
-      const fila = await reclamar();
+      let fila: FilaDespacho | null;
+      try {
+        fila = await reclamar();
+      } catch (err) {
+        // Auditoría 073-A: la base falló al reclamar. Este carril se retira;
+        // los demás terminan lo que tienen en vuelo y la tanda espera a todos
+        // antes de soltar `corriendo` (si no, otra tanda arrancaría encima).
+        console.error("[despacho] no se pudo reclamar:", err);
+        return;
+      }
       if (!fila) return;
       const latido = setInterval(() => {
         void renovarLease(fila).catch(() =>
@@ -182,10 +191,12 @@ export async function tanda(ahora: Date = new Date()): Promise<number> {
   };
 
   try {
-    await Promise.all(Array.from({ length: CARRILES }, carril));
-    return tomados;
-  } catch (err) {
-    console.error("[despacho] la tanda falló:", err);
+    // `allSettled`: aunque un carril fallara, la tanda no termina hasta que
+    // todos los demás aterrizan.
+    const carriles = await Promise.allSettled(Array.from({ length: CARRILES }, carril));
+    for (const c of carriles) {
+      if (c.status === "rejected") console.error("[despacho] un carril falló:", c.reason);
+    }
     return tomados;
   } finally {
     e.corriendo = false;
